@@ -160,7 +160,7 @@ usb:
 	$$(MAKE) -C .. APP=$$(APP) USB_DRIVE=$$(USB_DRIVE) usb
 
 # Show U-Boot commands for this app
-run:
+uboot_cmds:
 	$$(MAKE) -C .. APP=$$(APP) uboot_cmds
 
 .PHONY: all clean usb run
