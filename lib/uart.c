@@ -1,13 +1,18 @@
 #include "uart.h"
 
 void uart_putchar(LPUART_TypeDef *uart, char c) {
+    if (c == '\n') {
+        while (!(uart->STAT & LPUART_STAT_TDRE)); 
+        uart->DATA = '\r';
+    }
+    
+    /* Send the actual character */
     while (!(uart->STAT & LPUART_STAT_TDRE)); 
     uart->DATA = c;
 }
 
 void uart_print_string(LPUART_TypeDef *uart, const char *str) {
     while (*str) {
-        if (*str == '\n') uart_putchar(uart, '\r'); 
         uart_putchar(uart, *str++);
     }
 }
