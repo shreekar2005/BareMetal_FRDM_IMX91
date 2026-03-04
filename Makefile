@@ -92,7 +92,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 	@echo "\n>>> Cleaned $(APP) <<<\n"
 
-usb: $(TARGET)
+usb_install: $(TARGET)
 	@if [ -d "$(USB_DRIVE)" ]; then \
 		cp $(TARGET) $(USB_DRIVE)/; \
 		sync; \
@@ -101,18 +101,25 @@ usb: $(TARGET)
 		echo "\n>>> ERROR: USB drive not found at $(USB_DRIVE). Pass USB_DRIVE=/your/path <<<\n"; \
 	fi
 
+serial_install_steps: $(TARGET)
+	@echo "======================================================================"
+	@echo "               YMODEM SERIAL DEPLOYMENT FOR $(APP)"
+	@echo "======================================================================"
+	@echo "  1. In your U-Boot console, run: loady 0x80000000"
+	@echo "  2. Press Ctrl+A, then Ctrl+S in picocom."
+	@echo "  3. Paste this file path when prompted (remove '$(APP_DIR)/' if you are in app directory):"
+	@echo ""
+	@echo "     $(TARGET)"
+	@echo ""
+	@echo "  4. After transfer finishes, run in U-Boot:"
+	@echo "     dcache flush && icache flush && go 0x80000000"
+	@echo "======================================================================"
+
 cmd:
 	@echo "======================================================================"
-	@echo "        U-BOOT COMMANDS FOR APP: $(APP)"
+	@echo "                 U-BOOT COMMAND FOR APP: $(APP)"
 	@echo "======================================================================"
-	@echo "Step-by-step:"
-	@echo "  usb start"
-	@echo "  fatload usb 0:1 0x80000000 $(APP).bin"
-	@echo "  dcache flush"
-	@echo "  icache flush"
-	@echo "  go 0x80000000"
-	@echo "----------------------------------------------------------------------"
-	@echo "Single-line copy-paste (Safe execution):"
+	@echo "USB PENDRIVE"
 	@echo "  usb stop && usb start && fatload usb 0:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
 	@echo "======================================================================"
 
@@ -121,16 +128,17 @@ help:
 	@echo "              NXP FRDM-i.MX91 Bare-Metal Build System                 "
 	@echo "======================================================================"
 	@echo "Project Management:"
-	@echo "  make init APP=<name>          - Create a new project inside Apps/"
+	@echo "  make init APP=<name>            - Create a new project inside Apps/"
 	@echo ""
 	@echo "Building & Cleaning:"
-	@echo "  make APP=<name>               - Build the application binary (.bin & .elf)"
-	@echo "  make clean APP=<name>         - Remove the build directory for the app"
-	@echo "  make clear APP=<name>         - Clean the app and clear the terminal"
+	@echo "  make APP=<name>                 - Build the application binary (.bin & .elf)"
+	@echo "  make clean APP=<name>           - Remove the build directory for the app"
+	@echo "  make clear APP=<name>           - Clean the app and clear the terminal"
 	@echo ""
 	@echo "Deployment & Interaction:"
-	@echo "  make usb APP=<name>           - Build and copy binary to $(USB_DRIVE)"
-	@echo "  make cmd APP=<name>    	   - Show commands to run in the U-Boot console"
+	@echo "  make usb_install APP=<name>     - Build and copy binary to USB drive"
+	@echo "  make serial_install_steps APP=<name>  - Show instructions & path for Ymodem transfer"
+	@echo "  make cmd APP=<name>             - Show commands to run in the U-Boot console"
 	@echo "======================================================================"
 
-.PHONY: all clear clean usb help cmd init
+.PHONY: all clear clean usb_install serial_install_steps help cmd init
