@@ -1,4 +1,3 @@
-/* linker.ld */
 ENTRY(_start)
 SECTIONS
 {
