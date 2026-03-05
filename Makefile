@@ -120,7 +120,7 @@ cmd:
 	@echo "                 U-BOOT COMMAND FOR APP: $(APP)"
 	@echo "======================================================================"
 	@echo "USB PENDRIVE"
-	@echo "  usb stop && usb start && fatload usb 0:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
+	@echo "  usb reset && fatload usb 0:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
 	@echo "======================================================================"
 
 help:

@@ -1,6 +1,6 @@
 #include <stdint.h>
-#include "nxp_frdm_imx91.h"
-#include "uart.h"
+#include "GPIO.h"
+#include "LPUART.h"
 
 #define LED_PIN (1 << 4)
 

@@ -1,7 +1,6 @@
-// main.c
 #include <stdint.h>
-#include "nxp_frdm_imx91.h"
-#include "uart.h"
+#include "GPIO.h"
+#include "LPUART.h"
 
 /**
  * @brief Main entry point for __APP_NAME__

@@ -1,6 +1,7 @@
-#include "uart.h"
+#include "LPUART.h"
 
 void uart_putchar(LPUART_TypeDef *uart, char c) {
+    /* Automatically inject a carriage return before a newline */
     if (c == '\n') {
         while (!(uart->STAT & LPUART_STAT_TDRE)); 
         uart->DATA = '\r';
