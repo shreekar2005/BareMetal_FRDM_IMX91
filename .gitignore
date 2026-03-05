@@ -35,6 +35,7 @@
 *.i*86
 *.x86_64
 *.hex
+*.bin
 
 # Debug files
 *.dSYM/
@@ -56,4 +57,4 @@ dkms.conf
 
 
 # Ignore every app's build directory
-*/build
+**/build/
