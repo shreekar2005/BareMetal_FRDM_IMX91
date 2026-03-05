@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "GPIO.h"
 #include "LPUART.h"
+#include "SYS_CTR.h"
 
 /**
  * @brief Main entry point for __APP_NAME__
