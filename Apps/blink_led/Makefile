@@ -9,13 +9,13 @@ clear: clean
 clean:
 	$(MAKE) -C ../.. APP=$(APP) clean
 
-usb_install:
-	$(MAKE) -C ../.. APP=$(APP) usb_install
+usb_pendrive_install:
+	$(MAKE) -C ../.. APP=$(APP) usb_pendrive_install
 
-serial_install_steps:
-	$(MAKE) -C ../.. APP=$(APP) serial_install_steps
+usb_serial_install:
+	$(MAKE) -C ../.. APP=$(APP) usb_serial_install
 
-cmd:
-	$(MAKE) -C ../.. APP=$(APP) cmd
+usb_ums_install:
+	$(MAKE) -C ../.. APP=$(APP) usb_ums_install
 
-.PHONY: all clear clean usb_install serial_install_steps cmd
+.PHONY: all clear clean usb_pendrive_install usb_serial_install usb_ums_install

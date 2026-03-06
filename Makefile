@@ -92,35 +92,48 @@ clean:
 	rm -rf $(BUILD_DIR)
 	@echo "\n>>> Cleaned $(APP) <<<\n"
 
-usb_install: $(TARGET)
+usb_pendrive_install: $(TARGET)
 	@if [ -d "$(USB_DRIVE)" ]; then \
 		cp $(TARGET) $(USB_DRIVE)/; \
 		sync; \
 		echo "\n>>> Successfully copied to $(USB_DRIVE) <<<\n"; \
 	else \
 		echo "\n>>> ERROR: USB drive not found at $(USB_DRIVE). Pass USB_DRIVE=/your/path <<<\n"; \
+		exit 1; \
 	fi
+	@echo "======================================================================"
+	@echo "             USB PENDRIVE DEPLOYMENT FOR $(APP)"
+	@echo "======================================================================"
+	@echo "  --- U-BOOT COMMANDS ---"
+	@echo "  1. Connect your USB pendrive to the board's USB Host port."
+	@echo "  2. Load & Run: usb reset && fatload usb 0:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
+	@echo "======================================================================"
 
-serial_install_steps: $(TARGET)
+usb_serial_install: $(TARGET)
 	@echo "======================================================================"
 	@echo "               YMODEM SERIAL DEPLOYMENT FOR $(APP)"
 	@echo "======================================================================"
-	@echo "  1. In your U-Boot console, run: loady 0x80000000"
-	@echo "  2. Press Ctrl+A, then Ctrl+S in picocom."
-	@echo "  3. Paste this file path when prompted (remove '$(APP_DIR)/' if you are in app directory):"
-	@echo ""
-	@echo "     $(TARGET)"
-	@echo ""
-	@echo "  4. After transfer finishes, run in U-Boot:"
-	@echo "     dcache flush && icache flush && go 0x80000000"
+	@echo "  --- U-BOOT COMMANDS & STEPS ---"
+	@echo "  1. Start Transfer: loady 0x80000000"
+	@echo "  2. In picocom, press Ctrl+A, then Ctrl+S."
+	@echo "  3. Paste path: $(TARGET)"
+	@echo "     (Note: Remove '$(APP_DIR)/' if running from inside the app directory)"
+	@echo "  4. Load & Run: dcache flush && icache flush && go 0x80000000"
 	@echo "======================================================================"
 
-cmd:
+usb_ums_install: $(TARGET)
 	@echo "======================================================================"
-	@echo "                 U-BOOT COMMAND FOR APP: $(APP)"
+	@echo "                 UMS DEPLOYMENT FOR $(APP)"
 	@echo "======================================================================"
-	@echo "USB PENDRIVE"
-	@echo "  usb reset && fatload usb 0:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
+	@echo "  --- FOR eMMC (U-BOOT COMMANDS) ---"
+	@echo "  1. Start UMS: ums 0 mmc 0"
+	@echo "  2. Copy $(APP).bin to the 'boot' drive on PC, then eject and Ctrl+C"
+	@echo "  3. Load & Run: fatload mmc 0:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
+	@echo ""
+	@echo "  --- FOR SD CARD (U-BOOT COMMANDS) ---"
+	@echo "  1. Start UMS: ums 0 mmc 1"
+	@echo "  2. Copy $(APP).bin to the 'boot' drive on PC, then eject and Ctrl+C"
+	@echo "  3. Load & Run: fatload mmc 1:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
 	@echo "======================================================================"
 
 help:
@@ -128,17 +141,17 @@ help:
 	@echo "              NXP FRDM-i.MX91 Bare-Metal Build System                 "
 	@echo "======================================================================"
 	@echo "Project Management:"
-	@echo "  make init APP=<name>            - Create a new project inside Apps/"
+	@echo "  make init APP=<name>                 - Create a new project inside Apps/"
 	@echo ""
 	@echo "Building & Cleaning:"
-	@echo "  make APP=<name>                 - Build the application binary (.bin & .elf)"
-	@echo "  make clean APP=<name>           - Remove the build directory for the app"
-	@echo "  make clear APP=<name>           - Clean the app and clear the terminal"
+	@echo "  make APP=<name>                      - Build the application binary (.bin & .elf)"
+	@echo "  make clean APP=<name>                - Remove the build directory for the app"
+	@echo "  make clear APP=<name>                - Clean the app and clear the terminal"
 	@echo ""
 	@echo "Deployment & Interaction:"
-	@echo "  make usb_install APP=<name>     - Build and copy binary to USB drive"
-	@echo "  make serial_install_steps APP=<name>  - Show instructions & path for Ymodem transfer"
-	@echo "  make cmd APP=<name>             - Show commands to run in the U-Boot console"
+	@echo "  make usb_pendrive_install APP=<name> - Copy binary to USB and show U-Boot command"
+	@echo "  make usb_serial_install APP=<name>   - Show instructions & path for Ymodem transfer"
+	@echo "  make usb_ums_install APP=<name>      - Show UMS (eMMC/SD Card) commands"
 	@echo "======================================================================"
 
-.PHONY: all clear clean usb_install serial_install_steps help cmd init
+.PHONY: all clear clean usb_pendrive_install usb_serial_install usb_ums_install help init

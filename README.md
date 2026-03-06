@@ -68,8 +68,6 @@ aarch64-linux-gnu-gcc --version
 * `.elf` → debugging / symbol analysis
 * `.bin` → raw binary for u-boot execution
 
-
-
 multiple apps are managed through the root makefile using:
 ```bash
 make APP=<app_name>
@@ -137,12 +135,13 @@ this method requires no usb drives and pushes the code straight down the debug c
 2. power the board and stop autoboot to get the `=>` prompt.
 3. on the board type: `loady 0x80000000`
 4. press `Ctrl+A` then `Ctrl+S` in picocom to send the file.
-5. type the path to your binary (or run `make serial_install_steps APP=sonar_proximity` on your host to get the exact path).
+5. type the path to your binary (or run `make usb_serial_install APP=sonar_proximity` on your host to get the exact path).
 6. when finished, run: `dcache flush && icache flush && go 0x80000000`
 
 ### method 2: u-boot mass storage (ums)
 
 this method temporarily turns the board's internal emmc into a pendrive connected to your laptop.
+(you can run `make usb_ums_install APP=sonar_proximity` to see a quick reference for these commands).
 
 1. connect a data cable to the board's usb host port.
 2. at the u-boot prompt type: `ums 0 mmc 0` (or `mmc 1` depending on your emmc number).
@@ -157,22 +156,16 @@ this method temporarily turns the board's internal emmc into a pendrive connecte
 this method uses a standard usb flash drive to move the binary from your laptop to the board.
 
 1. insert a FAT32 formatted usb drive into your laptop.
-2. run the automated install command (adjust the path if yours is different):```bash
-make usb_install APP=sonar_proximity USB_DRIVE=/media/$(USER)/FRDM_IMX91
+2. run the automated install command (adjust the path if yours is different). this will copy the file and print the exact u-boot command you need:
+```bash
+make usb_pendrive_install APP=sonar_proximity USB_DRIVE=/media/$(USER)/FRDM_IMX91
 ```
-
 
 3. unplug the usb drive and insert it into the FRDM board's usb host port.
-4. in the u-boot console, reset the usb subsystem and load the binary. you can get the exact, automated command by running this on your laptop:```bash
-make cmd APP=sonar_proximity
-```
-
-
-5. copy/paste the output into u-boot:```u-boot
+4. copy/paste the output printed by the make command into u-boot:
+```u-boot
 usb reset && fatload usb 0:1 0x80000000 sonar_proximity.bin && dcache flush && icache flush && go 0x80000000
 ```
-
-
 
 ---
 
