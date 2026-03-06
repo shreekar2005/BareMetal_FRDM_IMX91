@@ -30,6 +30,9 @@ it allows you to:
 ├── lib/
 │   ├── LPUART.c                  # blocking/non-blocking uart driver
 │   └── SYS_CTR.c                 # microsecond-precision hardware delay driver
+├── Manuals/                      # official nxp hardware documentation
+│   ├── IMX91RM.pdf               # i.mx91 applications processor reference manual
+│   └── UM12262.pdf               # frdm-imx91 board user manual
 ├── templates/                    # automated project templates
 │   ├── template_linker.ld
 │   ├── template_main.c
@@ -41,6 +44,17 @@ it allows you to:
 ```
 
 note: the `build/` directory is generated automatically inside each app when compiled.
+
+---
+
+## reference manuals & documentation
+
+this entire framework was built from scratch by cross-referencing the official NXP silicon and board manuals. we have included these inside the `Manuals/` directory for easy access:
+
+* **IMX91RM.pdf**: the massive thousands-of-pages master reference for every register, memory map, and peripheral inside the i.mx91 soc.
+* **UM12262.pdf**: the physical board manual detailing the pinouts, switches, and schematics for the frdm-imx91 evaluation board.
+
+if you want to expand this framework (e.g., writing an i2c or spi driver), these two pdfs are your absolute source of truth.
 
 ---
 
