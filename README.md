@@ -11,7 +11,8 @@ it allows you to:
 
 ---
 
-## directory structure```text
+## directory structure
+```text
 .
 ├── Apps/                         # generated bare-metal apps
 │   ├── blink_led/                # example bare-metal app
