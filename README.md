@@ -6,29 +6,30 @@ it allows you to:
 * write pure C / assembly (no libc, no OS)
 * link with a custom per-app `linker.ld`
 * generate `.elf` and raw `.bin`
-* load and execute via U-Boot from USB
+* load and execute via U-Boot from USB or Serial
 * manage multiple independent applications inside one framework safely
 
 ---
 
-## directory structure
-```text
+## directory structure```text
 .
 ├── Apps/                         # generated bare-metal apps
 │   ├── blink_led/                # example bare-metal app
-│   │   ├── build/                # generated objects & binaries (ignored by git)
-│   │   ├── include/              # app-specific headers
-│   │   ├── linker.ld             # app-specific memory layout
-│   │   ├── Makefile              # child build script
-│   │   └── src/
-│   │       ├── main.c            # application logic
-│   │       └── start.S           # reset vector / low-level entry
-│   └── sonar_proximity/          # another independent app
-├── include/                      # global headers
-│   ├── nxp_frdm_imx91.h          # register mappings
-│   └── uart.h                    # uart interface
+│   └── sonar_proximity/          # hc-sr04 high-precision radar app
+│       ├── build/                # generated objects & binaries (ignored by git)
+│       ├── include/              # app-specific headers
+│       ├── linker.ld             # app-specific memory layout
+│       ├── Makefile              # child build script
+│       └── src/
+│           ├── main.c            # application logic
+│           └── start.S           # reset vector / low-level entry
+├── include/                      # global hardware headers
+│   ├── GPIO.h                    # 32-bit iomuxc/gpio register structs
+│   ├── LPUART.h                  # serial interface structs and flags
+│   └── SYS_CTR.h                 # 64-bit arm generic timer macros
 ├── lib/
-│   └── uart.c                    # uart implementation
+│   ├── LPUART.c                  # blocking/non-blocking uart driver
+│   └── SYS_CTR.c                 # microsecond-precision hardware delay driver
 ├── templates/                    # automated project templates
 │   ├── template_linker.ld
 │   ├── template_main.c
@@ -107,83 +108,75 @@ you no longer need to pass `APP=` manually inside the specific project folder.
 
 from root directory:
 ```bash
-make APP=blink_led
+make APP=sonar_proximity
 ```
 
 from inside the app directory:
 ```bash
-cd Apps/blink_led
+cd Apps/sonar_proximity
 make
 ```
 
 output:
 ```text
-Apps/blink_led/build/blink_led.elf
-Apps/blink_led/build/blink_led.bin
+Apps/sonar_proximity/build/sonar_proximity.elf
+Apps/sonar_proximity/build/sonar_proximity.bin
 ```
 
 ---
 
-## preparing the USB drive
+## deploying the code
 
-1. use a USB flash drive
-2. format it as **FAT32**
-3. mount it (example path):
-```bash
-/media/<user>/FRDM_IMX91
+there are three main ways to push the compiled `.bin` file to the bare-metal board:
+
+### method 1: serial transfer (ymodem)
+
+this method requires no usb drives and pushes the code straight down the debug cable.
+
+1. start your serial console: `sudo picocom -b 115200 /dev/ttyUSB0 --send-cmd "sz -vv"`
+2. power the board and stop autoboot to get the `=>` prompt.
+3. on the board type: `loady 0x80000000`
+4. press `Ctrl+A` then `Ctrl+S` in picocom to send the file.
+5. type the path to your binary (or run `make serial_install_steps APP=sonar_proximity` on your host to get the exact path).
+6. when finished, run: `dcache flush && icache flush && go 0x80000000`
+
+### method 2: u-boot mass storage (ums)
+
+this method temporarily turns the board's internal emmc into a pendrive connected to your laptop.
+
+1. connect a data cable to the board's usb host port.
+2. at the u-boot prompt type: `ums 0 mmc 0` (or `mmc 1` depending on your emmc number).
+3. the board will appear as a flash drive on your ubuntu host. drag and drop the `.bin` file into it.
+4. **eject** the drive safely in ubuntu.
+5. press `Ctrl+C` in u-boot to stop ums mode.
+6. load from the emmc into ram: `fatload mmc 0:1 0x80000000 sonar_proximity.bin`
+7. run: `dcache flush && icache flush && go 0x80000000`
+
+### method 3: physical usb pendrive
+
+this method uses a standard usb flash drive to move the binary from your laptop to the board.
+
+1. insert a FAT32 formatted usb drive into your laptop.
+2. run the automated install command (adjust the path if yours is different):```bash
+make usb_install APP=sonar_proximity USB_DRIVE=/media/$(USER)/FRDM_IMX91
 ```
 
-default path inside Makefile:
-```makefile
-USB_DRIVE ?= /media/$(USER)/FRDM_IMX91
+
+3. unplug the usb drive and insert it into the FRDM board's usb host port.
+4. in the u-boot console, reset the usb subsystem and load the binary. you can get the exact, automated command by running this on your laptop:```bash
+make cmd APP=sonar_proximity
 ```
 
-if your path differs:
-```bash
-make usb APP=blink_led USB_DRIVE=/media/youruser/USBNAME
+
+5. copy/paste the output into u-boot:```u-boot
+usb reset && fatload usb 0:1 0x80000000 sonar_proximity.bin && dcache flush && icache flush && go 0x80000000
 ```
 
-copy binary to usb:
-```bash
-make usb APP=blink_led
-```
 
----
-
-## stopping at U-Boot
-
-1. connect the **usb host** port on the board to your pendrive.
-2. connect the **debug/uart** port on the board to your host machine.
-3. open a serial console (e.g., `sudo picocom -b 115200 /dev/ttyUSB0`).
-4. power the board.
-5. press any key immediately when prompted to stop autoboot.
-
-you should see the U-Boot prompt:
-```u-boot
-=> 
-```
-
----
-
-## loading and running binary in U-Boot
-
-use the following commands in the U-Boot console to load the binary into DDR RAM (`0x80000000`) and execute it.
-
-to get the exact, safe single-line command for your specific app, run this on your host machine:
-```bash
-make cmd APP=blink_led
-```
-
-output to copy/paste:
-```u-boot
-usb stop && usb start && fatload usb 0:1 0x80000000 blink_led.bin && dcache flush && icache flush && go 0x80000000
-```
 
 ---
 
 ## serial console
-
-connect micro-usb to host machine.
 
 find device (usually `ttyUSB0` or `ttyACM0`):
 ```bash
@@ -202,11 +195,27 @@ Ctrl + A, then Ctrl + X
 
 ---
 
+## hardware drivers included
+
+### `GPIO.h`
+
+maps the massive 32-bit registers (PDOR, PSOR, PCOR, PDIR, PDDR) to simple c structures. controls physical pin direction and logic levels (handling both active-high and active-low circuits).
+
+### `SYS_CTR.h` & `SYS_CTR.c`
+
+bypasses software loops by tapping directly into the 64-bit arm `CNTPCT_EL0` physical timer register. provides true, zero-latency microsecond (`_us`) and millisecond (`_ms`) delay functions necessary for ultrasonic acoustics and protocol bit-banging.
+
+### `LPUART.h` & `LPUART.c`
+
+hijacks u-boot's pre-configured baud rate to provide serial output. includes custom `uart_print_dec` for formatting integers, and a `uart_getchar_nonblocking` function to intercept `Ctrl+C` commands mid-execution without freezing the processor.
+
+---
+
 ## how execution works
 
 1. board powers up.
 2. u-boot initializes DDR RAM, basic clocks, and the LPUART interface.
-3. binary is loaded from the FAT32 USB to `0x80000000`.
+3. binary is loaded into RAM at `0x80000000`.
 4. the `go 0x80000000` command hands control to `start.S`.
 5. `start.S` safely backs up U-Boot's stack pointer (`sp`) and link register (`lr`) using AAPCS64 standard `stp` instructions.
 6. `start.S` zeroes out the `.bss` section to initialize global C variables.
@@ -216,44 +225,16 @@ Ctrl + A, then Ctrl + X
 
 ---
 
-## important files
-
-### `linker.ld` (inside app)
-
-* defines memory regions (`0x80000000`).
-* forces strict 16-byte memory alignment to prevent AArch64 synchronous aborts.
-* places `.text`, `.rodata`, `.data`, and `.bss`.
-
-### `start.S` (inside app)
-
-* reset handler.
-* stack initialization and U-Boot state preservation.
-* `.bss` zeroing loop.
-* branch to `main`.
-
-### `nxp_frdm_imx91.h` (global)
-
-* memory-mapped register addresses mapped via C `struct` pointers (STM32 HAL style).
-* base addresses for peripherals.
-
-### `uart.c` (global)
-
-* minimal LPUART driver hijacking U-Boot's pre-configured baud rate.
-* provides blocking and non-blocking I/O.
-* includes smart `\n` to `\r\n` conversion for proper terminal formatting.
-
----
-
 ## cleaning
 
 remove build directory from root:
 ```bash
-make clean APP=blink_led
+make clean APP=sonar_proximity
 ```
 
 remove build and clear terminal:
 ```bash
-make clear APP=blink_led
+make clear APP=sonar_proximity
 ```
 
 or inside app:
