@@ -159,7 +159,7 @@ this method temporarily turns the board's internal emmc into a pendrive connecte
 (you can run `make usb_ums_install APP=sonar_proximity` to see a quick reference for these commands).
 
 1. connect a data cable to the board's usb host port.
-2. at the u-boot prompt type: `ums 0 mmc 0` (or `mmc 1` depending on your emmc number).
+2. at the u-boot prompt type: `ums 0 mmc 0` (or `mmc 1` for SD card, I will use `ums 0 mmc 1:3` for 3rd partition of SD card).
 3. the board will appear as a flash drive on your ubuntu host. drag and drop the `.bin` file into it.
 4. **eject** the drive safely in ubuntu.
 5. press `Ctrl+C` in u-boot to stop ums mode.

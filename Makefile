@@ -29,6 +29,7 @@ APP_OBJS += $(patsubst $(APP_DIR)/src/%.S, $(BUILD_DIR)/%.o, $(APP_ASMS))
 LIB_OBJS = $(patsubst lib/%.c, $(BUILD_DIR)/lib_%.o, $(LIB_SRCS))
 
 USB_DRIVE ?= /media/$(USER)/FRDM_IMX91
+SD_USB_DRIVE ?= /media/$(USER)/BM_PROGRAMS
 
 all: $(TARGET)
 
@@ -116,8 +117,8 @@ usb_serial_install: $(TARGET)
 	@echo "  --- U-BOOT COMMANDS & STEPS ---"
 	@echo "  1. Start Transfer: loady 0x80000000"
 	@echo "  2. In picocom, press Ctrl+A, then Ctrl+S."
-	@echo "  3. Paste path: $(TARGET)"
-	@echo "     (Note: Remove '$(APP_DIR)/' if running from inside the app directory)"
+	@echo "  3.1. Paste path: build/$(APP)"
+	@echo "  3.2. Paste path: $(TARGET)"
 	@echo "  4. Load & Run: dcache flush && icache flush && go 0x80000000"
 	@echo "======================================================================"
 
@@ -125,15 +126,16 @@ usb_ums_install: $(TARGET)
 	@echo "======================================================================"
 	@echo "                 UMS DEPLOYMENT FOR $(APP)"
 	@echo "======================================================================"
+	@echo "  --- FOR SD CARD (U-BOOT COMMANDS) ---"
+	@echo "  1. Start UMS from U-Boot : 'ums 0 mmc 1:3'"
+	@echo "  2.1. 'cp build/$(APP) $(SD_USB_DRIVE)/;' "
+	@echo "  2.2. 'cp $(TARGET) $(SD_USB_DRIVE)/;' "
+	@echo "  3. Load & Run: fatload mmc 1:3 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
+	@echo ""
 	@echo "  --- FOR eMMC (U-BOOT COMMANDS) ---"
 	@echo "  1. Start UMS: ums 0 mmc 0"
 	@echo "  2. Copy $(APP).bin to the 'boot' drive on PC, then eject and Ctrl+C"
 	@echo "  3. Load & Run: fatload mmc 0:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
-	@echo ""
-	@echo "  --- FOR SD CARD (U-BOOT COMMANDS) ---"
-	@echo "  1. Start UMS: ums 0 mmc 1"
-	@echo "  2. Copy $(APP).bin to the 'boot' drive on PC, then eject and Ctrl+C"
-	@echo "  3. Load & Run: fatload mmc 1:1 0x80000000 $(APP).bin && dcache flush && icache flush && go 0x80000000"
 	@echo "======================================================================"
 
 help:
