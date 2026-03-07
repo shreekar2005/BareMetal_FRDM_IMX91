@@ -12,6 +12,7 @@ it allows you to:
 ---
 
 ## directory structure
+
 ```text
 .
 ├── Apps/                         # generated bare-metal apps
@@ -42,6 +43,7 @@ it allows you to:
 ├── Makefile                      # top-level master build system
 ├── LICENSE
 └── README.md
+
 ```
 
 note: the `build/` directory is generated automatically inside each app when compiled.
@@ -62,14 +64,18 @@ if you want to expand this framework (e.g., writing an i2c or spi driver), these
 ## toolchain requirements
 
 install the aarch64 cross compiler on ubuntu:
+
 ```bash
 sudo apt update
 sudo apt install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
 ```
 
 verify:
+
 ```bash
 aarch64-linux-gnu-gcc --version
+
 ```
 
 ---
@@ -83,9 +89,13 @@ aarch64-linux-gnu-gcc --version
 * `.elf` → debugging / symbol analysis
 * `.bin` → raw binary for u-boot execution
 
+
+
 multiple apps are managed through the root makefile using:
+
 ```bash
 make APP=<app_name>
+
 ```
 
 ---
@@ -93,11 +103,14 @@ make APP=<app_name>
 ## creating a new project
 
 initialize a new application. this pulls from the `templates/` folder and dynamically generates your project inside `Apps/`.
+
 ```bash
 make init APP=my_app
+
 ```
 
 this creates:
+
 ```text
 Apps/my_app/
 ├── src/main.c
@@ -105,12 +118,15 @@ Apps/my_app/
 ├── include/
 ├── linker.ld
 └── Makefile
+
 ```
 
 after initialization, you can build directly:
+
 ```bash
 cd Apps/my_app
 make
+
 ```
 
 you no longer need to pass `APP=` manually inside the specific project folder.
@@ -120,20 +136,26 @@ you no longer need to pass `APP=` manually inside the specific project folder.
 ## building an existing app
 
 from root directory:
+
 ```bash
 make APP=sonar_proximity
+
 ```
 
 from inside the app directory:
+
 ```bash
 cd Apps/sonar_proximity
 make
+
 ```
 
 output:
+
 ```text
 Apps/sonar_proximity/build/sonar_proximity.elf
 Apps/sonar_proximity/build/sonar_proximity.bin
+
 ```
 
 ---
@@ -172,33 +194,80 @@ this method uses a standard usb flash drive to move the binary from your laptop 
 
 1. insert a FAT32 formatted usb drive into your laptop.
 2. run the automated install command (adjust the path if yours is different). this will copy the file and print the exact u-boot command you need:
+
 ```bash
 make usb_pendrive_install APP=sonar_proximity USB_DRIVE=/media/$(USER)/FRDM_IMX91
+
 ```
 
 3. unplug the usb drive and insert it into the FRDM board's usb host port.
 4. copy/paste the output printed by the make command into u-boot:
+
 ```u-boot
 usb reset && fatload usb 0:1 0x80000000 sonar_proximity.bin && dcache flush && icache flush && go 0x80000000
+
 ```
+
+---
+
+## automated execution (u-boot macros)
+
+to avoid typing out the long `fatload` and `go` commands every time, you can create a permanent macro in the u-boot environment.
+
+**1. set up the permanent macro:**
+run these commands once in the u-boot prompt to save your default application and the execution sequence to the sd card's flash memory:
+
+```u-boot
+setenv app sonar_proximity.bin
+setenv start 'fatload mmc 1:3 0x80000000 ${app} && dcache flush && icache flush && go 0x80000000'
+saveenv
+
+```
+
+**2. daily zero-click execution:**
+whenever you turn on the board, simply type:
+
+```u-boot
+run start
+
+```
+
+this will automatically read the `${app}` variable, load the binary, and execute it.
+
+**3. testing a new application:**
+if you compile a new app (e.g., `led_blink.bin`) and want to test it without overwriting your default save state, just update the variable in temporary ram:
+
+```u-boot
+setenv app led_blink.bin
+run start
+
+```
+
+when you reboot, it will safely revert back to your saved `sonar_proximity.bin` default.
 
 ---
 
 ## serial console
 
 find device (usually `ttyUSB0` or `ttyACM0`):
+
 ```bash
 ls /dev/ttyUSB*
+
 ```
 
 start serial console:
+
 ```bash
 sudo picocom -b 115200 /dev/ttyUSB0
+
 ```
 
 exit picocom:
+
 ```text
 Ctrl + A, then Ctrl + X
+
 ```
 
 ---
@@ -236,16 +305,26 @@ hijacks u-boot's pre-configured baud rate to provide serial output. includes cus
 ## cleaning
 
 remove build directory from root:
+
 ```bash
 make clean APP=sonar_proximity
+
 ```
 
 remove build and clear terminal:
+
 ```bash
 make clear APP=sonar_proximity
+
 ```
 
 or inside app:
+
 ```bash
 make clean
+
 ```
+
+---
+
+Would you like me to help you set up the final step—injecting this `run start` command directly into U-Boot's `bootcmd` so it fires off completely automatically without you even touching the keyboard?
