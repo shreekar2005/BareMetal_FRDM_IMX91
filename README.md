@@ -16,7 +16,7 @@ it allows you to:
 ```text
 .
 ├── Apps/                         # generated bare-metal apps
-│   ├── blink_led/                # example bare-metal app
+│   ├── hello_world/              # interactive uart & led blink app
 │   └── sonar_proximity/          # hc-sr04 high-precision radar app
 │       ├── build/                # generated objects & binaries (ignored by git)
 │       ├── include/              # app-specific headers
@@ -138,14 +138,14 @@ you no longer need to pass `APP=` manually inside the specific project folder.
 from root directory:
 
 ```bash
-make APP=sonar_proximity
+make APP=hello_world
 
 ```
 
 from inside the app directory:
 
 ```bash
-cd Apps/sonar_proximity
+cd Apps/hello_world
 make
 
 ```
@@ -153,8 +153,8 @@ make
 output:
 
 ```text
-Apps/sonar_proximity/build/sonar_proximity.elf
-Apps/sonar_proximity/build/sonar_proximity.bin
+Apps/hello_world/build/hello_world.elf
+Apps/hello_world/build/hello_world.bin
 
 ```
 
@@ -172,20 +172,20 @@ this method requires no usb drives and pushes the code straight down the debug c
 2. power the board and stop autoboot to get the `=>` prompt.
 3. on the board type: `loady 0x80000000`
 4. press `Ctrl+A` then `Ctrl+S` in picocom to send the file.
-5. type the path to your binary (or run `make usb_serial_install APP=sonar_proximity` on your host to get the exact path).
+5. type the path to your binary (or run `make usb_serial_install APP=hello_world` on your host to get the exact path).
 6. when finished, run: `dcache flush && icache flush && go 0x80000000`
 
 ### method 2: u-boot mass storage (ums)
 
 this method temporarily turns the board's internal emmc into a pendrive connected to your laptop.
-(you can run `make usb_ums_install APP=sonar_proximity` to see a quick reference for these commands).
+(you can run `make usb_ums_install APP=hello_world` to see a quick reference for these commands).
 
 1. connect a data cable to the board's usb host port.
 2. at the u-boot prompt type: `ums 0 mmc 0` (or `mmc 1` for SD card, I will use `ums 0 mmc 1:3` for 3rd partition of SD card).
 3. the board will appear as a flash drive on your ubuntu host. drag and drop the `.bin` file into it.
 4. **eject** the drive safely in ubuntu.
 5. press `Ctrl+C` in u-boot to stop ums mode.
-6. load from the emmc into ram: `fatload mmc 0:1 0x80000000 sonar_proximity.bin`
+6. load from the emmc into ram: `fatload mmc 1:3 0x80000000 hello_world.bin`
 7. run: `dcache flush && icache flush && go 0x80000000`
 
 ### method 3: physical usb pendrive
@@ -196,7 +196,7 @@ this method uses a standard usb flash drive to move the binary from your laptop 
 2. run the automated install command (adjust the path if yours is different). this will copy the file and print the exact u-boot command you need:
 
 ```bash
-make usb_pendrive_install APP=sonar_proximity USB_DRIVE=/media/$(USER)/FRDM_IMX91
+make usb_pendrive_install APP=hello_world USB_DRIVE=/media/$(USER)/FRDM_IMX91
 
 ```
 
@@ -204,7 +204,7 @@ make usb_pendrive_install APP=sonar_proximity USB_DRIVE=/media/$(USER)/FRDM_IMX9
 4. copy/paste the output printed by the make command into u-boot:
 
 ```u-boot
-usb reset && fatload usb 0:1 0x80000000 sonar_proximity.bin && dcache flush && icache flush && go 0x80000000
+usb reset && fatload usb 0:1 0x80000000 hello_world.bin && dcache flush && icache flush && go 0x80000000
 
 ```
 
@@ -212,38 +212,61 @@ usb reset && fatload usb 0:1 0x80000000 sonar_proximity.bin && dcache flush && i
 
 ## automated execution (u-boot macros)
 
-to avoid typing out the long `fatload` and `go` commands every time, you can create a permanent macro in the u-boot environment.
+to avoid typing out the long `fatload` and `go` commands every time, you can create a permanent macro in the u-boot environment. you can even hijack the boot sequence to turn the board into an instant-booting bare-metal appliance.
 
-**1. set up the permanent macro:**
+**1. set up the baremetal macro:**
 run these commands once in the u-boot prompt to save your default application and the execution sequence to the sd card's flash memory:
 
 ```u-boot
-setenv app sonar_proximity.bin
-setenv start 'fatload mmc 1:3 0x80000000 ${app} && dcache flush && icache flush && go 0x80000000'
+setenv app hello_world.bin
+setenv baremetal 'fatload mmc 1:3 0x80000000 ${app} && dcache flush && icache flush && go 0x80000000'
 saveenv
 
 ```
 
-**2. daily zero-click execution:**
-whenever you turn on the board, simply type:
+**2. manual execution:**
+whenever you stop the boot countdown, you can run your app simply by typing:
 
 ```u-boot
-run start
+run baremetal
 
 ```
 
-this will automatically read the `${app}` variable, load the binary, and execute it.
-
-**3. testing a new application:**
-if you compile a new app (e.g., `led_blink.bin`) and want to test it without overwriting your default save state, just update the variable in temporary ram:
+**3. full autoboot hijacking (zero-click execution):**
+if you want the board to automatically boot your bare-metal app the millisecond it receives power, you can override the default linux boot command. **first, create a backup of the original linux boot command:**
 
 ```u-boot
-setenv app led_blink.bin
-run start
+setenv bootcmd_default_backup 'run sr_ir_v2_cmd;run distro_bootcmd;run bsp_bootcmd'
 
 ```
 
-when you reboot, it will safely revert back to your saved `sonar_proximity.bin` default.
+then, hijack the main bootcmd:
+
+```u-boot
+setenv bootcmd 'run baremetal'
+saveenv
+
+```
+
+now, when the board powers on, it will automatically launch your bare-metal application without requiring keyboard input!
+
+**4. restoring factory linux boot:**
+if you want the board to boot normally into the nxp linux os again, simply restore your backup:
+
+```u-boot
+setenv bootcmd ${bootcmd_default_backup}
+saveenv
+
+```
+
+**5. testing a new application:**
+if you compile a new app (e.g., `sonar_proximity.bin`) and want to test it without overwriting your default save state, just update the variable in temporary ram:
+
+```u-boot
+setenv app sonar_proximity.bin
+run baremetal
+
+```
 
 ---
 
@@ -307,14 +330,14 @@ hijacks u-boot's pre-configured baud rate to provide serial output. includes cus
 remove build directory from root:
 
 ```bash
-make clean APP=sonar_proximity
+make clean APP=hello_world
 
 ```
 
 remove build and clear terminal:
 
 ```bash
-make clear APP=sonar_proximity
+make clear APP=hello_world
 
 ```
 
@@ -326,5 +349,3 @@ make clean
 ```
 
 ---
-
-Would you like me to help you set up the final step—injecting this `run start` command directly into U-Boot's `bootcmd` so it fires off completely automatically without you even touching the keyboard?

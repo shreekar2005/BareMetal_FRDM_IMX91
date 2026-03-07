@@ -1,4 +1,4 @@
-APP = blink_led
+APP = hello_world
 
 all:
 	$(MAKE) -C ../.. APP=$(APP)
