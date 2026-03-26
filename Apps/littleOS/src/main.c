@@ -39,7 +39,6 @@ void os_fatal_error(uint64_t esr, uint64_t elr, uint64_t far, uint64_t type) {
 }
 
 void led_blink_thread(void* arg) {
-    // twice led blink
     GPIO2->PSOR = LED_PIN; 
     sys_ctr_delay_ms(300);        
     GPIO2->PCOR = LED_PIN;
@@ -47,15 +46,15 @@ void led_blink_thread(void* arg) {
     GPIO2->PSOR = LED_PIN; 
     sys_ctr_delay_ms(300);        
     GPIO2->PCOR = LED_PIN;
+    printf("\r\n[LEDBLINK] LED blink finished.\r\n> ");
 }
 
 void print_thread(void* arg) {
-    // one-shot print loop
     for(int i = 0; i < print_count; i++) {
         printf("%s", (const char*)print_buffer);
         sys_ctr_delay_ms(10);
     }
-    printf("\r\n[System] Print job finished.\r\n> ");
+    printf("\r\n[PRINT] Print job finished.\r\n> ");
 }
 
 void atomic_print_thread(void* arg) {
@@ -66,7 +65,7 @@ void atomic_print_thread(void* arg) {
         printf("%s", (const char*)print_buffer);
         sys_ctr_delay_ms(10); 
     }
-    printf("\r\n[System] Atomic print job finished.\r\n> ");
+    printf("\r\n[PRINTA] Atomic print job finished.\r\n> ");
     
     // release cpu back to time slicer
     os_start_scheduling();
