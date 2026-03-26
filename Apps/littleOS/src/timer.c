@@ -1,32 +1,25 @@
 #include <stdint.h>
 #include "SYS_CTR.h"
-#include "kmultitasking.h"
-#include "gic.h"
+#include "include/multitasking.h"
+#include "include/gic.h"
 
 #define SCHEDULER_TICK_MS 20
 
 extern void vector_table(void);
-
-// Include the new dispatcher tools
 extern void register_irq(uint32_t intid, CPUState* (*handler)(CPUState*));
 
-// This is the isolated, specific driver for the timer!
 CPUState* timer_handler(CPUState* current_state) {
     uint32_t freq = sys_ctr_get_freq();
-    uint32_t ticks_for_10ms = freq / (1000 / SCHEDULER_TICK_MS);
+    uint32_t ticks_for_20ms = freq / (1000 / SCHEDULER_TICK_MS);
     
-    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_10ms));
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_20ms));
     __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (1));
 
     return schedule_tick(current_state);
 }
 
 void os_timer_init(void) {
-
-    // 1. Tell the central dispatcher to map ID 30 to our timer function!
     register_irq(30, timer_handler);
-
-    // 2. Open the GIC gate for ID 30
     gic_enable_interrupt(30);
 
     __asm__ volatile("msr vbar_el2, %0" : : "r" (vector_table));
@@ -37,8 +30,8 @@ void os_timer_init(void) {
     __asm__ volatile("msr hcr_el2, %0" : : "r" (hcr));
 
     uint32_t freq = sys_ctr_get_freq();
-    uint32_t ticks_for_10ms = freq / (1000 / SCHEDULER_TICK_MS);
-    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_10ms));
+    uint32_t ticks_for_20ms = freq / (1000 / SCHEDULER_TICK_MS);
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_20ms));
     __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (1));
     
     __asm__ volatile("msr daifclr, #2");

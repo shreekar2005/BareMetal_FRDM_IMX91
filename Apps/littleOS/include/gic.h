@@ -3,9 +3,27 @@
 
 #include <stdint.h>
 
+/**
+ * @brief initializes generic interrupt controller
+ */
 void gic_init(void);
+
+/**
+ * @brief enables specific interrupt id
+ * @param intid interrupt number to unmask
+ */
 void gic_enable_interrupt(uint32_t intid);
+
+/**
+ * @brief reads hardware register to get fired interrupt id
+ * @return interrupt id
+ */
 uint32_t gic_acknowledge_interrupt(void);
+
+/**
+ * @brief tells hardware we finished handling interrupt
+ * @param iar interrupt id we just handled
+ */
 void gic_end_of_interrupt(uint32_t iar);
 
 #endif

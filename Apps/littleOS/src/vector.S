@@ -7,7 +7,6 @@
 .section .text
 .align 11 
 
-// --- The Trap Handlers ---
 trap_sync:
     mov x3, #0
     b common_trap
@@ -22,23 +21,18 @@ trap_serror:
     b common_trap
 
 common_trap:
-    // 1. MUTE ALL INTERRUPTS! (Stop the timer from interrupting the logger)
     msr daifset, #2      
     
-    // 2. Use a guaranteed mapped RAM address (2MB into physical memory)
     ldr x4, =0x80200000  
     mov sp, x4
     
-    // 3. Grab diagnostics and jump to C!
     mrs x0, esr_el2
     mrs x1, elr_el2
     mrs x2, far_el2
-    // (x3 already holds the trap type from above)
     b os_fatal_error
 
 .align 11
 vector_table:
-    // SP0
     b trap_sync 
     .align 7
     b trap_irq 
@@ -48,18 +42,15 @@ vector_table:
     b trap_serror 
     .align 7
     
-    // SPx
     b trap_sync 
     .align 7
     
-    // 0x280: IRQ Exception (SPx) -> TIMER INTERRUPT
     b irq_handler 
     
     .align 7
     b trap_fiq 
     .align 7
     b trap_serror 
-
 
 irq_handler:
     sub sp, sp, #272
@@ -120,7 +111,6 @@ irq_handler:
     add sp, sp, #272
     eret 
 
-
 restore_context:
     ldr x0, [sp, #248]
     ldr x1, [sp, #256]
@@ -148,9 +138,8 @@ restore_context:
     add sp, sp, #272
     eret
 
-
 os_start:
-    mov x0, #0          // Pass "NULL" to the scheduler
-    bl schedule_tick    // Scheduler returns the pointer to threads[0]!
-    mov sp, x0          // Overwrite the CPU's stack pointer with threads[0]
-    b restore_context   // Jump to the popping phase
+    mov x0, #0
+    bl schedule_tick
+    mov sp, x0 
+    b restore_context

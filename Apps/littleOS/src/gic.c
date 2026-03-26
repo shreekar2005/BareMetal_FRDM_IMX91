@@ -1,7 +1,5 @@
-#include "gic.h"
-#include "LPUART.h"
+#include "include/gic.h"
 
-// Add ULL to explicitly make these 64-bit integers!
 #define GICD_BASE 0x48000000ULL
 #define GICR_BASE 0x48040000ULL 
 #define GICR_SGI_BASE 0x48050000ULL
@@ -19,16 +17,13 @@ void gic_init(void) {
     __asm__ volatile("msr S3_0_C12_C12_7, %0" : : "r" (1));
 }
 
-// Any driver can call this to open the GIC gates for its ID
 void gic_enable_interrupt(uint32_t intid) {
     if (intid < 32) { 
-        // IDs 0-31 are PPIs (Private Peripheral Interrupts like the Timer)
         volatile uint32_t* igroupr0 = (volatile uint32_t*)(GICR_SGI_BASE + 0x0080);
         volatile uint32_t* isenabler0 = (volatile uint32_t*)(GICR_SGI_BASE + 0x0100);
         *igroupr0 |= (1 << intid);
         *isenabler0 = (1 << intid);
     } else { 
-        // IDs 32+ are SPIs (Shared Peripheral Interrupts like UART, I2C, GPIO)
         uint32_t reg = intid / 32;
         uint32_t bit = intid % 32;
         volatile uint32_t* igroupr = (volatile uint32_t*)(GICD_BASE + 0x0080 + (reg * 4));
