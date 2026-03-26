@@ -7,6 +7,10 @@
 #define ASCII_BACKSPACE 0x08
 #define ASCII_DEL 0x7F
 
+// --- NEW: Bring in the Thread IDs from main.c ---
+extern int led_thread_id;
+extern int print_thread_id;
+
 // --- STRING UTILITIES ---
 int my_strcmp(const char *s1, const char *s2) {
     while (*s1 && (*s1 == *s2)) { s1++; s2++; }
@@ -29,15 +33,22 @@ int my_atoi(const char *str) {
 }
 
 // --- HARDWARE ABSTRACTIONS ---
+// Performs a Soft Hardware Reset safely!
 void system_reboot(void) {
-    uart_print_string(LPUART1, "\r\n[System] Performing Soft Reboot...\r\n");
-    // Create a function pointer to physical address 0x80000000 and call it
-    void (*reset_vector)(void) = (void*)0x80000000;
-    reset_vector();
+    uart_print_string(LPUART1, "\r\n[System] Shutting down hardware and rebooting...\r\n");
+    __asm__ volatile("msr daifset, #2");
+    __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (0));
+    uint64_t safe_stack = 0x84000000;
+    uint64_t boot_addr = 0x80000000;
+    __asm__ volatile(
+        "mov sp, %0 \n"   
+        "br %1 \n"        
+        : 
+        : "r"(safe_stack), "r"(boot_addr)
+    );
 }
 
 // --- THE CLI THREAD ---
-
 void input_thread(void* arg) {
     char cmd[128];
     int cmd_idx = 0;
@@ -45,9 +56,6 @@ void input_thread(void* arg) {
     uart_print_string(LPUART1, "\r\n> ");
 
     while(!os_halt) {
-        // The Preemptive Blocking Loop!
-        // We just loop forever. The GIC hardware timer will automatically 
-        // pause this loop every 10ms to let the LED and Print threads run.
         char c;
         while(1) {
             c = uart_getchar_nonblocking(LPUART1);
@@ -81,6 +89,9 @@ void input_thread(void* arg) {
                 // LED Command
                 if (my_strcmp(cmd, "led") == 0) {
                     run_led = !run_led;
+                    if (run_led) {
+                        os_thread_start(led_thread_id); // WAKE UP THE THREAD!
+                    }
                     uart_print_string(LPUART1, "\r\n[System] LED state toggled.");
                 } 
                 // Reboot Commands
@@ -91,7 +102,7 @@ void input_thread(void* arg) {
                 else if (my_strcmp(cmd, "shutdown") == 0) {
                     uart_print_string(LPUART1, "\r\n[System] Shutting down OS...\r\n");
                     os_halt = true;
-                    return; // Kills the CLI thread
+                    return; 
                 }
                 // Help Command
                 else if (my_strcmp(cmd, "help") == 0 || my_strcmp(cmd, "?") == 0) {
@@ -124,6 +135,7 @@ void input_thread(void* arg) {
                         if (print_count <= 0) print_count = 1; 
                         
                         print_active = true;
+                        os_thread_start(print_thread_id); // WAKE UP THE THREAD!
                         uart_print_string(LPUART1, "\r\n[System] Print job dispatched to background.");
                     }
                 }

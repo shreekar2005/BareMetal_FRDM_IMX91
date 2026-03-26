@@ -4,12 +4,17 @@ Thread threads[MAX_THREADS];
 int num_threads = 0;
 int current_thread = -1;
 
-// Inside src/kmultitasking.c
+void os_yield(void) {
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+}
+
 void os_thread_exit(void) {
-    threads[current_thread].active = false;
-    while(1) {
-        __asm__ volatile("wfi"); 
-    }
+    threads[current_thread].active = false; // Thread goes dead/asleep
+    os_yield(); 
+    while(1) { __asm__ volatile("wfi"); }
 }
 
 void os_init_scheduler(void) {
@@ -20,35 +25,51 @@ void os_init_scheduler(void) {
     }
 }
 
-bool os_create_thread(void (*entrypoint)(void*), void* arg) {
-    if (num_threads >= MAX_THREADS) return false;
+void os_suspend_thread(int thread_id) {
+    if (thread_id >= 0 && thread_id < num_threads) {
+        threads[thread_id].active = false;
+    }
+}
+
+// The explicit trigger!
+void os_thread_start(int thread_id) {
+    if (thread_id >= 0 && thread_id < num_threads) {
+        threads[thread_id].active = true;
+    }
+}
+
+int os_create_thread(void (*entrypoint)(void*), void* arg) {
+    if (num_threads >= MAX_THREADS) return -1;
 
     Thread* t = &threads[num_threads];
     t->entrypoint = entrypoint;
     t->arg = arg;
-    t->active = true;
+    
+    // Per your design: Threads are born DORMANT.
+    t->active = false; 
 
-    t->cpustate = (CPUState*)(t->stack + sizeof(t->stack) - sizeof(CPUState));
+    t->cpustate_ptr = (CPUState*)(t->stack + sizeof(t->stack) - sizeof(CPUState));
 
     for (int i = 0; i < 30; i++) {
-        t->cpustate->x[i] = 0;
+        t->cpustate_ptr->x[i] = 0;
     }
 
-    t->cpustate->x[0] = (uint64_t)arg;
-    t->cpustate->lr = (uint64_t)&os_thread_exit;
-    t->cpustate->pc = (uint64_t)entrypoint;
-    t->cpustate->cpsr = 0x009; // EL2h mode
-    t->cpustate->sp = (uint64_t)t->cpustate;
+    t->cpustate_ptr->x[0] = (uint64_t)arg;
+    t->cpustate_ptr->lr = (uint64_t)&os_thread_exit;
+    t->cpustate_ptr->pc = (uint64_t)entrypoint;
+    t->cpustate_ptr->cpsr = 0x009; 
+    t->cpustate_ptr->sp = (uint64_t)t->cpustate_ptr;
 
     num_threads++;
-    return true;
+    return num_threads - 1; 
 }
 
-CPUState* schedule_tick(CPUState* current_state) {
-    if (num_threads == 0) return current_state;
+CPUState* schedule_tick(CPUState* current_cpustate_ptr) {
+    if (num_threads == 0) return current_cpustate_ptr;
 
+    // Save current thread (if it exists)
     if (current_thread >= 0) {
-        threads[current_thread].cpustate = current_state;
+        threads[current_thread].cpustate_ptr = current_cpustate_ptr;
     }
 
     int starting_thread = current_thread;
@@ -57,10 +78,12 @@ CPUState* schedule_tick(CPUState* current_state) {
         if (current_thread >= num_threads) {
             current_thread = 0;
         }
+        
+        // Your exact logic: only schedule if active is true!
         if (threads[current_thread].active) {
-            return threads[current_thread].cpustate;
+            return threads[current_thread].cpustate_ptr;
         }
     } while (current_thread != starting_thread);
 
-    return current_state;
+    return current_cpustate_ptr;
 }

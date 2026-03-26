@@ -1,36 +1,40 @@
-#ifndef _KMULTITASKING_H
-#define _KMULTITASKING_H
+#ifndef KMULTITASKING_H
+#define KMULTITASKING_H
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h>
 
-// Represents the state of the ARM64 CPU registers.
-typedef struct {
-    uint64_t x[30]; // General purpose registers X0-X29
-    uint64_t lr;    // Link Register X30 
-    uint64_t pc;    // Program Counter 
-    uint64_t cpsr;  // Current Program Status Register 
-    uint64_t sp;    // Stack Pointer 
-} __attribute__((packed)) CPUState;
+#define MAX_THREADS 16
 
 typedef struct {
-    uint8_t stack[4096] __attribute__((aligned(16))); // 4KB Private Stack
-    CPUState* cpustate;
+    uint64_t x[30]; 
+    uint64_t lr;    
+    uint64_t pc;    
+    uint64_t cpsr;  
+    uint64_t sp;    
+} CPUState;
+
+typedef struct {
+    __attribute__((aligned(16))) uint8_t stack[4096]; 
+    CPUState* cpustate_ptr; 
     void (*entrypoint)(void*);
     void* arg;
     bool active;
 } Thread;
 
-#define MAX_THREADS 16
+extern Thread threads[MAX_THREADS];
+extern int current_thread;
+extern int num_threads;
 
-// OS API
 void os_init_scheduler(void);
-bool os_create_thread(void (*entrypoint)(void*), void* arg);
-void os_start(void);
+int os_create_thread(void (*entrypoint)(void*), void* arg); 
 
-// The Core Context Switchers
+// --- POSIX-Style Thread Control ---
+void os_thread_start(int thread_id);
+void os_suspend_thread(int thread_id);
+void os_yield(void);
+
 CPUState* schedule_tick(CPUState* current_state);
-extern void os_yield(void); 
+void os_thread_exit(void);
 
 #endif
