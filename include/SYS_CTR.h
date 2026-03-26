@@ -5,7 +5,7 @@
 
 /**
  * @brief Reads the 64-bit ARM Generic Timer physical count (CNTPCT_EL0).
- * @return The current tick count directly from the CPU core.
+ * @return The current tick count directly from the CPU core. independent of OS scheduling, ideal for precise timing and delays.
  */
 uint64_t sys_ctr_get_ticks(void);
 
