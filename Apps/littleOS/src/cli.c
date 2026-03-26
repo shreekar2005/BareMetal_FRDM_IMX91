@@ -29,21 +29,8 @@ int my_atoi(const char *str) {
 }
 
 // --- HARDWARE ABSTRACTIONS ---
-
-// Blocks until a character is typed, but yields CPU to other threads while waiting
-char yield_getchar(void) {
-    char c;
-    while(1) {
-        c = uart_getchar_nonblocking(LPUART1);
-        if (c != '\0') return c;
-        os_yield(); 
-    }
-}
-
-// Performs a Soft Hardware Reset by jumping back to the U-Boot entry point!
 void system_reboot(void) {
     uart_print_string(LPUART1, "\r\n[System] Performing Soft Reboot...\r\n");
-    
     // Create a function pointer to physical address 0x80000000 and call it
     void (*reset_vector)(void) = (void*)0x80000000;
     reset_vector();
@@ -58,7 +45,14 @@ void input_thread(void* arg) {
     uart_print_string(LPUART1, "\r\n> ");
 
     while(!os_halt) {
-        char c = yield_getchar();
+        // The Preemptive Blocking Loop!
+        // We just loop forever. The GIC hardware timer will automatically 
+        // pause this loop every 10ms to let the LED and Print threads run.
+        char c;
+        while(1) {
+            c = uart_getchar_nonblocking(LPUART1);
+            if (c != '\0') break;
+        }
         
         // 1. Thread Cancellation (Ctrl+C)
         if (c == ASCII_CTRL_C) {
@@ -103,7 +97,7 @@ void input_thread(void* arg) {
                 else if (my_strcmp(cmd, "help") == 0 || my_strcmp(cmd, "?") == 0) {
                     uart_print_string(LPUART1, "\r\n[Help] Available Commands:\r\n");
                     uart_print_string(LPUART1, "  led               - Start/Stop background LED blinking\r\n");
-                    uart_print_string(LPUART1, "  print text n      - Print 'text' n times with 0.5s delay\r\n");
+                    uart_print_string(LPUART1, "  print text n      - Print 'text' n times with delay\r\n");
                     uart_print_string(LPUART1, "  reboot, q, exit   - Soft reboot the OS\r\n");
                     uart_print_string(LPUART1, "  shutdown          - Halt the CPU\r\n");
                     uart_print_string(LPUART1, "  Ctrl+C            - Stop active background threads\r\n");

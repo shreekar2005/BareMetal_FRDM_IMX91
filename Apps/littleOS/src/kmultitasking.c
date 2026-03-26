@@ -4,13 +4,11 @@ Thread threads[MAX_THREADS];
 int num_threads = 0;
 int current_thread = -1;
 
+// Inside src/kmultitasking.c
 void os_thread_exit(void) {
-    // Mark this thread as dead
     threads[current_thread].active = false;
-    
-    // Hand the CPU to the next thread forever
     while(1) {
-        os_yield(); 
+        __asm__ volatile("wfi"); 
     }
 }
 
