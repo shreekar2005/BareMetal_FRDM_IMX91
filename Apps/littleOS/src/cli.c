@@ -44,12 +44,14 @@ void input_thread(void* arg) {
             if (cmd_idx > 0) {
                 if (my_strcmp(cmd, "help") == 0 || my_strcmp(cmd, "?") == 0) {
                     printf("\r\n[Help] Available Commands:\r\n");
-                    printf("  reboot        - Hardware reboot\r\n");
-                    printf("  shutdown      - Power off the system (not working properly currently)\r\n");
-                    printf("  ledblink      - Blink the hardware LED once (led_blink_thread)\r\n");
-                    printf("  print text n  - Print 'text' n times with time slicing (print_thread)\r\n");
-                    printf("  printa text n - Atomic Print 'text' n times locking the CPU (atomic_print_thread)\r\n");
-                    printf("  Ctrl+C        - Stop active background threads\r\n");
+                    printf("  reboot            - Hardware reboot\r\n");
+                    printf("  shutdown          - Power off the system\r\n");
+                    printf("  clear             - Clear the terminal screen\r\n");
+                    printf("  sched [rr|pri|edf]- Change RTOS scheduler algorithm\r\n");
+                    printf("  ledblink          - Blink the hardware LED once\r\n");
+                    printf("  print text [count] [pri] [deadline] - Print text with RTOS settings\r\n");
+                    printf("  printa text [count] [pri] [deadline] - Atomic Print\r\n");
+                    printf("  Ctrl+C            - Stop active background threads\r\n");
                 }
                 else if (my_strcmp(cmd, "reboot") == 0) {
                     system_reboot();
@@ -57,13 +59,30 @@ void input_thread(void* arg) {
                 else if (my_strcmp(cmd, "shutdown") == 0) {
                     system_poweroff(); 
                 }
+                else if (my_strcmp(cmd, "clear") == 0) {
+                    clear_terminal();
+                }
+                else if (my_strcmp(cmd, "sched rr") == 0) {
+                    os_set_scheduling_algo(SCHED_RR);
+                    printf("\r\n[System] Switched to Round Robin scheduling.");
+                }
+                else if (my_strcmp(cmd, "sched pri") == 0 || my_strcmp(cmd, "sched priority") == 0) {
+                    os_set_scheduling_algo(SCHED_PRIORITY);
+                    printf("\r\n[System] Switched to Fixed Priority scheduling.");
+                }
+                else if (my_strcmp(cmd, "sched edf") == 0) {
+                    os_set_scheduling_algo(SCHED_EDF);
+                    printf("\r\n[System] Switched to Earliest Deadline First scheduling.");
+                }
                 else if (my_strcmp(cmd, "ledblink") == 0) {
                     os_thread_start(led_blink_thread_id); 
                     printf("\r\n[System] LED blink dispatched.");
                 }
-                else if (my_strncmp(cmd, "print ", 6) == 0) {
-                    int i = 6;
+                else if (my_strncmp(cmd, "print ", 6) == 0 || my_strncmp(cmd, "printa ", 7) == 0) {
+                    bool is_atomic = (my_strncmp(cmd, "printa", 6) == 0);
+                    int i = is_atomic ? 7 : 6;
                     int buf_idx = 0;
+                    
                     while(cmd[i] == ' ') i++; 
                     if (cmd[i] == '"') {
                         i++; 
@@ -75,30 +94,37 @@ void input_thread(void* arg) {
                     print_buffer[buf_idx] = '\0';
                     while(cmd[i] == ' ') i++; 
                     
-                    print_count = my_atoi(&cmd[i]);
-                    if (print_count <= 0) print_count = 1; 
-                    os_thread_start(print_thread_id); 
-                    printf("\r\n[System] Print job dispatched to background.");
-                }
-                else if (my_strncmp(cmd, "printa ", 7) == 0) {
-                    int i = 7;
-                    int buf_idx = 0;
-                    while(cmd[i] == ' ') i++; 
-                    if (cmd[i] == '"') {
-                        i++; 
-                        while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
-                        if (cmd[i] == '"') i++; 
-                    } else {
-                        while(cmd[i] != '\0' && cmd[i] != ' ' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
+                    // parse optional rtos parameters (count, priority, deadline)
+                    int count = 1;
+                    int prio = 50;
+                    uint32_t deadline = 5000; // 5 seconds default
+                    
+                    if (cmd[i] != '\0') {
+                        count = my_atoi(&cmd[i]);
+                        while(cmd[i] >= '0' && cmd[i] <= '9') i++;
+                        while(cmd[i] == ' ') i++;
+                        
+                        if (cmd[i] != '\0') {
+                            prio = my_atoi(&cmd[i]);
+                            while(cmd[i] >= '0' && cmd[i] <= '9') i++;
+                            while(cmd[i] == ' ') i++;
+                            
+                            if (cmd[i] != '\0') {
+                                deadline = my_atoi(&cmd[i]);
+                            }
+                        }
                     }
-                    print_buffer[buf_idx] = '\0';
-                    while(cmd[i] == ' ') i++; 
                     
-                    print_count = my_atoi(&cmd[i]);
-                    if (print_count <= 0) print_count = 1; 
+                    if (count <= 0) count = 1; 
+                    print_count = count;
                     
-                    os_thread_start(atomic_print_thread_id); 
-                    printf("\r\n[System] Atomic print job dispatched to background.");
+                    int target_id = is_atomic ? atomic_print_thread_id : print_thread_id;
+                    
+                    os_set_thread_rtos(target_id, prio, deadline);
+                    os_thread_start(target_id); 
+                    
+                    if (is_atomic) printf("\r\n[System] Atomic print job dispatched.");
+                    else printf("\r\n[System] Print job dispatched (Pri: %d, Deadline: %dms).", prio, deadline);
                 }
                 else {
                     printf("\r\n[System] Unknown command. Type 'help' for options.");

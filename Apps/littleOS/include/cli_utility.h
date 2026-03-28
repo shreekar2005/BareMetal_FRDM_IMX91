@@ -11,4 +11,9 @@ void system_reboot(void);
  */
 void system_poweroff(void);
 
+/**
+ * @brief clears the terminal screen using ANSI escape codes
+ */
+void clear_terminal(void);
+
 #endif

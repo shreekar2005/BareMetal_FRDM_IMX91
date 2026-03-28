@@ -58,7 +58,6 @@ void print_thread(void* arg) {
 }
 
 void atomic_print_thread(void* arg) {
-    // block hardware timer preemptions
     os_stop_scheduling();
     
     for(int i = 0; i < print_count; i++) {
@@ -67,7 +66,6 @@ void atomic_print_thread(void* arg) {
     }
     printf("\r\n[PRINTA] Atomic print job finished.\r\n> ");
     
-    // release cpu back to time slicer
     os_start_scheduling();
 }
 
@@ -76,7 +74,7 @@ int main() {
     
     printf("\033[2J\033[H"); 
     printf("=================================\r\n");
-    printf("     littleOS Preemptive Core    \r\n");
+    printf("     littleOS RTOS Core          \r\n");
     printf("=================================\r\n");
 
     printf("[Boot] Initializing Scheduler...\r\n");
@@ -87,6 +85,10 @@ int main() {
     led_blink_thread_id = os_create_thread(led_blink_thread, NULL);
     print_thread_id = os_create_thread(print_thread, NULL);
     atomic_print_thread_id = os_create_thread(atomic_print_thread, NULL);
+    
+    // set initial rtos baselines. cli is highest priority (0).
+    os_set_thread_rtos(cli_thread_id, 0, 1000);
+    os_set_thread_rtos(led_blink_thread_id, 10, 2000);
     
     os_thread_start(cli_thread_id); 
 

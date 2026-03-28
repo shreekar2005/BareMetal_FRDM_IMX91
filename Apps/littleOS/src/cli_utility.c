@@ -26,3 +26,8 @@ void system_poweroff(void) {
 
     while(1) { __asm__ volatile("wfi"); }
 }
+
+void clear_terminal(void) {
+    // \033[2J clears the screen, \033[H moves the cursor to the top left
+    printf("\033[2J\033[H");
+}

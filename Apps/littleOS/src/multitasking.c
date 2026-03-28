@@ -4,6 +4,10 @@ Thread threads[MAX_THREADS];
 int num_threads = 0;
 int current_thread = -1;
 bool scheduling_enabled = true; 
+enum SchedAlgo current_algo = SCHED_RR; 
+
+// external hardware frequency getter for absolute deadline math
+extern uint32_t sys_ctr_get_freq(void); 
 
 void os_yield(void) {
     __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
@@ -22,9 +26,16 @@ void os_init_scheduler(void) {
     num_threads = 0;
     current_thread = -1;
     scheduling_enabled = true;
+    current_algo = SCHED_RR;
     for (int i = 0; i < MAX_THREADS; i++) {
         threads[i].active = false;
+        threads[i].priority = 128; // safe middle default
+        threads[i].deadline_offset_ms = 10000; // 10 sec default
     }
+}
+
+void os_set_scheduling_algo(enum SchedAlgo algo) {
+    current_algo = algo;
 }
 
 void os_stop_scheduling(void) {
@@ -41,11 +52,25 @@ void os_suspend_thread(int thread_id) {
     }
 }
 
+void os_set_thread_rtos(int thread_id, int priority, uint32_t deadline_ms) {
+    if (thread_id >= 0 && thread_id < num_threads) {
+        threads[thread_id].priority = priority;
+        threads[thread_id].deadline_offset_ms = deadline_ms;
+    }
+}
+
 void os_thread_start(int thread_id) {
     if (thread_id >= 0 && thread_id < num_threads) {
         Thread* t = &threads[thread_id];
         
-        // if the thread returned/died, we must rebuild its stack so it can run again!
+        // calculate absolute hardware deadline for edf scheduling
+        uint64_t current_ticks;
+        __asm__ volatile("mrs %0, cntpct_el0" : "=r" (current_ticks));
+        uint32_t freq = sys_ctr_get_freq();
+        uint64_t ticks_to_add = ((uint64_t)freq * t->deadline_offset_ms) / 1000ULL;
+        t->absolute_deadline_tick = current_ticks + ticks_to_add;
+
+        // rebuild physical stack if the thread was dead
         if (!t->active) {
             t->cpustate_ptr = (CPUState*)(t->stack + sizeof(t->stack) - sizeof(CPUState));
             for (int i = 0; i < 30; i++) {
@@ -69,17 +94,17 @@ int os_create_thread(void (*entrypoint)(void*), void* arg) {
     t->entrypoint = entrypoint;
     t->arg = arg;
     t->active = false; 
+    t->priority = 128;
+    t->deadline_offset_ms = 10000;
 
-    // trigger initial stack build
     os_thread_start(num_threads);
-    t->active = false; // put it back to sleep immediately
+    t->active = false; 
 
     num_threads++;
     return num_threads - 1; 
 }
 
 CPUState* schedule_tick(CPUState* current_cpustate_ptr) {
-    // exact logic you requested: bypass if scheduling is off
     if (num_threads == 0 || !scheduling_enabled) {
         return current_cpustate_ptr;
     }
@@ -88,17 +113,46 @@ CPUState* schedule_tick(CPUState* current_cpustate_ptr) {
         threads[current_thread].cpustate_ptr = current_cpustate_ptr;
     }
 
-    int starting_thread = current_thread;
-    do {
-        current_thread++;
-        if (current_thread >= num_threads) {
-            current_thread = 0;
+    if (current_algo == SCHED_RR) {
+        int starting_thread = current_thread;
+        do {
+            current_thread++;
+            if (current_thread >= num_threads) current_thread = 0;
+            if (threads[current_thread].active) return threads[current_thread].cpustate_ptr;
+        } while (current_thread != starting_thread);
+    } 
+    else if (current_algo == SCHED_PRIORITY) {
+        int best_thread = -1;
+        int highest_pri = 999999; // lower number is higher priority
+        
+        for (int i = 0; i < num_threads; i++) {
+            if (threads[i].active && threads[i].priority < highest_pri) {
+                highest_pri = threads[i].priority;
+                best_thread = i;
+            }
         }
         
-        if (threads[current_thread].active) {
+        if (best_thread != -1) {
+            current_thread = best_thread;
             return threads[current_thread].cpustate_ptr;
         }
-    } while (current_thread != starting_thread);
+    }
+    else if (current_algo == SCHED_EDF) {
+        int best_thread = -1;
+        uint64_t earliest_deadline = 0xFFFFFFFFFFFFFFFFULL;
+        
+        for (int i = 0; i < num_threads; i++) {
+            if (threads[i].active && threads[i].absolute_deadline_tick < earliest_deadline) {
+                earliest_deadline = threads[i].absolute_deadline_tick;
+                best_thread = i;
+            }
+        }
+        
+        if (best_thread != -1) {
+            current_thread = best_thread;
+            return threads[current_thread].cpustate_ptr;
+        }
+    }
 
-    return current_cpustate_ptr;
+    return current_cpustate_ptr; // fallback if no suitable thread found
 }
