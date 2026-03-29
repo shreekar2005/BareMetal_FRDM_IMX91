@@ -1,39 +1,53 @@
 # littleOS
 
-this is my littleos bare-metal project for the nxp i.mx91 board. it features a preemptive multitasking kernel, a one-shot job dispatch system, custom hardware abstractions, and an interactive command line interface. 
+this is my littleos bare-metal project for the nxp i.mx91 board. it features a preemptive multitasking rtos kernel, a periodic/one-shot job dispatch system, multiple scheduling algorithms, custom hardware abstractions, and an interactive command line interface. 
 
-the os uses the arm generic timer to time-slice threads every 20ms, but supports "atomic" execution to temporarily lock the cpu for critical tasks.
+the os uses the arm generic timer to time-slice threads every 20ms, supports true voluntary blocking/sleeping, and allows "atomic" execution to temporarily lock the cpu for critical tasks.
 
 ## features
-* **preemptive scheduling**: round-robin time slicing using arm64 exceptions and hardware timers.
-* **job dispatch model**: background worker threads (like led blinking and printing) act as one-shot jobs. when they return, they die, and the scheduler rebuilds their physical stack the next time they are dispatched.
-* **atomic control**: threads can call `os_stop_scheduling()` to block hardware timer preemptions and own the cpu.
+* **preemptive & dynamic scheduling**: swap between round-robin (rr), fixed priority (pri), and earliest deadline first (edf) algorithms on the fly.
+* **true rtos blocking**: threads can voluntarily yield the cpu using `os_sleep_ms()`, completely eliminating busy-wait cpu starvation.
+* **advanced job dispatch**: background worker threads can be configured with specific execution targets, repetition periods, priorities, and deadlines via terminal flags.
+* **atomic control**: threads can call `os_stop_scheduling()` to block hardware timer preemptions and own the cpu. the os protects itself by auto-downgrading sleep requests to busy-waits during atomic blocks.
+* **rtos task manager**: real-time profiling of thread states, completion targets, and turnaround times.
 * **hardware power control**: true hard reboot using the lpwdog1 watchdog timer and physical poweroff via the snvs block.
-* **custom stdio**: full `printf` implementation over lpuart1 using gcc built-in variable arguments (no stdlib required). I have intentionally kept printf non atomic, so we can feel preemption e.g. thread changed when priting was happening.
+* **custom stdio**: full `printf` implementation over lpuart1 using gcc built-in variable arguments (no stdlib required). I have intentionally kept printf non-atomic, so we can feel preemption (e.g., thread changed when printing was happening).
 * **crash decoder**: catches synchronous exceptions, unhandled irqs, and data aborts, printing the exact faulting memory addresses.
 
 ## available cli commands
 * `help` or `?` - list available commands
+* `stat` - view the rtos task manager and thread turnaround times
+* `clear` - clear the terminal screen
 * `reboot` - trigger a hardware watchdog reset
 * `shutdown` - send power-down signal to the pmic
-* `ledblink` - dispatch a background job to blink the hardware led twice
-* `print "text" n` - dispatch a background job to print text n times (time-sliced)
-* `printa "text" n` - dispatch an atomic print job (locks the cpu until finished)
-* `Ctrl+C` - safely cancel active background print jobs
+* `sched [rr|pri|edf]` - change rtos scheduler algorithm
+* `Ctrl+C` - safely and forcefully kill all active background tasks
+
+**task dispatching:**
+you can start background tasks by typing their name, optionally followed by rtos parameter flags.
+syntax: `<taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadline_ms>`
+*(defaults: -n 1, -per 0, -pri 128, -d -1)*
+
+**available tasks:**
+* `ledblink` - blink the hardware led
+* `echo "text"` - print text on the console
+* `print100X` - print 100 'X' characters (yields cpu between prints)
+* `print100o` - print 100 'o' characters (yields cpu between prints)
+* `aprint100A` - print 100 'A' characters atomically (locks the cpu, no interleaving)
 
 ## directory structure
 * **include/**: contains all header files with doxygen style comments.
 * **src/**: contains the c and assembly source code.
 
 ## file details
-* **cli.c / cli.h**: runs the main terminal thread. parses input, handles backspaces/ctrl+c, and dispatches one-shot jobs to worker threads.
-* **cli_utility.c / cli_utility.h**: contains hardware abstractions specifically for the cli, like triggering the watchdog and snvs power control.
+* **cli.c / cli.h**: runs the main terminal thread. parses input and flags, handles backspaces/ctrl+c, and dispatches periodic/one-shot jobs to worker threads.
+* **cli_utility.c / cli_utility.h**: contains hardware abstractions specifically for the cli, like triggering the watchdog, snvs power control, and printing the `stat` rtos table.
 * **gic.c / gic.h**: driver for the arm generic interrupt controller. routes hardware signals to the cpu.
 * **irq.c**: central interrupt dispatcher. reads the fired hardware id from the gic and jumps to the correct driver.
-* **main.c**: bootloader and kernel init. sets up threads, initializes the scheduler, holds the crash logger, and defines the one-shot worker thread logic (`led_blink_thread`, `print_thread`, `atomic_print_thread`).
-* **multitasking.c / multitasking.h**: the core scheduler. handles posix style thread creation, yielding, context switching, stack-rebuilding for dead threads, and toggling atomic execution.
+* **main.c**: bootloader and kernel init. sets up threads, initializes the scheduler, holds the crash logger, and defines the worker thread logic.
+* **multitasking.c / multitasking.h**: the core scheduler. handles posix-style thread creation, yielding, true sleeping/blocking, context switching, graveyard revival, and toggling atomic execution.
 * **stdio.c / stdio.h**: custom printf implementation for serial output.
-* **string.c / string.h**: custom string utilities (strcmp, strncmp, atoi) for parsing terminal input without standard libraries.
+* **string.c / string.h**: custom string utilities (strcmp, strncmp, atoi, strstr) for parsing terminal input and flags without standard libraries.
 * **timer.c**: configures the arm generic timer to fire an interrupt every 20ms to drive the time slicer.
 * **start.S**: early boot assembly to clear the `.bss` segment before jumping into c code.
 * **vector.S**: the arm64 exception vector table. handles pushing and popping the 31 physical registers during context switches and hardware faults.
@@ -45,20 +59,19 @@ the os uses the arm generic timer to time-slice threads every 20ms, but supports
 to add a new background command to the operating system, you just need to wire up a new thread and link it to the cli parser. 
 
 **in `src/main.c`:**
-create your one-shot worker function and declare a global id for it.
+create your worker function and declare a global id for it.
 ```c
 int my_new_thread_id;
 
 void my_new_thread(void* arg) {
-    // do work here
+    // do work here (use os_sleep_ms to block!)
     printf("\r\n[MYCMD] task finished!\r\n> ");
-    // returning kills the thread until the cli wakes it up again
 }
 ```
 
-inside `main()`, register it with the scheduler before calling `os_start()`:
+inside `main()`, register it with the scheduler before calling `os_start()`. this initializes it in a dormant state (`executions_target = 0`):
 ```c
-my_new_thread_id = os_create_thread(my_new_thread, NULL);
+my_new_thread_id = os_create_thread("MY_TASK", my_new_thread, NULL);
 ```
 
 **in `include/cli.h`:**
@@ -68,16 +81,17 @@ extern int my_new_thread_id;
 ```
 
 **in `src/cli.c` (update parser):**
-add your command trigger inside the `input_thread` parser loop.
+add your command trigger inside the `input_thread` parser loop, map it to the target ID, and let the parser handle the flags.
 ```c
-else if (my_strcmp(cmd, "mycmd") == 0) {
-    os_thread_start(my_new_thread_id); 
-    printf("\r\n[System] my_task job dispatched.");
+else if (my_strncmp(cmd, "mycmd", 5) == 0) {
+    target_id = my_new_thread_id;
+    i = 5; // advance index past the command name
 }
 ```
+*(don't forget to add `os_kill_thread(my_new_thread_id);` to the `Ctrl+C` block!)*
 
 **in `src/cli.c` (update help menu):**
-don't forget to add your new command to the help text so users know it exists!
+add your new command to the help text so users know it exists!
 ```c
 else if (my_strcmp(cmd, "help") == 0 || my_strcmp(cmd, "?") == 0) {
     // ... existing prints ...
