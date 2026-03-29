@@ -28,12 +28,30 @@ typedef struct {
     CPUState* cpustate_ptr; /**< fake cpu state stored at top of stack */
     void (*entrypoint)(void*); /**< function pointer for thread logic */
     void* arg; /**< arguments for function */
-    bool active; /**< if false, scheduler will skip it */
+    volatile bool active; /**< if false, scheduler will skip it */
+    
+    char name[16]; /**< human readable name for stat command */
     
     // rtos parameters
     int priority; /**< 0 is highest priority, 255 is lowest */
-    uint32_t deadline_offset_ms; /**< relative time to finish job in milliseconds */
+    int deadline_offset_ms; /**< relative time to finish job in milliseconds (-1 for infinite) */
     uint64_t absolute_deadline_tick; /**< exact hardware tick when job must be done */
+    
+    // periodic parameters
+    uint32_t period_ms; /**< if > 0, task will auto revive after this many ms */
+    uint64_t next_period_tick; /**< hardware tick when dead task should wake up */
+    
+    // execution tracking
+    int executions_target; /**< how many times to run (-1 for infinite) */
+    int executions_done;   /**< how many times it has finished reviving */
+    
+    // profiling
+    uint64_t last_start_tick; /**< the hardware tick when the thread was last dispatched */
+    uint32_t last_exec_time_ms; /**< turnaround time of the last completed execution */
+    
+    // sleep tracking
+    volatile bool sleeping; /**< true if thread is voluntarily blocked */
+    uint64_t wakeup_tick; /**< exact hardware tick when sleeping thread should resume */
 } Thread;
 
 extern Thread threads[MAX_THREADS];
@@ -48,20 +66,23 @@ extern enum SchedAlgo current_algo; /**< current active scheduling algorithm */
 void os_init_scheduler(void);
 
 /**
- * @brief creates dormant thread in memory
+ * @brief creates dormant thread with a name in memory
+ * @param name human readable name for the task
  * @param entrypoint c function for thread
  * @param arg params
  * @return assigned thread id
  */
-int os_create_thread(void (*entrypoint)(void*), void* arg); 
+int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg); 
 
 /**
- * @brief sets the rtos parameters for a specific thread
+ * @brief configures rtos scheduling parameters for a task
  * @param thread_id id to modify
  * @param priority 0 is highest, lower number means higher priority
- * @param deadline_ms milliseconds it has to complete once started (for edf)
+ * @param deadline_ms milliseconds it has to complete once started
+ * @param period_ms how often it repeats (0 for one-shot)
+ * @param exec_target number of times to run (-1 for infinite)
  */
-void os_set_thread_rtos(int thread_id, int priority, uint32_t deadline_ms);
+void os_set_thread_rtos(int thread_id, int priority, int deadline_ms, uint32_t period_ms, int exec_target);
 
 /**
  * @brief wakes up a thread, calculating its absolute deadline and resetting stack if dead
@@ -74,6 +95,18 @@ void os_thread_start(int thread_id);
  * @param thread_id id to pause
  */
 void os_suspend_thread(int thread_id);
+
+/**
+ * @brief forcefully and immediately terminates a thread mid-execution
+ * @param thread_id id of the thread to kill
+ */
+void os_kill_thread(int thread_id);
+
+/**
+ * @brief blocks the current thread for a specific time, yielding the cpu to other threads
+ * @param ms time to sleep in milliseconds
+ */
+void os_sleep_ms(uint32_t ms);
 
 /**
  * @brief gives up remaining time slice immediately

@@ -12,12 +12,13 @@
 
 volatile bool os_halt = false;
 volatile char print_buffer[128];
-volatile int print_count = 0;
 
 int cli_thread_id;
 int led_blink_thread_id;
-int print_thread_id;
-int atomic_print_thread_id;
+int print100X_thread_id;
+int print100o_thread_id;
+int atomic_print100A_thread_id;
+int echo_thread_id;
 
 extern void os_timer_init(void);
 
@@ -40,34 +41,37 @@ void os_fatal_error(uint64_t esr, uint64_t elr, uint64_t far, uint64_t type) {
 
 void led_blink_thread(void* arg) {
     GPIO2->PSOR = LED_PIN; 
-    sys_ctr_delay_ms(300);        
+    os_sleep_ms(300);        
     GPIO2->PCOR = LED_PIN;
-    sys_ctr_delay_ms(300);
-    GPIO2->PSOR = LED_PIN; 
-    sys_ctr_delay_ms(300);        
-    GPIO2->PCOR = LED_PIN;
-    printf("\r\n[LEDBLINK] LED blink finished.\r\n> ");
 }
 
-void print_thread(void* arg) {
-    for(int i = 0; i < print_count; i++) {
-        printf("%s", (const char*)print_buffer);
-        sys_ctr_delay_ms(10);
+void print100X_thread(void* arg) {
+    for(int i=0; i<100; i++) {
+        printf("X");
+        os_sleep_ms(50);
     }
-    printf("\r\n[PRINT] Print job finished.\r\n> ");
 }
 
-void atomic_print_thread(void* arg) {
+void print100o_thread(void* arg) {
+    for(int i=0; i<100; i++) {
+        printf("o");
+        os_sleep_ms(50);
+    }
+}
+
+void atomic_print100A_thread(void* arg) {
     os_stop_scheduling();
-    
-    for(int i = 0; i < print_count; i++) {
-        printf("%s", (const char*)print_buffer);
-        sys_ctr_delay_ms(10); 
+    for(int i=0; i<100; i++) {
+        printf("A");
+        os_sleep_ms(50);
     }
-    printf("\r\n[PRINTA] Atomic print job finished.\r\n> ");
-    
     os_start_scheduling();
 }
+
+void echo_thread(void* arg) {
+    printf("%s", (const char*)print_buffer);
+}
+
 
 int main() {
     GPIO2->PDDR |= LED_PIN; 
@@ -80,16 +84,15 @@ int main() {
     printf("[Boot] Initializing Scheduler...\r\n");
     os_init_scheduler();
 
-    printf("[Boot] Creating Threads...\r\n");
-    cli_thread_id = os_create_thread(input_thread, NULL);
-    led_blink_thread_id = os_create_thread(led_blink_thread, NULL);
-    print_thread_id = os_create_thread(print_thread, NULL);
-    atomic_print_thread_id = os_create_thread(atomic_print_thread, NULL);
+    printf("[Boot] Creating Tasks...\r\n");
+    cli_thread_id = os_create_thread("CLI", input_thread, NULL);
+    led_blink_thread_id = os_create_thread("LED", led_blink_thread, NULL);
+    print100X_thread_id = os_create_thread("PRINT100X", print100X_thread, NULL);
+    print100o_thread_id = os_create_thread("PRINT100o", print100o_thread, NULL);
+    atomic_print100A_thread_id = os_create_thread("ATOMIC_PRINT100A", atomic_print100A_thread, NULL);
+    echo_thread_id = os_create_thread("ECHO", echo_thread, NULL);
     
-    // set initial rtos baselines. cli is highest priority (0).
-    os_set_thread_rtos(cli_thread_id, 0, 1000);
-    os_set_thread_rtos(led_blink_thread_id, 10, 2000);
-    
+    os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
     os_thread_start(cli_thread_id); 
 
     printf("[Boot] Initializing GIC...\r\n");

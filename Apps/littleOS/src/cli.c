@@ -10,11 +10,21 @@
 #define ASCII_BACKSPACE 0x08
 #define ASCII_DEL 0x7F
 
+static int get_flag_int(const char* str, const char* flag, int default_val) {
+    const char* pos = my_strstr(str, flag);
+    if (pos) {
+        pos += my_strlen(flag);
+        while (*pos == ' ') pos++;
+        return my_atoi(pos);
+    }
+    return default_val;
+}
+
 void input_thread(void* arg) {
     char cmd[128];
     int cmd_idx = 0;
     
-    printf("\r\n> ");
+    printf("\n> ");
 
     while(!os_halt) {
         char c;
@@ -24,8 +34,14 @@ void input_thread(void* arg) {
         }
         
         if (c == ASCII_CTRL_C) {
-            print_count = 0;
-            printf("^C\r\n[System] All active background threads stopped.\r\n> ");
+            // brutally kill all background tasks instantly
+            os_kill_thread(led_blink_thread_id);
+            os_kill_thread(print100X_thread_id);
+            os_kill_thread(print100o_thread_id);
+            os_kill_thread(atomic_print100A_thread_id);
+            os_kill_thread(echo_thread_id);
+
+            printf("^C\n[System] All active background tasks forcefully killed.\n> ");
             cmd_idx = 0;
             continue;
         }
@@ -43,15 +59,27 @@ void input_thread(void* arg) {
             
             if (cmd_idx > 0) {
                 if (my_strcmp(cmd, "help") == 0 || my_strcmp(cmd, "?") == 0) {
-                    printf("\r\n[Help] Available Commands:\r\n");
-                    printf("  reboot            - Hardware reboot\r\n");
-                    printf("  shutdown          - Power off the system\r\n");
-                    printf("  clear             - Clear the terminal screen\r\n");
-                    printf("  sched [rr|pri|edf]- Change RTOS scheduler algorithm\r\n");
-                    printf("  ledblink          - Blink the hardware LED once\r\n");
-                    printf("  print text [count] [pri] [deadline] - Print text with RTOS settings\r\n");
-                    printf("  printa text [count] [pri] [deadline] - Atomic Print\r\n");
-                    printf("  Ctrl+C            - Stop active background threads\r\n");
+                    printf("\n[Help] Available Commands:\n");
+                    printf(" stat              - View RTOS Task Manager\n");
+                    printf(" clear             - Clear the terminal screen\n");
+                    printf(" reboot            - Hardware reboot\n");
+                    printf(" Ctrl+C            - To stop all threads\n");
+                    printf(" sched [rr|pri|edf]- Change RTOS scheduler algorithm\n");
+                    printf("\nTo start task :\n");
+                    printf("   <taskname> -n <how many times to start again> -per <period> -pri <priority> -d <deadline>\n");
+                    printf(" Defaults: -n 1, -per 0, -pri 128, -d -1\n");
+                    printf(" Tasks:\n");
+                    printf("   ledblink          - Blink LED\n");
+                    printf("   echo \"text\"       - Print text on console\n");
+                    printf("   print100X         - Print 100 X characters\n");
+                    printf("   print100o         - Print 100 o characters\n");
+                    printf("   aprint100A        - Print 100 A characters atomically (no interleaving)\n");
+                }
+                else if (my_strcmp(cmd, "stat") == 0) {
+                    print_stat();
+                }
+                else if (my_strcmp(cmd, "clear") == 0) {
+                    clear_terminal();
                 }
                 else if (my_strcmp(cmd, "reboot") == 0) {
                     system_reboot();
@@ -59,80 +87,77 @@ void input_thread(void* arg) {
                 else if (my_strcmp(cmd, "shutdown") == 0) {
                     system_poweroff(); 
                 }
-                else if (my_strcmp(cmd, "clear") == 0) {
-                    clear_terminal();
-                }
                 else if (my_strcmp(cmd, "sched rr") == 0) {
                     os_set_scheduling_algo(SCHED_RR);
-                    printf("\r\n[System] Switched to Round Robin scheduling.");
+                    printf("\n[System] Switched to Round Robin scheduling.");
                 }
-                else if (my_strcmp(cmd, "sched pri") == 0 || my_strcmp(cmd, "sched priority") == 0) {
+                else if (my_strcmp(cmd, "sched pri") == 0) {
                     os_set_scheduling_algo(SCHED_PRIORITY);
-                    printf("\r\n[System] Switched to Fixed Priority scheduling.");
+                    printf("\n[System] Switched to Fixed Priority scheduling.");
                 }
                 else if (my_strcmp(cmd, "sched edf") == 0) {
                     os_set_scheduling_algo(SCHED_EDF);
-                    printf("\r\n[System] Switched to Earliest Deadline First scheduling.");
-                }
-                else if (my_strcmp(cmd, "ledblink") == 0) {
-                    os_thread_start(led_blink_thread_id); 
-                    printf("\r\n[System] LED blink dispatched.");
-                }
-                else if (my_strncmp(cmd, "print ", 6) == 0 || my_strncmp(cmd, "printa ", 7) == 0) {
-                    bool is_atomic = (my_strncmp(cmd, "printa", 6) == 0);
-                    int i = is_atomic ? 7 : 6;
-                    int buf_idx = 0;
-                    
-                    while(cmd[i] == ' ') i++; 
-                    if (cmd[i] == '"') {
-                        i++; 
-                        while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
-                        if (cmd[i] == '"') i++; 
-                    } else {
-                        while(cmd[i] != '\0' && cmd[i] != ' ' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
-                    }
-                    print_buffer[buf_idx] = '\0';
-                    while(cmd[i] == ' ') i++; 
-                    
-                    // parse optional rtos parameters (count, priority, deadline)
-                    int count = 1;
-                    int prio = 50;
-                    uint32_t deadline = 5000; // 5 seconds default
-                    
-                    if (cmd[i] != '\0') {
-                        count = my_atoi(&cmd[i]);
-                        while(cmd[i] >= '0' && cmd[i] <= '9') i++;
-                        while(cmd[i] == ' ') i++;
-                        
-                        if (cmd[i] != '\0') {
-                            prio = my_atoi(&cmd[i]);
-                            while(cmd[i] >= '0' && cmd[i] <= '9') i++;
-                            while(cmd[i] == ' ') i++;
-                            
-                            if (cmd[i] != '\0') {
-                                deadline = my_atoi(&cmd[i]);
-                            }
-                        }
-                    }
-                    
-                    if (count <= 0) count = 1; 
-                    print_count = count;
-                    
-                    int target_id = is_atomic ? atomic_print_thread_id : print_thread_id;
-                    
-                    os_set_thread_rtos(target_id, prio, deadline);
-                    os_thread_start(target_id); 
-                    
-                    if (is_atomic) printf("\r\n[System] Atomic print job dispatched.");
-                    else printf("\r\n[System] Print job dispatched (Pri: %d, Deadline: %dms).", prio, deadline);
+                    printf("\n[System] Switched to Earliest Deadline First scheduling.");
                 }
                 else {
-                    printf("\r\n[System] Unknown command. Type 'help' for options.");
+                    int target_id = -1;
+                    bool is_print = false;
+                    int i = 0;
+                    
+                    if (my_strncmp(cmd, "ledblink", 8) == 0) {
+                        target_id = led_blink_thread_id;
+                        i = 8;
+                    } 
+                    else if (my_strncmp(cmd, "echo ", 5) == 0) {
+                        target_id = echo_thread_id;
+                        is_print = true;
+                        i = 5;
+                    } 
+                    else if (my_strncmp(cmd, "print100X", 9) == 0) {
+                        target_id = print100X_thread_id;
+                        i = 9;
+                    } 
+                    else if (my_strncmp(cmd, "print100o", 9) == 0) {
+                        target_id = print100o_thread_id;
+                        i = 9;
+                    }
+                    else if (my_strncmp(cmd, "aprint100A", 10) == 0) {
+                        target_id = atomic_print100A_thread_id;
+                        is_print = true;
+                        i = 10;
+                    } 
+                    
+                    if (target_id != -1) {
+                        if (is_print) {
+                            int buf_idx = 0;
+                            while(cmd[i] == ' ') i++; 
+                            if (cmd[i] == '"') {
+                                i++; 
+                                while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
+                                if (cmd[i] == '"') i++; 
+                            } else {
+                                while(cmd[i] != '\0' && cmd[i] != ' ' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
+                            }
+                            print_buffer[buf_idx] = '\0';
+                        }
+                        
+                        int n = get_flag_int(cmd, "-n ", 1);
+                        int per = get_flag_int(cmd, "-per ", 0);
+                        int pri = get_flag_int(cmd, "-pri ", 128);
+                        int d = get_flag_int(cmd, "-d ", -1);
+                        
+                        os_set_thread_rtos(target_id, pri, d, per, n);
+                        os_thread_start(target_id); 
+                        
+                        printf("\n[System] Task dispatched (n:%d per:%dms pri:%d d:%dms).", n, per, pri, d);
+                    } else {
+                        printf("\n[System] Unknown command. Type 'help' for options.");
+                    }
                 }
             }
             
             cmd_idx = 0;
-            if (!os_halt) printf("\r\n> ");
+            if (!os_halt) printf("\n> ");
         } 
         else if (c >= 32 && c <= 126) {
             if (cmd_idx < 127) {

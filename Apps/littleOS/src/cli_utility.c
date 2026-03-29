@@ -1,9 +1,10 @@
 #include "include/cli_utility.h"
 #include "include/stdio.h"
+#include "include/multitasking.h"
 #include <stdint.h>
 
 void system_reboot(void) {
-    printf("\r\n[System] TRIGGERING HARDWARE WATCHDOG RESET...\r\n");
+    printf("\n[System] TRIGGERING HARDWARE WATCHDOG RESET...\n");
     __asm__ volatile("msr daifset, #2");
 
     volatile uint32_t* wdog_cs    = (volatile uint32_t*)(0x442D0000 + 0x00);
@@ -18,7 +19,7 @@ void system_reboot(void) {
 }
 
 void system_poweroff(void) {
-    printf("\r\n[System] SENDING POWER-DOWN SIGNAL TO PMIC...\r\n");
+    printf("\n[System] SENDING POWER-DOWN SIGNAL TO PMIC...\n");
     __asm__ volatile("msr daifset, #2");
     
     volatile uint32_t* snvs_lpcr = (volatile uint32_t*)(0x44470000 + 0x38);
@@ -28,6 +29,30 @@ void system_poweroff(void) {
 }
 
 void clear_terminal(void) {
-    // \033[2J clears the screen, \033[H moves the cursor to the top left
     printf("\033[2J\033[H");
+}
+
+void print_stat(void) {
+    const char* algo_name = "UNKNOWN";
+    if (current_algo == SCHED_RR) algo_name = "Round Robin (RR)";
+    else if (current_algo == SCHED_PRIORITY) algo_name = "Fixed Priority (PRI)";
+    else if (current_algo == SCHED_EDF) algo_name = "Earliest Deadline First (EDF)";
+
+    printf("\n[System] Active Scheduler: %s\n", algo_name);
+    printf("\nID | Name             | State   | Pri | Deadln | Period | Execs     | Turnaround Time");
+    printf("\n---------------------------------------------------------------------------------------");
+    
+    for (int i = 0; i < num_threads; i++) {
+        printf("\n%2d | %-16s | %-7s | %3d | %6d | %6d | ", 
+            i, threads[i].name, threads[i].active ? "RUNNING" : "SLEEP",
+            threads[i].priority, threads[i].deadline_offset_ms, threads[i].period_ms);
+        
+        if (threads[i].executions_target == -1) {
+            printf("%4d/INF  | ", threads[i].executions_done);
+        } else {
+            printf("%4d/%-4d | ", threads[i].executions_done, threads[i].executions_target);
+        }
+        
+        printf("%9d ms", threads[i].last_exec_time_ms);
+    }
 }
