@@ -21,4 +21,9 @@ void clear_terminal(void);
  */
 void print_stat(void);
 
+/***
+ * @brief prints the help menu with available commands and dynamically loaded tasks
+ */
+void print_help(void);
+
 #endif

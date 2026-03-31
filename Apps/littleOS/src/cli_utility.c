@@ -2,6 +2,7 @@
 #include "include/stdio.h"
 #include "include/multitasking.h"
 #include <stdint.h>
+#include "include/autotasks.h"
 
 void system_reboot(void) {
     printf("\n[System] TRIGGERING HARDWARE WATCHDOG RESET...\n");
@@ -20,16 +21,30 @@ void system_reboot(void) {
 
 void system_poweroff(void) {
     printf("\n[System] SENDING POWER-DOWN SIGNAL TO PMIC...\n");
-    __asm__ volatile("msr daifset, #2");
-    
+    __asm__ volatile("msr daifset, #2"); 
     volatile uint32_t* snvs_lpcr = (volatile uint32_t*)(0x44470000 + 0x38);
-    *snvs_lpcr |= (1 << 5);
-
+    *snvs_lpcr |= (1 << 5) | (1 << 6);
     while(1) { __asm__ volatile("wfi"); }
 }
 
 void clear_terminal(void) {
     printf("\033[2J\033[H");
+}
+
+void print_help(void){
+    printf("\n[Help] Available Commands:\n");
+    printf(" stat              - View RTOS Task Manager\n");
+    printf(" clear             - Clear the terminal screen\n");
+    printf(" reboot            - Hardware reboot\n");
+    printf(" shutdown/poweroff - Hardware poweroff\n");
+    printf(" Ctrl+C            - To stop all threads\n");
+    printf(" sched [rr|pri|edf]- Change RTOS scheduler algorithm\n");
+    printf("\nDynamic Tasks (Auto-Loaded from tasks/):\n");
+    for (int i = 0; i < num_autotasks; i++) {
+        printf("   %-16s - %s\n", autotasks[i].cmd_string, autotasks[i].display_name);
+    }
+    printf(" Defaults: -n 1, -per 0, -pri 128, -d -1\n");
+    printf(" Syntax: <taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadline_ms>\n");
 }
 
 void print_stat(void) {
