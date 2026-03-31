@@ -140,6 +140,18 @@ void os_thread_start(int thread_id) {
     }
 }
 
+void os_join_thread(int thread_id) {
+    if (thread_id < 0 || thread_id >= num_threads) return;
+    if (thread_id == current_thread) return; 
+    if (!scheduling_enabled) {
+        printf("\n[FATAL] os_join_thread called inside atomic block! Deadlock avoided.\n");
+        return;
+    }
+    while (threads[thread_id].active) {
+        os_sleep_ms(1);
+    }
+}
+
 int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
     if (num_threads >= MAX_THREADS) return -1;
 

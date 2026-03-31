@@ -1,7 +1,16 @@
 import os
 import glob
 
+def cleanup_old_files():
+    """Aggressively delete old auto-generated files to prevent stale builds."""
+    files_to_remove = ["src/autotasks.c", "include/autotasks.h"]
+    for f in files_to_remove:
+        if os.path.exists(f):
+            os.remove(f)
+
 def main():
+    cleanup_old_files()
+
     os.makedirs("include", exist_ok=True)
     os.makedirs("src", exist_ok=True)
     os.makedirs("tasks", exist_ok=True)
@@ -23,11 +32,10 @@ def main():
         tasks.append({
             "cmd": cmd_name,
             "display": display_name[:15], # clamp length for stat table alignment
-            "func": f"{cmd_name}_thread",
+            "func": f"{cmd_name}_thread", # THIS IS WHERE THE NAMING RULE COMES FROM!
             "id_var": f"{cmd_name}_thread_id"
         })
 
-    # Generate include/autotasks.h
     with open("include/autotasks.h", "w") as f:
         f.write("// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n")
         f.write("#ifndef AUTOTASKS_H\n#define AUTOTASKS_H\n\n")
@@ -43,14 +51,13 @@ def main():
         f.write("\nvoid init_all_tasks(void);\n\n")
         f.write("#endif\n")
 
-    # Generate src/autotasks.c
     with open("src/autotasks.c", "w") as f:
         f.write("// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n")
         f.write('#include "include/autotasks.h"\n')
         f.write('#include "include/multitasking.h"\n')
         f.write('#include <stddef.h>\n\n')
         
-        # Unity Build: Includes actual source files to bypass parent Makefile limits!
+        # Unity Build: Includes actual source files
         for t in tasks:
             f.write(f'#include "../tasks/{t["cmd"]}.c"\n')
         

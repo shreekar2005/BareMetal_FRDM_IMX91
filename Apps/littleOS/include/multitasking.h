@@ -91,6 +91,12 @@ void os_set_thread_rtos(int thread_id, int priority, int deadline_ms, uint32_t p
 void os_thread_start(int thread_id);
 
 /**
+ * @brief blocks the calling thread until the target thread finishes execution
+ * @param thread_id id of the thread to wait for
+ */
+void os_join_thread(int thread_id);
+
+/**
  * @brief puts thread to sleep
  * @param thread_id id to pause
  */
