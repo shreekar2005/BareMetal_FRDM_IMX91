@@ -30,6 +30,44 @@ syntax: `<taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadlin
 *(defaults: -n 1, -per 0, -pri 128, -d -1)*
 
 ## directory structure
+```text
+.
+├── build/
+├── build_tasks.py
+├── include/
+│   ├── autotasks.h
+│   ├── cli.h
+│   ├── cli_utility.h
+│   ├── gic.h
+│   ├── multitasking.h
+│   ├── stdio.h
+│   └── string.h
+├── linker.ld
+├── littleOS_Task_Studio.py
+├── Makefile
+├── README.md
+├── src/
+│   ├── autotasks.c
+│   ├── cli.c
+│   ├── cli_utility.c
+│   ├── gic.c
+│   ├── irq.c
+│   ├── main.c
+│   ├── multitasking.c
+│   ├── start.S
+│   ├── stdio.c
+│   ├── string.c
+│   ├── timer.c
+│   └── vector.S
+└── tasks/
+    ├── adding_task.c
+    ├── aprint100A.c
+    ├── echo.c
+    ├── ledblink.c
+    ├── print100o.c
+    ├── print100X.c
+    └── race_test.c
+```
 * **include/**: contains all core os header files with doxygen style comments.
 * **src/**: contains the core kernel c and assembly source code.
 * **tasks/**: drop `.c` files here to automatically generate new terminal commands!
@@ -45,6 +83,7 @@ syntax: `<taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadlin
 * **timer.c**: configures the arm generic timer to fire an interrupt every 20ms to drive the time slicer.
 * **start.S**: early boot assembly to clear `.bss` before jumping into c code.
 * **vector.S**: the arm64 exception vector table. pushes/pops physical registers during context switches.
+* **littleOS_Task_Studio.py**: cross-platform visual IDE built with python for managing, editing, and compiling tasks.
 
 ---
 
@@ -84,7 +123,7 @@ void hardware_init(void) {
 ```
 
 ### step 3: build!
-just run `make clear && make`. the python script will automatically find your file, generate an id, link it to the scheduler, add it to the `help` menu, and map it to the `mycmd` terminal string!
+just run `make clear && make` (or use `littleOS_Task_Studio.py`). the python script will automatically find your file, generate an id, link it to the scheduler, add it to the `help` menu, and map it to the `mycmd` terminal string!
 
 ---
 

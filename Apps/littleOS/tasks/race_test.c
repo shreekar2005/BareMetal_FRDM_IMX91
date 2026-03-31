@@ -6,7 +6,6 @@
 volatile int shared_counter = 0;
 
 void func_inc(void* arg) {
-    // Bumped to 10 Million to guarantee multiple 20ms timer preemptions!
     for(volatile int i = 0; i < 10000000; i++) {
         shared_counter++; 
     }

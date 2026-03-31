@@ -1,5 +1,6 @@
 #include "include/multitasking.h"
 #include "include/string.h"
+#include "include/stdio.h"
 
 Thread threads[MAX_THREADS];
 int num_threads = 0;
