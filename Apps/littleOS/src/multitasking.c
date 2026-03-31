@@ -178,14 +178,14 @@ CPUState* schedule_tick(CPUState* current_cpustate_ptr) {
     
     // The Wakeup & Revival Loop
     for (int i = 0; i < num_threads; i++) {
-        // 1. Wake up sleeping threads (Without wiping their stack!)
+        // Wake up sleeping threads (Without wiping their stack)
         if (threads[i].sleeping) {
             if (current_ticks >= threads[i].wakeup_tick) {
                 threads[i].sleeping = false;
                 threads[i].active = true;
             }
         }
-        // 2. Revive dead periodic tasks (Wipes their stack to start fresh)
+        // Revive dead periodic tasks (Wipes their stack to start fresh)
         else if (!threads[i].active && i != current_thread) {
             if (threads[i].executions_target == -1 || threads[i].executions_done < threads[i].executions_target) {
                 if (current_ticks >= threads[i].next_period_tick) {

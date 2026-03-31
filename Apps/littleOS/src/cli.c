@@ -5,6 +5,7 @@
 #include "include/stdio.h"
 #include "LPUART.h"
 #include "include/multitasking.h"
+#include "include/autotasks.h"
 
 #define ASCII_CTRL_C 0x03
 #define ASCII_BACKSPACE 0x08
@@ -34,13 +35,10 @@ void input_thread(void* arg) {
         }
         
         if (c == ASCII_CTRL_C) {
-            // brutally kill all background tasks instantly
-            os_kill_thread(led_blink_thread_id);
-            os_kill_thread(print100X_thread_id);
-            os_kill_thread(print100o_thread_id);
-            os_kill_thread(atomic_print100A_thread_id);
-            os_kill_thread(echo_thread_id);
-
+            // LOOP THROUGH AUTO-REGISTRY AND KILL EVERYTHING
+            for (int i = 0; i < num_autotasks; i++) {
+                os_kill_thread(*(autotasks[i].id_ptr));
+            }
             printf("^C\n[System] All active background tasks forcefully killed.\n> ");
             cmd_idx = 0;
             continue;
@@ -65,15 +63,11 @@ void input_thread(void* arg) {
                     printf(" reboot            - Hardware reboot\n");
                     printf(" Ctrl+C            - To stop all threads\n");
                     printf(" sched [rr|pri|edf]- Change RTOS scheduler algorithm\n");
-                    printf("\nTo start task :\n");
-                    printf("   <taskname> -n <how many times to start again> -per <period> -pri <priority> -d <deadline>\n");
-                    printf(" Defaults: -n 1, -per 0, -pri 128, -d -1\n");
-                    printf(" Tasks:\n");
-                    printf("   ledblink          - Blink LED\n");
-                    printf("   echo \"text\"       - Print text on console\n");
-                    printf("   print100X         - Print 100 X characters\n");
-                    printf("   print100o         - Print 100 o characters\n");
-                    printf("   aprint100A        - Print 100 A characters atomically (no interleaving)\n");
+                    printf("\nDynamic Tasks (Auto-Loaded from tasks/):\n");
+                    for (int i = 0; i < num_autotasks; i++) {
+                        printf("   %-16s - %s\n", autotasks[i].cmd_string, autotasks[i].display_name);
+                    }
+                    printf(" Defaults: -n 1, -per 0, -pri 128, -d -1\n"); 
                 }
                 else if (my_strcmp(cmd, "stat") == 0) {
                     print_stat();
@@ -87,60 +81,43 @@ void input_thread(void* arg) {
                 else if (my_strcmp(cmd, "shutdown") == 0) {
                     system_poweroff(); 
                 }
-                else if (my_strcmp(cmd, "sched rr") == 0) {
-                    os_set_scheduling_algo(SCHED_RR);
-                    printf("\n[System] Switched to Round Robin scheduling.");
-                }
-                else if (my_strcmp(cmd, "sched pri") == 0) {
-                    os_set_scheduling_algo(SCHED_PRIORITY);
-                    printf("\n[System] Switched to Fixed Priority scheduling.");
-                }
-                else if (my_strcmp(cmd, "sched edf") == 0) {
-                    os_set_scheduling_algo(SCHED_EDF);
-                    printf("\n[System] Switched to Earliest Deadline First scheduling.");
+                else if (my_strncmp(cmd, "sched ", 6) == 0) {
+                    if (my_strcmp(cmd, "sched rr") == 0) os_set_scheduling_algo(SCHED_RR);
+                    else if (my_strcmp(cmd, "sched pri") == 0) os_set_scheduling_algo(SCHED_PRIORITY);
+                    else if (my_strcmp(cmd, "sched edf") == 0) os_set_scheduling_algo(SCHED_EDF);
+                    printf("\n[System] Scheduler algorithm changed.");
                 }
                 else {
                     int target_id = -1;
-                    bool is_print = false;
                     int i = 0;
                     
-                    if (my_strncmp(cmd, "ledblink", 8) == 0) {
-                        target_id = led_blink_thread_id;
-                        i = 8;
-                    } 
-                    else if (my_strncmp(cmd, "echo ", 5) == 0) {
-                        target_id = echo_thread_id;
-                        is_print = true;
-                        i = 5;
-                    } 
-                    else if (my_strncmp(cmd, "print100X", 9) == 0) {
-                        target_id = print100X_thread_id;
-                        i = 9;
-                    } 
-                    else if (my_strncmp(cmd, "print100o", 9) == 0) {
-                        target_id = print100o_thread_id;
-                        i = 9;
+                    // DYNAMIC TASK MATCHER
+                    for (int t = 0; t < num_autotasks; t++) {
+                        int len = my_strlen(autotasks[t].cmd_string);
+                        if (my_strncmp(cmd, autotasks[t].cmd_string, len) == 0) {
+                            // Ensure it's an exact match or followed by space
+                            if (cmd[len] == ' ' || cmd[len] == '\0') {
+                                target_id = *(autotasks[t].id_ptr);
+                                i = len;
+                                break;
+                            }
+                        }
                     }
-                    else if (my_strncmp(cmd, "aprint100A", 10) == 0) {
-                        target_id = atomic_print100A_thread_id;
-                        is_print = true;
-                        i = 10;
-                    } 
                     
                     if (target_id != -1) {
-                        if (is_print) {
-                            int buf_idx = 0;
-                            while(cmd[i] == ' ') i++; 
-                            if (cmd[i] == '"') {
-                                i++; 
-                                while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
-                                if (cmd[i] == '"') i++; 
-                            } else {
-                                while(cmd[i] != '\0' && cmd[i] != ' ' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
-                            }
-                            print_buffer[buf_idx] = '\0';
+                        // GLOBAL STRING EXTRACTOR (works for any command!)
+                        int buf_idx = 0;
+                        while(cmd[i] == ' ') i++; 
+                        if (cmd[i] == '"') {
+                            i++; 
+                            while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
+                            if (cmd[i] == '"') i++; 
+                        } else {
+                            while(cmd[i] != '\0' && cmd[i] != ' ' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
                         }
+                        print_buffer[buf_idx] = '\0';
                         
+                        // PARSE FLAGS
                         int n = get_flag_int(cmd, "-n ", 1);
                         int per = get_flag_int(cmd, "-per ", 0);
                         int pri = get_flag_int(cmd, "-pri ", 128);

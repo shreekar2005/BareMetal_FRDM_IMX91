@@ -7,74 +7,35 @@
 #include "include/cli.h" 
 #include "include/gic.h"
 #include "include/stdio.h"
-
-#define LED_PIN (1 << 4)
+#include "include/autotasks.h"
 
 volatile bool os_halt = false;
 volatile char print_buffer[128];
-
 int cli_thread_id;
-int led_blink_thread_id;
-int print100X_thread_id;
-int print100o_thread_id;
-int atomic_print100A_thread_id;
-int echo_thread_id;
 
 extern void os_timer_init(void);
 
 void os_fatal_error(uint64_t esr, uint64_t elr, uint64_t far, uint64_t type) {
     printf("\r\n\r\n=================================\r\n");
     printf("!!! FATAL CPU EXCEPTION !!!\r\n");
-    
     if (type == 0) printf("Type: Synchronous Exception\r\n");
     if (type == 1) printf("Type: Unhandled IRQ Trap\r\n");
     if (type == 2) printf("Type: FIQ\r\n");
     if (type == 3) printf("Type: SError (System Bus Fault)\r\n");
 
-    printf("ESR_EL2 (Reason)  : 0x%016llX\r\n", esr);
+    printf("ESR_EL2 (Reason) : 0x%016llX\r\n", esr);
     printf("ELR_EL2 (Address) : 0x%016llX\r\n", elr);
-    printf("FAR_EL2 (Memory)  : 0x%016llX\r\n", far);
-    
+    printf("FAR_EL2 (Memory) : 0x%016llX\r\n", far);
     printf("System Halted.\r\n=================================\r\n");
-    while(1) { __asm__ volatile("wfi"); } 
+    while(1) { __asm__ volatile("wfi"); }
+} 
+
+void hardware_init(void) {
+    // LED output mode
+    GPIO2->PDDR |= (1 << 4);
 }
-
-void led_blink_thread(void* arg) {
-    GPIO2->PSOR = LED_PIN; 
-    os_sleep_ms(300);        
-    GPIO2->PCOR = LED_PIN;
-}
-
-void print100X_thread(void* arg) {
-    for(int i=0; i<100; i++) {
-        printf("X");
-        os_sleep_ms(50);
-    }
-}
-
-void print100o_thread(void* arg) {
-    for(int i=0; i<100; i++) {
-        printf("o");
-        os_sleep_ms(50);
-    }
-}
-
-void atomic_print100A_thread(void* arg) {
-    os_stop_scheduling();
-    for(int i=0; i<100; i++) {
-        printf("A");
-        os_sleep_ms(50);
-    }
-    os_start_scheduling();
-}
-
-void echo_thread(void* arg) {
-    printf("%s", (const char*)print_buffer);
-}
-
-
 int main() {
-    GPIO2->PDDR |= LED_PIN; 
+    hardware_init(); 
     
     printf("\033[2J\033[H"); 
     printf("=================================\r\n");
@@ -84,14 +45,11 @@ int main() {
     printf("[Boot] Initializing Scheduler...\r\n");
     os_init_scheduler();
 
-    printf("[Boot] Creating Tasks...\r\n");
+    printf("[Boot] Initializing Task Registry...\r\n");
+    init_all_tasks(); 
+
+    printf("[Boot] Starting Core CLI...\r\n");
     cli_thread_id = os_create_thread("CLI", input_thread, NULL);
-    led_blink_thread_id = os_create_thread("LED", led_blink_thread, NULL);
-    print100X_thread_id = os_create_thread("PRINT100X", print100X_thread, NULL);
-    print100o_thread_id = os_create_thread("PRINT100o", print100o_thread, NULL);
-    atomic_print100A_thread_id = os_create_thread("ATOMIC_PRINT100A", atomic_print100A_thread, NULL);
-    echo_thread_id = os_create_thread("ECHO", echo_thread, NULL);
-    
     os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
     os_thread_start(cli_thread_id); 
 
