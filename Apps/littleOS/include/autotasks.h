@@ -9,7 +9,7 @@ typedef struct {
     int* id_ptr;
 } TaskRegistry;
 
-extern TaskRegistry autotasks[7];
+extern TaskRegistry autotasks[6];
 extern const int num_autotasks;
 
 
