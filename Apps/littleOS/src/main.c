@@ -14,6 +14,7 @@ volatile char print_buffer[128];
 int cli_thread_id;
 
 extern void os_timer_init(void);
+extern void os_start(void);
 
 void os_fatal_error(uint64_t esr, uint64_t elr, uint64_t far, uint64_t type) {
     printf("\r\n\r\n=================================\r\n");
@@ -31,8 +32,7 @@ void os_fatal_error(uint64_t esr, uint64_t elr, uint64_t far, uint64_t type) {
 } 
 
 void hardware_init(void) {
-    // LED output mode
-    GPIO2->PDDR |= (1 << 4);
+    setPinMode(GPIO2, 4, OUTPUT_MODE);  // LED pin : output mode ~ (GPIO2->PDDR |= (1 << 4);)
 }
 int main() {
     hardware_init(); 

@@ -11,7 +11,7 @@ void func_inc(void* arg) {
     }
 }
 
-void race_test_thread(void* arg) {
+void race_thread(void* arg) {
     printf("\r\n[RACE] Starting race condition test...\r\n");
     shared_counter = 0; // Reset in case we run the command multiple times
     

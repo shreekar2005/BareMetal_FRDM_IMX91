@@ -32,9 +32,8 @@ typedef struct {
     volatile uint32_t ISFR[2];     /* 0x120 - 0x124 Interrupt Status Flag (ISFR0 - ISFR1) */
 } GPIO_TypeDef;
 
-/* ==========================================
- * BASE ADDRESSES & PERIPHERAL POINTERS
- * ========================================== */
+
+// BASE ADDRESSES & PERIPHERAL POINTERS as per i.MX91 Reference Manual
 
 #define GPIO1_BASE 0x47400000
 #define GPIO2_BASE 0x43810000
@@ -45,5 +44,33 @@ typedef struct {
 #define GPIO2 ((GPIO_TypeDef *) GPIO2_BASE)
 #define GPIO3 ((GPIO_TypeDef *) GPIO3_BASE)
 #define GPIO4 ((GPIO_TypeDef *) GPIO4_BASE)
+
+/* ==========================================
+ * GPIO FUNCTION PROTOTYPES & ENUMS
+ * ========================================== */
+
+/**
+ * @brief Pin mode definitions
+ */
+typedef enum {
+    INPUT_MODE = 0,
+    OUTPUT_MODE,
+    ANALOG_MODE,
+    ALTERNATE_FUNCTION_MODE
+} GPIO_PinMode;
+
+/**
+ * @brief Initializes the GPIO block and provides clock. (NOT FULLY IMPLEMENTED FOR i.MX91 - SEE COMMENTS)
+ * @param gpio Pointer to the GPIO instance (e.g., GPIO1).
+ */
+void initGPIO(GPIO_TypeDef *gpio);
+
+/**
+ * @brief Initializes GPIO and sets the pin mode. (ONLY INPUT OUTPUT MODE ARE SUPPORTED IN THIS FUNCTION - SEE COMMENTS)
+ * @param gpio Pointer to the GPIO instance.
+ * @param pin Pin number (0-31).
+ * @param mode Target pin mode (INPUT, OUTPUT, ANALOG, AF).
+ */
+void setPinMode(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode);
 
 #endif /* GPIO_H */

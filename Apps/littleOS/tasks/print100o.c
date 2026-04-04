@@ -1,4 +1,4 @@
-// Task_Name : Print 100 o's
+// Task_Name : Print o's
 
 #include "include/multitasking.h"
 #include "include/stdio.h"

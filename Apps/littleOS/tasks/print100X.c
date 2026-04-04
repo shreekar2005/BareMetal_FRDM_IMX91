@@ -1,4 +1,4 @@
-// Task_Name : Print 100 X's
+// Task_Name : Print X's
 
 #include "include/multitasking.h"
 #include "include/stdio.h"
