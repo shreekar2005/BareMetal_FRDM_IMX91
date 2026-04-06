@@ -40,16 +40,16 @@ void hardware_init(void) {
     setPinMux(MUX_REG_GPIO_IO15, AF_MODE_LPUART4, 0); // P11 Pin 10 (GPIO_IO15) -> ESP TX : AF mode 6 (LPUART4_RX)
 
     /** Configure the DAISY (Select Input) register for LPUART4 RX 
-     * This is need if more than one pad can be used for input for the same peripheral (like same UART taking input on * different Physical pads. That may currupt the input, to avoid that we need to select one pad as input using the * DAISY register)
+     * This is need if more than one pad can be used for input for the same peripheral (like same LPUART taking input on * different Physical pads. That may currupt the input, to avoid that we need to select one pad as input using the * DAISY register)
      * */
     volatile uint32_t *daisy_reg_lpuart4 = (volatile uint32_t *)DAISY_REG_LPUART4_RX;
     *daisy_reg_lpuart4 = DAISY_VALUE_IO15_LPUART4;
 
-    // Initialize UART3 for your USB-C Debug Console
-    initUART3(115200, 24000000); // already done by U-BOOT, but doing it again for good practice
+    // Initialize LPUART3 for your USB-C Debug Console
+    initLPUART3(115200, 24000000); // already done by U-BOOT, but doing it again for good practice
     
-    // Initialize UART4 for your ESP8266 Wi-Fi Bridge
-    initUART4(115200, 24000000);
+    // Initialize LPUART4 for your ESP8266 Wi-Fi Bridge
+    initLPUART4(115200, 24000000);
 }
 
 int main() {

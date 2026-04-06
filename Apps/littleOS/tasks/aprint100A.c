@@ -1,4 +1,4 @@
-// Task_Name : Atomic Print A's
+// Task_Name : AtomicPrint A's
 
 #include "include/multitasking.h"
 #include "include/stdio.h"

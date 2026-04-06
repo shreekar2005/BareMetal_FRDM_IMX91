@@ -64,64 +64,64 @@ typedef struct {
 #define LPUART_CTRL_RE   (1 << 18) /* Receiver Enable */
 
 /* ==========================================
- * UART FUNCTION PROTOTYPES
+ * LPUART FUNCTION PROTOTYPES
  * ========================================== */
 
 /**
  * @brief Sends a single character over the specified LPUART.
- * @param uart Pointer to the LPUART instance (e.g., LPUART1).
+ * @param lpuart Pointer to the LPUART instance (e.g., LPUART1).
  * @param c The character to send.
  */
-void uart_putchar(LPUART_TypeDef *uart, char c);
+void lpuart_putchar(LPUART_TypeDef *lpuart, char c);
 
 /**
  * @brief Sends a null-terminated string over the specified LPUART.
- * @param uart Pointer to the LPUART instance.
+ * @param lpuart Pointer to the LPUART instance.
  * @param str Pointer to the string.
  */
-void uart_print_string(LPUART_TypeDef *uart, const char *str);
+void lpuart_print_string(LPUART_TypeDef *lpuart, const char *str);
 
 /**
  * @brief Prints a 32-bit integer in hexadecimal format.
- * @param uart Pointer to the LPUART instance.
+ * @param lpuart Pointer to the LPUART instance.
  * @param val The 32-bit value to print.
  */
-void uart_print_hex(LPUART_TypeDef *uart, uint32_t val);
+void lpuart_print_hex(LPUART_TypeDef *lpuart, uint32_t val);
 
 /**
  * @brief Waits infinitely until a character is received. (Blocking)
- * @param uart Pointer to the LPUART instance.
+ * @param lpuart Pointer to the LPUART instance.
  * @return The received character.
  */
-char uart_getchar_blocking(LPUART_TypeDef *uart);
+char lpuart_getchar_blocking(LPUART_TypeDef *lpuart);
 
 /**
  * @brief Checks for a received character and returns immediately. (Non-blocking)
- * @param uart Pointer to the LPUART instance.
+ * @param lpuart Pointer to the LPUART instance.
  * @return The received character, or '\0' if no character is available.
  */
-char uart_getchar_nonblocking(LPUART_TypeDef *uart);
+char lpuart_getchar_nonblocking(LPUART_TypeDef *lpuart);
 
 /**
- * @brief Base UART Initialization. Configures baud rate and enables TX/RX.
- * @param uart Pointer to the LPUART instance.
+ * @brief Base LPUART Initialization. Configures baud rate and enables TX/RX.
+ * @param lpuart Pointer to the LPUART instance.
  * @param baudrate Target baud rate (e.g., 115200).
  * @param src_clock_hz Source clock frequency in Hz.
  */
-void uart_init(LPUART_TypeDef *uart, uint32_t baudrate, uint32_t src_clock_hz);
+void lpuart_init(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_hz);
 
 /**
  * @brief Initializes LPUART3 with the specified baud rate.
  * @param baudrate Target baud rate (e.g., 115200).
  * @param src_clock_hz Source clock frequency in Hz.
  */
-void initUART3(uint32_t baudrate, uint32_t src_clock_hz);
+void initLPUART3(uint32_t baudrate, uint32_t src_clock_hz);
 
 /**
  * @brief Initializes LPUART4 with the specified baud rate.
- * @param baudrate Target baud rate (e.g., 115200).
- * @param src_clock_hz Source clock frequency in Hz.
+ * @param baudrate Target baud rate (e.g. 115200).
+ * @param src_clock_hz Source clock frequency in Hz. (e.g. 24000000 for 24 MHz)
  */
-void initUART4(uint32_t baudrate, uint32_t src_clock_hz);
+void initLPUART4(uint32_t baudrate, uint32_t src_clock_hz);
 
 #endif /* LPUART_H */

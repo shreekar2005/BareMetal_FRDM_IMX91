@@ -14,11 +14,11 @@
 
 #define NUM_READINGS    5 /* number of readings to take before returning median of distances (keep odd number >=3) */
 
-void uart_print_dec(LPUART_TypeDef *uart, uint32_t val) {
+void lpuart_print_dec(LPUART_TypeDef *lpuart, uint32_t val) {
     char buffer[10];
     int i = 0;
     if (val == 0) {
-        uart_putchar(uart, '0');
+        lpuart_putchar(lpuart, '0');
         return;
     }
     while (val > 0) {
@@ -26,7 +26,7 @@ void uart_print_dec(LPUART_TypeDef *uart, uint32_t val) {
         val /= 10;
     }
     while (i > 0) {
-        uart_putchar(uart, buffer[--i]);
+        lpuart_putchar(lpuart, buffer[--i]);
     }
 }
 
@@ -96,8 +96,8 @@ uint32_t sonar_read_filtered_mm(void) {
 }
 
 int main() {
-    uart_print_string(LPUART1, "\n--- HC-SR04 High-Precision Radar ---\n");
-    uart_print_string(LPUART1, "Press Ctrl+C to exit.\n\n");
+    lpuart_print_string(LPUART1, "\n--- HC-SR04 High-Precision Radar ---\n");
+    lpuart_print_string(LPUART1, "Press Ctrl+C to exit.\n\n");
 
     /* Hardware Init */
     GPIO2->PDDR |= (1 << RED_LED);
@@ -113,9 +113,9 @@ int main() {
 
     while (1) {
         /* --- Ctrl+C Intercept --- */
-        char c = uart_getchar_nonblocking(LPUART1);
+        char c = lpuart_getchar_nonblocking(LPUART1);
         if (c == 0x03) { 
-            uart_print_string(LPUART1, "\n[!] Ctrl+C caught! Shutting down Sonar...\n");
+            lpuart_print_string(LPUART1, "\n[!] Ctrl+C caught! Shutting down Sonar...\n");
             GPIO2->PCOR = (1 << RED_LED); /* Ensure LED is off */
             GPIO2->PCOR = (1 << TRIG_PIN); 
             break; 
@@ -126,16 +126,16 @@ int main() {
 
         /* If out of bounds or timed out */
         if (distance_mm == 0xFFFFFFFF || distance_mm > MAX_DISTANCE_MM) {
-            uart_print_string(LPUART1, "Distance: > 400.0 cm\n");
+            lpuart_print_string(LPUART1, "Distance: > 400.0 cm\n");
             GPIO2->PCOR = (1 << RED_LED); /* ACTIVE-HIGH: LED OFF */
             led_state = 0;
         } else {
             /* Print decimal formatted output (e.g. 15.3 cm) */
-            uart_print_string(LPUART1, "Distance: ");
-            uart_print_dec(LPUART1, distance_mm / 10); /* The whole centimeters */
-            uart_putchar(LPUART1, '.');
-            uart_print_dec(LPUART1, distance_mm % 10); /* The millimeter remainder */
-            uart_print_string(LPUART1, " cm\n");
+            lpuart_print_string(LPUART1, "Distance: ");
+            lpuart_print_dec(LPUART1, distance_mm / 10); /* The whole centimeters */
+            lpuart_putchar(LPUART1, '.');
+            lpuart_print_dec(LPUART1, distance_mm % 10); /* The millimeter remainder */
+            lpuart_print_string(LPUART1, " cm\n");
 
             /* Proximity Blink Logic (< 10 cm) */
             if (distance_mm < ALARM_THRESHOLD_MM) {

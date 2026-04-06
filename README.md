@@ -16,7 +16,7 @@ it allows you to:
 ```text
 .
 ├── Apps/                         # generated bare-metal apps
-│   ├── hello_world/              # interactive uart & led blink app
+│   ├── hello_world/              # interactive lpuart & led blink app
 │   └── sonar_proximity/          # hc-sr04 high-precision radar app
 │       ├── build/                # generated objects & binaries (ignored by git)
 │       ├── include/              # app-specific headers
@@ -30,7 +30,7 @@ it allows you to:
 │   ├── LPUART.h                  # serial interface structs and flags
 │   └── SYS_CTR.h                 # 64-bit arm generic timer macros
 ├── lib/
-│   ├── LPUART.c                  # blocking/non-blocking uart driver
+│   ├── LPUART.c                  # blocking/non-blocking lpuart driver
 │   └── SYS_CTR.c                 # microsecond-precision hardware delay driver
 ├── Manuals/                      # official nxp hardware documentation
 │   ├── IMX91RM.pdf               # i.mx91 applications processor reference manual
@@ -307,7 +307,7 @@ bypasses software loops by tapping directly into the 64-bit arm `CNTPCT_EL0` phy
 
 ### `LPUART.h` & `LPUART.c`
 
-hijacks u-boot's pre-configured baud rate to provide serial output. includes custom `uart_print_dec` for formatting integers, and a `uart_getchar_nonblocking` function to intercept `Ctrl+C` commands mid-execution without freezing the processor.
+hijacks u-boot's pre-configured baud rate to provide serial output. includes custom `uart_print_dec` for formatting integers, and a `lpuart_getchar_nonblocking` function to intercept `Ctrl+C` commands mid-execution without freezing the processor.
 
 ---
 

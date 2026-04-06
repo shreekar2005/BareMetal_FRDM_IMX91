@@ -30,7 +30,7 @@ void input_thread(void* arg) {
     while(!os_halt) {
         char c;
         while(1) {
-            c = uart_getchar_nonblocking(LPUART1);
+            c = lpuart_getchar_nonblocking(LPUART1);
             if (c != '\0') break;
         }
         
@@ -65,7 +65,7 @@ void input_thread(void* arg) {
                 else if (my_strcmp(cmd, "clear") == 0) {
                     clear_terminal();
                 }
-                else if (my_strcmp(cmd, "reboot") == 0) {
+                else if (my_strcmp(cmd, "reboot") == 0 || my_strcmp(cmd, "restart") == 0 || my_strcmp(cmd, "reset") == 0) {
                     system_reboot();
                 }
                 else if (my_strcmp(cmd, "shutdown") == 0 || my_strcmp(cmd, "poweroff") == 0) {

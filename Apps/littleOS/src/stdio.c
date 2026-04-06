@@ -4,7 +4,7 @@
 
 static void printCharStr(const char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
-        uart_putchar(LPUART1, str[i]);
+        lpuart_putchar(LPUART1, str[i]);
     }
 }
 
