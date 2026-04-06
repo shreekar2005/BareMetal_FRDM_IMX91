@@ -19,6 +19,7 @@ void system_reboot(void) {
     while(1) { __asm__ volatile("nop"); }
 }
 
+// NOT SHUTTING DOWN ACTUAL HARDWARE, JUST SIMULATING POWER-OFF BY HALTING THE SYSTEM AND LETTING THE USER KNOW
 void system_poweroff(void) {
     printf("\n[System] SENDING POWER-DOWN SIGNAL TO PMIC...\n");
     __asm__ volatile("msr daifset, #2"); 
@@ -35,7 +36,7 @@ void print_help(void){
     printf("\n[Help] Available Commands:\n");
     printf(" stat                 - View RTOS Task Manager\n");
     printf(" clear                - Clear the terminal screen\n");
-    printf(" reboot/restart/reset - Hardware reboot\n");
+    printf(" reboot/restart/reset - Hardware reboot (NOT SHUTTING DOWN HARDWARE!!!))\n");
     printf(" shutdown/poweroff    - Hardware poweroff\n");
     printf(" Ctrl+C               - To stop all threads\n");
     printf(" sched [rr|pri|edf]   - Change RTOS scheduler algorithm\n");
