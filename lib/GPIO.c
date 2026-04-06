@@ -21,25 +21,36 @@ void initGPIO(GPIO_TypeDef *gpio) {
 }
 
 void setPinMode(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode) {
+    /* Note: ANALOG and ALTERNATE_FUNCTION modes are intentionally ignored here.
+     * They must be configured using the IOMUXC via setPinMux().
+     */
+    if (pin > 31) return;
+    if (mode == INPUT_MODE)
+        gpio->PDDR &= ~(1 << pin); // Clear bit in Data Direction Register to set as input
+    else if (mode == OUTPUT_MODE)
+        gpio->PDDR |= (1 << pin); // Set bit in Data Direction Register to set as output
+}
+
+void digitalWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value) {
     if (pin > 31) return;
 
-    switch (mode) {
-        case INPUT_MODE:
-            gpio->PDDR &= ~(1 << pin); // Clear bit in Data Direction Register to set as input
-            break;
-            
-        case OUTPUT_MODE:
-            gpio->PDDR |= (1 << pin); // Set bit in Data Direction Register to set as output
-            break;
-            
-        case ANALOG_MODE:
-        case ALTERNATE_FUNCTION_MODE:
-            /** i.MX91 Specific Note:
-             * Setting a pin to Analog or an Alternate Function (AF) is handled 
-             * by the IOMUXC (I/O Multiplexer Controller), not the GPIO block itself.
-             * Example:
-             * IOMUXC->SW_MUX_CTL_PAD[PIN_INDEX] = AF_MUX_MODE;
-             */
-            break;
+    if (value == HIGH) {
+        /* Write 1 to Port Set Output Register (PSOR) to drive pin high.
+         * Writing 0 to other bits in PSOR has no effect. */
+        gpio->PSOR = (1 << pin);
+    } else {
+        /* Write 1 to Port Clear Output Register (PCOR) to drive pin low.
+         * Writing 0 to other bits in PCOR has no effect. */
+        gpio->PCOR = (1 << pin);
+    }
+}
+
+uint8_t digitalRead(GPIO_TypeDef *gpio, uint8_t pin) {
+    if (pin > 31) return LOW; // Bounds check
+
+    if (gpio->PDIR & (1 << pin)) {
+        return HIGH;
+    } else {
+        return LOW;
     }
 }

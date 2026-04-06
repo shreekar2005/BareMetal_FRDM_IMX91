@@ -3,6 +3,17 @@
 
 #include <stdint.h>
 
+#define LOW  0
+#define HIGH 1
+
+/**
+ * @brief Pin mode definitions
+ */
+typedef enum {
+    INPUT_MODE = 0,
+    OUTPUT_MODE
+} GPIO_PinMode;
+
 /**
  * @brief GPIO Register Structure based on i.MX91 Reference Manual
  */
@@ -46,18 +57,8 @@ typedef struct {
 #define GPIO4 ((GPIO_TypeDef *) GPIO4_BASE)
 
 /* ==========================================
- * GPIO FUNCTION PROTOTYPES & ENUMS
+ * GPIO FUNCTION PROTOTYPES
  * ========================================== */
-
-/**
- * @brief Pin mode definitions
- */
-typedef enum {
-    INPUT_MODE = 0,
-    OUTPUT_MODE,
-    ANALOG_MODE,
-    ALTERNATE_FUNCTION_MODE
-} GPIO_PinMode;
 
 /**
  * @brief Initializes the GPIO block and provides clock. (NOT FULLY IMPLEMENTED FOR i.MX91 - SEE COMMENTS)
@@ -69,8 +70,24 @@ void initGPIO(GPIO_TypeDef *gpio);
  * @brief Initializes GPIO and sets the pin mode. (ONLY INPUT OUTPUT MODE ARE SUPPORTED IN THIS FUNCTION - SEE COMMENTS)
  * @param gpio Pointer to the GPIO instance.
  * @param pin Pin number (0-31).
- * @param mode Target pin mode (INPUT, OUTPUT, ANALOG, AF).
+ * @param mode Target pin mode (INPUT or OUTPUT).
  */
 void setPinMode(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode);
+
+/**
+ * @brief Sets the output state of a specified GPIO pin.
+ * @param gpio Pointer to the GPIO instance.
+ * @param pin Pin number (0-31).
+ * @param value State to write (HIGH or LOW).
+ */
+void digitalWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value);
+
+/**
+ * @brief Reads the input state of a specified GPIO pin.
+ * @param gpio Pointer to the GPIO instance.
+ * @param pin Pin number (0-31).
+ * @return State of the pin (HIGH or LOW).
+ */
+uint8_t digitalRead(GPIO_TypeDef *gpio, uint8_t pin);
 
 #endif /* GPIO_H */
