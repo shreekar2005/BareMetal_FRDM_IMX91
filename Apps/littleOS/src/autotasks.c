@@ -23,7 +23,7 @@ TaskRegistry autotasks[6] = {
     {"echo", "Console Echo", echo_thread, &echo_thread_id},
     {"ledblink", "LED Blink", ledblink_thread, &ledblink_thread_id},
     {"print100X", "Print X's", print100X_thread, &print100X_thread_id},
-    {"aprint100A", "Atomic Print A'", aprint100A_thread, &aprint100A_thread_id},
+    {"aprint100A", "AtomicPrint A's", aprint100A_thread, &aprint100A_thread_id},
 };
 const int num_autotasks = 6;
 
@@ -33,5 +33,5 @@ void init_all_tasks(void) {
     echo_thread_id = os_create_thread("Console Echo", echo_thread, NULL);
     ledblink_thread_id = os_create_thread("LED Blink", ledblink_thread, NULL);
     print100X_thread_id = os_create_thread("Print X's", print100X_thread, NULL);
-    aprint100A_thread_id = os_create_thread("Atomic Print A'", aprint100A_thread, NULL);
+    aprint100A_thread_id = os_create_thread("AtomicPrint A's", aprint100A_thread, NULL);
 }
