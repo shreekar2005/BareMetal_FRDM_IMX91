@@ -36,8 +36,8 @@ void print_help(void){
     printf("\n[Help] Available Commands:\n");
     printf(" stat                 - View RTOS Task Manager\n");
     printf(" clear                - Clear the terminal screen\n");
-    printf(" reboot/restart/reset - Hardware reboot (NOT SHUTTING DOWN HARDWARE!!!))\n");
-    printf(" shutdown/poweroff    - Hardware poweroff\n");
+    printf(" reboot/restart/reset - Hardware reboot\n");
+    printf(" shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
     printf(" Ctrl+C               - To stop all threads\n");
     printf(" sched [rr|pri|edf]   - Change RTOS scheduler algorithm\n");
     printf("\nDynamic Tasks (Auto-Loaded from tasks/):\n");

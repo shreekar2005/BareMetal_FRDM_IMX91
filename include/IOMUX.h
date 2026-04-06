@@ -3,9 +3,6 @@
 
 #include <stdint.h>
 
-/* ==========================================
- * IOMUXC BASE ADDRESS & REGISTERS
- * ========================================== */
 #define IOMUXC_BASE 0x443C0000
 
 /* Pad Mux Registers for P11 Expansion Header Pins */
@@ -16,17 +13,12 @@
 #define DAISY_REG_LPUART3_RX (IOMUXC_BASE + 0x0470)
 #define DAISY_REG_LPUART4_RX (IOMUXC_BASE + 0x047C)
 
-/* ==========================================
- * MUX MODES & DAISY VALUES
- * ========================================== */
 #define AF_MODE_LPUART3  1 
 #define AF_MODE_LPUART4  6
+
 #define DAISY_VALUE_IO15_LPUART3 0
 #define DAISY_VALUE_IO15_LPUART4 0
 
-/* ==========================================
- * FUNCTION PROTOTYPES
- * ========================================== */
 
 /**
  * @brief Routes the physical pad to a specific peripheral via IOMUXC.

@@ -56,9 +56,6 @@ typedef struct {
 #define GPIO3 ((GPIO_TypeDef *) GPIO3_BASE)
 #define GPIO4 ((GPIO_TypeDef *) GPIO4_BASE)
 
-/* ==========================================
- * GPIO FUNCTION PROTOTYPES
- * ========================================== */
 
 /**
  * @brief Initializes the GPIO block and provides clock. (NOT FULLY IMPLEMENTED FOR i.MX91 - SEE COMMENTS)

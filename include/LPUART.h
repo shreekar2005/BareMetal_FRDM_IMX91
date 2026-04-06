@@ -35,9 +35,6 @@ typedef struct {
     volatile uint32_t TDBR[256];   /* 0x400 - 0x7FC Transmit Data Burst (TDBR0 - TDBR255) */
 } LPUART_TypeDef;
 
-/* ==========================================
- * BASE ADDRESSES & PERIPHERAL POINTERS
- * ========================================== */
 
 #define LPUART1_BASE 0x44380000
 #define LPUART2_BASE 0x44390000
@@ -58,14 +55,11 @@ typedef struct {
 #define LPUART8 ((LPUART_TypeDef *) LPUART8_BASE)
 
 /* Bit Definitions */
-#define LPUART_STAT_TDRE (1 << 23)
-#define LPUART_STAT_RDRF (1 << 21)
+#define LPUART_STAT_TDRE (1 << 23) /* Transmit Data Register Empty Flag */
+#define LPUART_STAT_RDRF (1 << 21) /* Receive Data Register Full Flag */
 #define LPUART_CTRL_TE   (1 << 19) /* Transmitter Enable */
 #define LPUART_CTRL_RE   (1 << 18) /* Receiver Enable */
 
-/* ==========================================
- * LPUART FUNCTION PROTOTYPES
- * ========================================== */
 
 /**
  * @brief Sends a single character over the specified LPUART.
