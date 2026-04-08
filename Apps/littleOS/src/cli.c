@@ -25,7 +25,7 @@ void input_thread(void* arg) {
     char cmd[128];
     int cmd_idx = 0;
     
-    printf("\n> ");
+    printdbg("\n> ");
 
     while(!os_halt) {
         char c;
@@ -39,7 +39,7 @@ void input_thread(void* arg) {
             for (int i = 0; i < num_autotasks; i++) {
                 os_kill_thread(*(autotasks[i].id_ptr));
             }
-            printf("^C\n[System] All active background tasks forcefully killed.\n> ");
+            printdbg("^C\n[System] All active background tasks forcefully killed.\n> ");
             cmd_idx = 0;
             continue;
         }
@@ -47,7 +47,7 @@ void input_thread(void* arg) {
         if (c == ASCII_BACKSPACE || c == ASCII_DEL) {
             if (cmd_idx > 0) {
                 cmd_idx--;
-                printf("\b \b");
+                printdbg("\b \b");
             }
             continue;
         }
@@ -75,7 +75,7 @@ void input_thread(void* arg) {
                     if (my_strcmp(cmd, "sched rr") == 0) os_set_scheduling_algo(SCHED_RR);
                     else if (my_strcmp(cmd, "sched pri") == 0) os_set_scheduling_algo(SCHED_PRIORITY);
                     else if (my_strcmp(cmd, "sched edf") == 0) os_set_scheduling_algo(SCHED_EDF);
-                    printf("\n[System] Scheduler algorithm changed.");
+                    printdbg("\n[System] Scheduler algorithm changed.");
                 }
                 else {
                     int target_id = -1;
@@ -116,20 +116,20 @@ void input_thread(void* arg) {
                         os_set_thread_rtos(target_id, pri, d, per, n);
                         os_thread_start(target_id); 
                         
-                        printf("\n[System] Task dispatched (n:%d per:%dms pri:%d d:%dms).", n, per, pri, d);
+                        printdbg("\n[System] Task dispatched (n:%d per:%dms pri:%d d:%dms).", n, per, pri, d);
                     } else {
-                        printf("\n[System] Unknown command. Type 'help' for options.");
+                        printdbg("\n[System] Unknown command. Type 'help' for options.");
                     }
                 }
             }
             
             cmd_idx = 0;
-            if (!os_halt) printf("\n> ");
+            if (!os_halt) printdbg("\n> ");
         } 
         else if (c >= 32 && c <= 126) {
             if (cmd_idx < 127) {
                 cmd[cmd_idx++] = c;
-                printf("%c", c);
+                printdbg("%c", c);
             }
         }
     }

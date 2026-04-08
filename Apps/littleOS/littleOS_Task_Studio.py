@@ -140,12 +140,12 @@ class LittleOSTaskStudio:
 #include "include/stdio.h"
 
 void {task_name}_thread(void* arg) {{
-    printf("\\r\\n[{task_name.upper()}] Task started!\\r\\n");
+    printdbg("\\r\\n[{task_name.upper()}] Task started!\\r\\n");
     
     // TODO: Add your logic here
     os_sleep_ms(500); 
     
-    printf("\\r\\n[{task_name.upper()}] Task finished!\\r\\n");
+    printdbg("\\r\\n[{task_name.upper()}] Task finished!\\r\\n");
 }}
 """
         with open(filepath, "w") as f:

@@ -5,7 +5,7 @@
 
 void print100o_thread(void* arg) {
     for(int i = 0; i < 100; i++) {
-        printf("o");
+        printdbg("o");
         os_sleep_ms(50);
     }
 }

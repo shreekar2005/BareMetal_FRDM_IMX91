@@ -145,7 +145,7 @@ void os_join_thread(int thread_id) {
     if (thread_id < 0 || thread_id >= num_threads) return;
     if (thread_id == current_thread) return; 
     if (!scheduling_enabled) {
-        printf("\n[FATAL] os_join_thread called inside atomic block! Deadlock avoided.\n");
+        printdbg("\n[FATAL] os_join_thread called inside atomic block! Deadlock avoided.\n");
         return;
     }
     while (threads[thread_id].active) {

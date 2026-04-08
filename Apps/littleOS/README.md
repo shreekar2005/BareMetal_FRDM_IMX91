@@ -12,7 +12,7 @@ the os uses the arm generic timer to time-slice threads every 20ms, supports tru
 * **atomic control**: threads can call `os_stop_scheduling()` to block hardware timer preemptions and own the cpu. the os protects itself by auto-downgrading sleep requests to busy-waits during atomic blocks.
 * **rtos task manager**: real-time profiling of thread states, completion targets, and turnaround times via the `stat` command.
 * **hardware power control**: true hard reboot using the lpwdog1 watchdog timer and physical poweroff via the snvs block.
-* **custom stdio**: full `printf` implementation over lpuart1 using gcc built-in variable arguments (no stdlib required). I have intentionally kept printf non-atomic, so we can feel preemption (e.g., thread changed when printing was happening).
+* **custom stdio**: full `printdbg` implementation over lpuart1 using gcc built-in variable arguments (no stdlib required). I have intentionally kept printdbg non-atomic, so we can feel preemption (e.g., thread changed when printing was happening).
 * **crash decoder**: catches synchronous exceptions, unhandled irqs, and data aborts, printing the exact faulting memory addresses.
 
 ## available cli commands
@@ -102,9 +102,9 @@ create a new `.c` file inside the `tasks/` directory. the name of the file will 
 
 // the function name MUST be the filename + "_thread"
 void mycmd_thread(void* arg) {
-    printf("\r\n[MYCMD] doing work...");
+    printdbg("\r\n[MYCMD] doing work...");
     os_sleep_ms(500); // use os_sleep_ms to yield the cpu!
-    printf("\r\n[MYCMD] finished!");
+    printdbg("\r\n[MYCMD] finished!");
 }
 ```
 *note: the `// Task_Name :` comment on the very first line is required. the python script reads this to name your task in the `stat` menu!*

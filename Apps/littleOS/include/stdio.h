@@ -10,7 +10,7 @@ typedef __builtin_va_list va_list;
 #define va_arg(v, l)   __builtin_va_arg(v, l)
 
 /**
- * @brief custom printf for lpuart1 serial port
+ * @brief custom printdbg for lpuart1 serial port
  * * this function formats a string and prints it to the serial console.
  * @details supported format specifiers:
  * %c - character
@@ -34,6 +34,16 @@ typedef __builtin_va_list va_list;
  * @param ... variable arguments
  * @return total number of characters printed
  */
-int printf(const char *format, ...);
+int printdbg(const char *format, ...);
+
+/**
+ * @brief custom printesp for ESP Wi-Fi port
+ * * this function formats a string and prints it to the ESP network module.
+ * @details supports the exact same format specifiers and flags as printdbg.
+ * * @param format the null-terminated format string
+ * @param ... variable arguments
+ * @return total number of characters printed
+ */
+int printesp(const char *format, ...);
 
 #endif

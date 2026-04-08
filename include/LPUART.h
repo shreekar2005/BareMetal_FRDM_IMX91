@@ -109,7 +109,7 @@ void lpuart_init(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_h
  * @param baudrate Target baud rate (e.g., 115200).
  * @param src_clock_hz Source clock frequency in Hz.
  */
-void initLPUART3(uint32_t baudrate, uint32_t src_clock_hz);
+void initLPUART1(uint32_t baudrate, uint32_t src_clock_hz);
 
 /**
  * @brief Initializes LPUART4 with the specified baud rate.

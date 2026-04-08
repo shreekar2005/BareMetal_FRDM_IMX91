@@ -5,5 +5,5 @@
 
 void echo_thread(void* arg) {
     // print_buffer is safely accessed via include/cli.h
-    printf("%s", (const char*)print_buffer);
+    printdbg("%s", (const char*)print_buffer);
 }

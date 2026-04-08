@@ -2,9 +2,9 @@
 #include "LPUART.h"
 #include <stdbool.h>
 
-static void printCharStr(const char *str) {
+static void printCharStr(LPUART_TypeDef *uart, const char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
-        lpuart_putchar(LPUART1, str[i]);
+        lpuart_putchar(uart, str[i]);
     }
 }
 
@@ -83,7 +83,7 @@ static void doubleToString(double d, char *buffer, int precision) {
     *ptr = '\0';
 }
 
-static void printHex(uintptr_t n, int digits) {
+static void printHex(LPUART_TypeDef *uart, uintptr_t n, int digits) {
     char buffer[32];
     ullToString(n, buffer, 16, 0, 1);
     
@@ -91,16 +91,13 @@ static void printHex(uintptr_t n, int digits) {
     while (buffer[len] != '\0') len++;
     
     for (int i = 0; i < digits - len; i++) {
-        printCharStr("0");
+        printCharStr(uart, "0");
     }
-    printCharStr(buffer);
+    printCharStr(uart, buffer);
 }
 
-int printf(const char *format, ...) {
+static int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args) {
     int chars_written = 0;
-    va_list args;
-    va_start(args, format);
-
     char buffer[128];
     char char_str[2] = {0, 0};
 
@@ -149,7 +146,7 @@ int printf(const char *format, ...) {
             switch (format[i]) {
                 case 'c': {
                     char_str[0] = (char)va_arg(args, int);
-                    printCharStr(char_str);
+                    printCharStr(uart, char_str);
                     chars_written++;
                     break;
                 }
@@ -161,11 +158,11 @@ int printf(const char *format, ...) {
                     chars_written += len + padding;
 
                     if (left_align) {
-                        printCharStr(str);
-                        for(int k=0; k<padding; k++) printCharStr(" ");
+                        printCharStr(uart, str);
+                        for(int k=0; k<padding; k++) printCharStr(uart, " ");
                     } else {
-                        for(int k=0; k<padding; k++) printCharStr(" ");
-                        printCharStr(str);
+                        for(int k=0; k<padding; k++) printCharStr(uart, " ");
+                        printCharStr(uart, str);
                     }
                     break;
                 }
@@ -176,15 +173,15 @@ int printf(const char *format, ...) {
                     chars_written += len + padding;
 
                     if (left_align) {
-                        printCharStr(buffer);
-                        for(int k=0; k<padding; k++) printCharStr(" ");
+                        printCharStr(uart, buffer);
+                        for(int k=0; k<padding; k++) printCharStr(uart, " ");
                     } else {
                         char padChar = (zero_pad && precision == -1) ? '0' : ' ';
                         for(int k=0; k<padding; k++) {
                             char p[2] = {padChar, 0};
-                            printCharStr(p);
+                            printCharStr(uart, p);
                         }
-                        printCharStr(buffer);
+                        printCharStr(uart, buffer);
                     }
                     break;
                 }
@@ -241,56 +238,73 @@ int printf(const char *format, ...) {
                     chars_written += width_pads + total_len;
 
                     if (left_align) {
-                        if (sign_char) { char_str[0] = sign_char; printCharStr(char_str); }
-                        if (prefix_len > 0) printCharStr(prefix);
+                        if (sign_char) { char_str[0] = sign_char; printCharStr(uart, char_str); }
+                        if (prefix_len > 0) printCharStr(uart, prefix);
                         if (precision_pads > 0) {
-                            for (int j = 0; j < precision_pads; j++) printCharStr("0");
+                            for (int j = 0; j < precision_pads; j++) printCharStr(uart, "0");
                         }
-                        printCharStr(buffer);
-                        for (int j = 0; j < width_pads; j++) printCharStr(" ");
+                        printCharStr(uart, buffer);
+                        for (int j = 0; j < width_pads; j++) printCharStr(uart, " ");
                     } else {
                         if (!zero_pad) {
-                            for (int j = 0; j < width_pads; j++) printCharStr(" ");
+                            for (int j = 0; j < width_pads; j++) printCharStr(uart, " ");
                         }
-                        if (sign_char) { char_str[0] = sign_char; printCharStr(char_str); }
-                        if (prefix_len > 0) printCharStr(prefix);
+                        if (sign_char) { char_str[0] = sign_char; printCharStr(uart, char_str); }
+                        if (prefix_len > 0) printCharStr(uart, prefix);
                         if (zero_pad) {
-                            for (int j = 0; j < width_pads; j++) printCharStr("0");
+                            for (int j = 0; j < width_pads; j++) printCharStr(uart, "0");
                         }
                         if (precision_pads > 0) {
-                            for (int j = 0; j < precision_pads; j++) printCharStr("0");
+                            for (int j = 0; j < precision_pads; j++) printCharStr(uart, "0");
                         }
-                        printCharStr(buffer);
+                        printCharStr(uart, buffer);
                     }
                     break;
                 }
                 case 'p': {
-                    printCharStr("0x");
+                    printCharStr(uart, "0x");
                     int hex_digits = sizeof(uintptr_t) * 2;
-                    printHex((uintptr_t)va_arg(args, void *), hex_digits);
+                    printHex(uart, (uintptr_t)va_arg(args, void *), hex_digits);
                     chars_written += 2 + hex_digits;
                     break;
                 }
                 case '%': {
-                    printCharStr("%"); 
+                    printCharStr(uart, "%"); 
                     chars_written++; 
                     break;
                 }
                 default: {
-                    printCharStr("%"); 
+                    printCharStr(uart, "%"); 
                     char_str[0] = format[i]; 
-                    printCharStr(char_str); 
+                    printCharStr(uart, char_str); 
                     chars_written += 2; 
                     break;
                 }
             }
         } else {
             char_str[0] = format[i]; 
-            printCharStr(char_str); 
+            printCharStr(uart, char_str); 
             chars_written++;
         }
     }
-    va_end(args);
+    
+    return chars_written;
+}
 
+int printdbg(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    // Print to your USB-C debug port (LPUART1)
+    int chars_written = vprint_uart(LPUART1, format, args); 
+    va_end(args);
+    return chars_written;
+}
+
+int printesp(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    // Print to your Wi-Fi module (LPUART4)
+    int chars_written = vprint_uart(LPUART4, format, args); 
+    va_end(args);
     return chars_written;
 }

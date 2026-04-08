@@ -57,8 +57,8 @@ void lpuart_init(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_h
     lpuart->CTRL |= (LPUART_CTRL_TE | LPUART_CTRL_RE);
 }
 
-void initLPUART3(uint32_t baudrate, uint32_t src_clock_hz) {
-    lpuart_init(LPUART3, baudrate, src_clock_hz);
+void initLPUART1(uint32_t baudrate, uint32_t src_clock_hz) {
+    lpuart_init(LPUART1, baudrate, src_clock_hz);
 }
 
 void initLPUART4(uint32_t baudrate, uint32_t src_clock_hz) {
