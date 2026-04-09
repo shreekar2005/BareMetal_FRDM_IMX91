@@ -59,6 +59,10 @@ typedef struct {
 #define LPUART_STAT_RDRF (1 << 21) /* Receive Data Register Full Flag */
 #define LPUART_CTRL_TE   (1 << 19) /* Transmitter Enable */
 #define LPUART_CTRL_RE   (1 << 18) /* Receiver Enable */
+#define LPUART_FIFO_TXFLUSH (1 << 15) /* Transmit FIFO Flush */
+#define LPUART_FIFO_RXFLUSH (1 << 14) /* Receive FIFO Flush */
+#define LPUART_FIFO_TXFE    (1 << 7)  /* Transmit FIFO Enable */
+#define LPUART_FIFO_RXFE    (1 << 3)  /* Receive FIFO Enable */
 
 
 /**

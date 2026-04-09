@@ -11,6 +11,9 @@
 #define ASCII_BACKSPACE 0x08
 #define ASCII_DEL 0x7F
 
+volatile char print_buffer[128];
+volatile bool os_halt = false;
+
 static int get_flag_int(const char* str, const char* flag, int default_val) {
     const char* pos = my_strstr(str, flag);
     if (pos) {
