@@ -7,6 +7,7 @@
 #include "../tasks/race.c"
 #include "../tasks/echo.c"
 #include "../tasks/ledblink.c"
+#include "../tasks/echoesp.c"
 #include "../tasks/print100X.c"
 #include "../tasks/aprint100A.c"
 
@@ -14,24 +15,27 @@ int print100o_thread_id = -1;
 int race_thread_id = -1;
 int echo_thread_id = -1;
 int ledblink_thread_id = -1;
+int echoesp_thread_id = -1;
 int print100X_thread_id = -1;
 int aprint100A_thread_id = -1;
 
-TaskRegistry autotasks[6] = {
+TaskRegistry autotasks[7] = {
     {"print100o", "Print o's", print100o_thread, &print100o_thread_id},
     {"race", "Race Condition", race_thread, &race_thread_id},
     {"echo", "Console Echo", echo_thread, &echo_thread_id},
     {"ledblink", "LED Blink", ledblink_thread, &ledblink_thread_id},
+    {"echoesp", "Echo on ESP8266", echoesp_thread, &echoesp_thread_id},
     {"print100X", "Print X's", print100X_thread, &print100X_thread_id},
     {"aprint100A", "AtomicPrint A's", aprint100A_thread, &aprint100A_thread_id},
 };
-const int num_autotasks = 6;
+const int num_autotasks = 7;
 
 void init_all_tasks(void) {
     print100o_thread_id = os_create_thread("Print o's", print100o_thread, NULL);
     race_thread_id = os_create_thread("Race Condition", race_thread, NULL);
     echo_thread_id = os_create_thread("Console Echo", echo_thread, NULL);
     ledblink_thread_id = os_create_thread("LED Blink", ledblink_thread, NULL);
+    echoesp_thread_id = os_create_thread("Echo on ESP8266", echoesp_thread, NULL);
     print100X_thread_id = os_create_thread("Print X's", print100X_thread, NULL);
     aprint100A_thread_id = os_create_thread("AtomicPrint A's", aprint100A_thread, NULL);
 }

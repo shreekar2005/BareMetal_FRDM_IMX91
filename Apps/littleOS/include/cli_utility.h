@@ -26,4 +26,10 @@ void print_stat(void);
  */
 void print_help(void);
 
+/**
+ * @brief the main command handler that matches user input to registered commands and executes them
+ * @param cmd the null-terminated user input string to parse and execute
+ */
+void handleCommand(const char* cmd);
+
 #endif

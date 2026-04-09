@@ -1,5 +1,4 @@
 #include "include/stdio.h"
-#include "LPUART.h"
 #include <stdbool.h>
 
 static void printCharStr(LPUART_TypeDef *uart, const char *str) {
@@ -96,7 +95,7 @@ static void printHex(LPUART_TypeDef *uart, uintptr_t n, int digits) {
     printCharStr(uart, buffer);
 }
 
-static int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args) {
+int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args) {
     int chars_written = 0;
     char buffer[128];
     char char_str[2] = {0, 0};
@@ -300,7 +299,7 @@ int printdbg(const char *format, ...) {
     return chars_written;
 }
 
-int printesp(const char *format, ...) {
+int printrawesp(const char *format, ...) {
     va_list args;
     va_start(args, format);
     // Print to your Wi-Fi module (LPUART4)

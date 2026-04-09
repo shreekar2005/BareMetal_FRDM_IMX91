@@ -12,24 +12,8 @@
 #include "include/autotasks.h"
 #include "include/esp8266.h"
 
-extern void os_timer_init(void);
-extern void os_start(void);
-
-/** @brief used to print fatal errors */
-void os_fatal_error(uint64_t esr, uint64_t elr, uint64_t far, uint64_t type) {
-    printdbg("\r\n\r\n=================================\r\n");
-    printdbg("!!! FATAL CPU EXCEPTION !!!\r\n");
-    if (type == 0) printdbg("Type: Synchronous Exception\r\n");
-    if (type == 1) printdbg("Type: Unhandled IRQ Trap\r\n");
-    if (type == 2) printdbg("Type: FIQ\r\n");
-    if (type == 3) printdbg("Type: SError (System Bus Fault)\r\n");
-
-    printdbg("ESR_EL2 (Reason) : 0x%016llX\r\n", esr);
-    printdbg("ELR_EL2 (Address) : 0x%016llX\r\n", elr);
-    printdbg("FAR_EL2 (Memory) : 0x%016llX\r\n", far);
-    printdbg("System Halted.\r\n=================================\r\n");
-    while(1) { __asm__ volatile("wfi"); }
-} 
+extern void os_timer_init(void); // defined in src/timer.c
+extern void os_start(void); // defined in src/multitasking.c
 
 /** @brief Initialize hardware components (keeping it universal to avoid conflicts) */
 void hardware_init(void) {
@@ -65,8 +49,8 @@ int main() {
     printdbg("=================================\r\n");
 
     // WI-FI INITIALIZATION
-    init_esp_access_point("littleOS_Network", "password123");
-    // init_esp_station("YourHomeWiFi", "YourPassword");
+    // init_esp_access_point("littleOS_Network", "password123");
+    init_esp_station("shree_A52", "aspirine");
     init_esp_tcp_server(8080); // Start listening on port 8080
 
     printdbg("[Boot] Initializing Scheduler...\r\n");
@@ -79,6 +63,11 @@ int main() {
     int cli_thread_id = os_create_thread("CLI", input_thread, NULL);
     os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
     os_thread_start(cli_thread_id); 
+
+    printdbg("[Boot] Starting WiFi Listener...\r\n");
+    int wifi_listener_thread_id = os_create_thread("WiFiListener", wifi_listener_forCLI_thread, NULL);
+    os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
+    os_thread_start(wifi_listener_thread_id);
 
     printdbg("[Boot] Initializing GIC...\r\n");
     gic_init(); 
