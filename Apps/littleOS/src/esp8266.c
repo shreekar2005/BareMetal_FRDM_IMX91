@@ -259,8 +259,7 @@ void wifi_listener_forCLI_thread(void *arg) {
                 buffer[idx] = '\0';
                 printdbg("[ESP8266-remote]: %s\r\n", buffer);
                 
-                if (my_strncmp(buffer, "exec", 4) == 0) {
-                    printdbg(">>%s", buffer);
+                if (my_strncmp(buffer, "exec ", 5) == 0) {
                     handleCommand(buffer + 5); 
                 }
             }
