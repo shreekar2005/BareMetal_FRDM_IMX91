@@ -16,7 +16,7 @@ void esp_thread(void* arg) {
     int ptr = 0;
     int i = 0;
 
-    // main command (ap-mode, sta-mode, tcp-server, echo)
+    // main command (ap-mode, sta-mode, tcp-server, echo, stat)
     while (print_buffer[ptr] == ' ') ptr++;
     while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 15) {
         cmd[i++] = print_buffer[ptr++];
@@ -77,12 +77,20 @@ void esp_thread(void* arg) {
     else if (my_strcmp(cmd, "echo") == 0) {
         // Send everything typed after "echo " over Wi-Fi
         if (print_buffer[remainder_ptr] != '\0') {
+            os_stop_scheduling(); // Lock scheduling
             printesp("%s\n", (const char*)&print_buffer[remainder_ptr]);
+            os_start_scheduling(); // Resume scheduling
             printdbg("[ESP] Echo sent: %s\r\n", &print_buffer[remainder_ptr]);
         } else {
             printdbg("[ESP] Error: Nothing to echo. Usage: esp echo <message>\r\n");
         }
     }
+    else if (my_strcmp(cmd, "status") == 0) {
+        os_stop_scheduling(); // Lock scheduling
+        print_esp_status();     // Call hardware driver to query module
+        os_start_scheduling(); // Resume scheduling
+    }
+
     else {
         // Print updated help menu
         printdbg("[ESP] Invalid argument.\r\n");
@@ -91,6 +99,7 @@ void esp_thread(void* arg) {
         printdbg("  sta-mode   <ssid_name> <ssid_password>  (Both required)\r\n");
         printdbg("  tcp-server [port_number]                (Default: 8080)\r\n");
         printdbg("  echo       <message>                    (Sends text to TCP clients)\r\n");
+        printdbg("  status                                  (Shows current mode, IP, MAC)\r\n");
     }
     
     printdbg("\n> ");

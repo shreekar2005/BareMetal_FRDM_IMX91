@@ -92,6 +92,45 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
     return success;
 }
 
+void print_esp_status(void) {
+    /* Basic Hardware Ping */
+    printrawesp("AT\r\n");
+    if (wait_for_esp_ok(3) == false) {
+        printdbg("[ESP8266] Failed to communicate. Is the module powered on?\r\n");
+        return;
+    }
+
+    /* Check Current Mode */
+    printdbg("\r\n[1] Operating Mode:\r\n");
+    printdbg("    (1 = Station/Client, 2 = Access Point, 3 = Both)\r\n");
+    printrawesp("AT+CWMODE?\r\n");
+    if (wait_for_esp_ok(3) == false) {
+        printdbg("[ESP8266] Failed to fetch mode.\r\n");
+    }
+
+    /* Check Connection to Router (Station Mode) */
+    printdbg("\r\n[2] Connected Router (If in Station Mode):\r\n");
+    printrawesp("AT+CWJAP?\r\n");
+    if (wait_for_esp_ok(5) == false) {
+        printdbg("[ESP8266] Failed to fetch router info.\r\n");
+    }
+
+    /* Check Hosted Network (Access Point Mode) */
+    printdbg("\r\n[3] Hosted Network (If in Access Point Mode):\r\n");
+    printrawesp("AT+CWSAP?\r\n");
+    if (wait_for_esp_ok(3) == false) {
+        printdbg("[ESP8266] Failed to fetch AP info.\r\n");
+    }
+
+    /* IP & MAC Addresses */
+    printdbg("\r\n[4] Network Addresses:\r\n");
+    printdbg("    (STAIP = Your IP on the router, APIP = Hosted IP)\r\n");
+    printrawesp("AT+CIFSR\r\n");
+    if (wait_for_esp_ok(3) == false) {
+        printdbg("[ESP8266] Failed to fetch IP addresses.\r\n");
+    }
+}
+
 void init_esp_access_point(const char* ssid, const char* password) {
     printdbg("\r\n[Wi-Fi] Initializing ESP8266 in Access Point (AP) Mode...\r\n");
 

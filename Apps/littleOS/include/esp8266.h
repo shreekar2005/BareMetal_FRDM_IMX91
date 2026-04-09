@@ -4,6 +4,12 @@
 #include "LPUART.h"
 #include "stdint.h"
 
+
+/**
+ * @brief Queries the ESP8266 for its current Wi-Fi mode, IP address, and TCP connections.
+ */
+void print_esp_status(void);
+
 /**
  * @brief Configures the ESP8266 to act as a TCP Server.
  * @param port The network port to listen on (e.g., 8080).
