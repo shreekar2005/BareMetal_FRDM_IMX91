@@ -105,7 +105,7 @@ char lpuart_getchar_nonblocking(LPUART_TypeDef *lpuart);
 void lpuart_init(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_hz);
 
 /**
- * @brief Initializes LPUART3 with the specified baud rate.
+ * @brief Initializes LPUART1 with the specified baud rate.
  * @param baudrate Target baud rate (e.g., 115200).
  * @param src_clock_hz Source clock frequency in Hz.
  */
