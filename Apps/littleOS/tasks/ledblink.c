@@ -10,4 +10,5 @@ void ledblink_thread(void* arg) {
     os_sleep_ms(300);        
     digitalWrite(GPIO2, 4, LOW); // GPIO2->PCOR = (1 << 4);
     printdbg("LED Blink Thread Ended!\n");
+    printdbg("\n> ");
 }

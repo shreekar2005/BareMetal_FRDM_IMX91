@@ -95,6 +95,190 @@ static void printHex(LPUART_TypeDef *uart, uintptr_t n, int digits) {
     printCharStr(uart, buffer);
 }
 
+/* Formats strings into a RAM buffer with full flag/padding support for ESP8266 */
+int vprint_esp8266(char *buf, const char *format, va_list args) {
+    char *ptr = buf;
+    char temp_buf[128]; // Local staging for numbers/floats
+
+    for (int i = 0; format[i] != '\0'; i++) {
+        if (format[i] == '%') {
+            i++;
+            int use_alternative_form = 0;
+            int zero_pad = 0;
+            int left_align = 0;
+            int width = 0;
+            int precision = -1;
+            
+            // Parse Flags
+            while(1) {
+                if (format[i] == '-') { left_align = 1; i++; }
+                else if (format[i] == '#') { use_alternative_form = 1; i++; }
+                else if (format[i] == '0') { zero_pad = 1; i++; }
+                else break;
+            }
+            
+            if (left_align) zero_pad = 0;
+
+            // Parse Width
+            while (format[i] >= '0' && format[i] <= '9') {
+                width = width * 10 + (format[i] - '0');
+                i++;
+            }
+            
+            // Parse Precision
+            if (format[i] == '.') {
+                i++; 
+                precision = 0;
+                while (format[i] >= '0' && format[i] <= '9') {
+                    precision = precision * 10 + (format[i] - '0');
+                    i++;
+                }
+            }
+
+            // Parse Length Modifiers
+            int is_long = 0, is_long_long = 0, is_short = 0, is_char = 0;
+            if (format[i] == 'l') { 
+                is_long = 1; i++; 
+                if (format[i] == 'l') { is_long_long = 1; is_long = 0; i++; }
+            } else if (format[i] == 'h') { 
+                is_short = 1; i++; 
+                if (format[i] == 'h') { is_char = 1; is_short = 0; i++; }
+            }
+
+            switch (format[i]) {
+                case 'c': {
+                    *ptr++ = (char)va_arg(args, int);
+                    break;
+                }
+                case 's': {
+                    const char *str = va_arg(args, char *);
+                    if (!str) str = "(null)";
+                    int len = 0; while (str[len]) len++;
+                    int padding = (width > len) ? (width - len) : 0;
+
+                    if (left_align) {
+                        while (*str) *ptr++ = *str++;
+                        for(int k=0; k<padding; k++) *ptr++ = ' ';
+                    } else {
+                        for(int k=0; k<padding; k++) *ptr++ = ' ';
+                        while (*str) *ptr++ = *str++;
+                    }
+                    break;
+                }
+                case 'f': {
+                    doubleToString(va_arg(args, double), temp_buf, precision);
+                    int len = 0; while(temp_buf[len]) len++;
+                    int padding = (width > len) ? (width - len) : 0;
+
+                    if (left_align) {
+                        char *t = temp_buf; while (*t) *ptr++ = *t++;
+                        for(int k=0; k<padding; k++) *ptr++ = ' ';
+                    } else {
+                        char padChar = (zero_pad && precision == -1) ? '0' : ' ';
+                        for(int k=0; k<padding; k++) *ptr++ = padChar;
+                        char *t = temp_buf; while (*t) *ptr++ = *t++;
+                    }
+                    break;
+                }
+                case 'd': case 'i': case 'u': case 'x': case 'X': case 'b': case 'o': {
+                    unsigned long long val;
+                    int base = 10;
+                    int uppercase = 0;
+                    char sign_char = 0;
+
+                    if (format[i] == 'd' || format[i] == 'i') {
+                        long long signed_val;
+                        if (is_long_long) signed_val = va_arg(args, long long);
+                        else if (is_long) signed_val = va_arg(args, long);
+                        else if (is_char) signed_val = (signed char)va_arg(args, int);
+                        else if (is_short) signed_val = (short)va_arg(args, int);
+                        else signed_val = va_arg(args, int);
+                        
+                        if (signed_val < 0) { sign_char = '-'; val = -signed_val; } 
+                        else { val = signed_val; }
+                    } else {
+                        if (is_long_long) val = va_arg(args, unsigned long long);
+                        else if (is_long) val = va_arg(args, unsigned long);
+                        else if (is_char) val = (unsigned char)va_arg(args, unsigned int);
+                        else if (is_short) val = (unsigned short)va_arg(args, unsigned int);
+                        else val = va_arg(args, unsigned int);
+                    }
+
+                    switch(format[i]) {
+                        case 'x': base = 16; break;
+                        case 'X': base = 16; uppercase = 1; break;
+                        case 'b': base = 2; break;
+                        case 'o': base = 8; break;
+                    }
+                    
+                    ullToString(val, temp_buf, base, 0, uppercase);
+
+                    const char* prefix = "";
+                    if (use_alternative_form && val != 0) {
+                        switch(format[i]) {
+                            case 'x': prefix = "0x"; break;
+                            case 'X': prefix = "0X"; break;
+                            case 'b': prefix = "0b"; break;
+                            case 'o': prefix = "0"; break;
+                        }
+                    }
+                    
+                    int num_len = 0; while(temp_buf[num_len]) num_len++;
+                    int prefix_len = 0; while(prefix[prefix_len]) prefix_len++;
+                    
+                    int precision_pads = (precision > num_len) ? (precision - num_len) : 0;
+                    int total_len = num_len + (sign_char ? 1 : 0) + prefix_len + precision_pads;
+                    int width_pads = (width > total_len) ? (width - total_len) : 0;
+
+                    if (left_align) {
+                        if (sign_char) *ptr++ = sign_char;
+                        while (*prefix) *ptr++ = *prefix++;
+                        for (int j = 0; j < precision_pads; j++) *ptr++ = '0';
+                        char *t = temp_buf; while (*t) *ptr++ = *t++;
+                        for (int j = 0; j < width_pads; j++) *ptr++ = ' ';
+                    } else {
+                        if (!zero_pad) {
+                            for (int j = 0; j < width_pads; j++) *ptr++ = ' ';
+                        }
+                        if (sign_char) *ptr++ = sign_char;
+                        while (*prefix) *ptr++ = *prefix++;
+                        if (zero_pad) {
+                            for (int j = 0; j < width_pads; j++) *ptr++ = '0';
+                        }
+                        for (int j = 0; j < precision_pads; j++) *ptr++ = '0';
+                        char *t = temp_buf; while (*t) *ptr++ = *t++;
+                    }
+                    break;
+                }
+                case 'p': {
+                    *ptr++ = '0'; *ptr++ = 'x';
+                    int hex_digits = sizeof(uintptr_t) * 2;
+                    ullToString((uintptr_t)va_arg(args, void *), temp_buf, 16, 0, 1);
+                    int len = 0; while (temp_buf[len] != '\0') len++;
+                    
+                    for (int j = 0; j < hex_digits - len; j++) *ptr++ = '0';
+                    char *t = temp_buf; while (*t) *ptr++ = *t++;
+                    break;
+                }
+                case '%': {
+                    *ptr++ = '%';
+                    break;
+                }
+                default: {
+                    *ptr++ = '%';
+                    *ptr++ = format[i];
+                    break;
+                }
+            }
+        } else {
+            *ptr++ = format[i];
+        }
+    }
+    
+    *ptr = '\0'; // Null-terminate the finalized string
+    return (int)(ptr - buf);
+}
+
 int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args) {
     int chars_written = 0;
     char buffer[128];

@@ -35,8 +35,6 @@ void hardware_init(void) {
     // Initialize LPUART4 for ESP8266 Wi-Fi Bridge
     initLPUART4(115200, 24000000);
 
-    
-    
 }
 
 /** @brief Main function, entrypoint after start.S */
@@ -48,10 +46,10 @@ int main() {
     printdbg("     littleOS RTOS Core          \r\n");
     printdbg("=================================\r\n");
 
-    // WI-FI INITIALIZATION
+    // WI-FI INITIALIZATION is done via "espinit" command in the CLI.
     // init_esp_access_point("littleOS_Network", "password123");
-    init_esp_station("shree_A52", "aspirine");
-    init_esp_tcp_server(8080); // Start listening on port 8080
+    // init_esp_station("shree_A52", "aspirine");
+    // init_esp_tcp_server(8080); // Start listening on port 8080
 
     printdbg("[Boot] Initializing Scheduler...\r\n");
     os_init_scheduler();

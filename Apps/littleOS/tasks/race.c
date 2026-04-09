@@ -29,4 +29,5 @@ void race_thread(void* arg) {
     
     int data_loss = 20000000 - shared_counter;
     printdbg("[RACE] Context switches caused a loss of %d increments!\r\n", data_loss);
+    printdbg("\n> ");
 }

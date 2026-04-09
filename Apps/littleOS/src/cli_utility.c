@@ -65,7 +65,7 @@ void handleCommand(const char* cmd) {
                 while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
                 if (cmd[i] == '"') i++; 
             } else {
-                while(cmd[i] != '\0' && cmd[i] != ' ' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
+                while(cmd[i] != '\0' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
             }
             print_buffer[buf_idx] = '\0';
             
@@ -76,9 +76,9 @@ void handleCommand(const char* cmd) {
             int d = get_flag_int(cmd, "-d ", -1);
             
             os_set_thread_rtos(target_id, pri, d, per, n);
+            // printdbg("\n[System] Dispatching Task (n:%d per:%dms pri:%d d:%dms).", n, per, pri, d);
             os_thread_start(target_id); 
             
-            printdbg("\n[System] Task dispatched (n:%d per:%dms pri:%d d:%dms).", n, per, pri, d);
         } else {
             printdbg("\n[System] Unknown command. Type 'help' for options.");
         }

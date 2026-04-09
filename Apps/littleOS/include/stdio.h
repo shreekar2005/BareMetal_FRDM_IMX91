@@ -22,6 +22,14 @@ typedef __builtin_va_list va_list;
 int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args);
 
 /**
+ * @brief custom for ESP8266 TCP payloads
+ * @param format the null-terminated format string
+ * @param ... variable arguments
+ * @return total number of characters printed
+ */
+int vprint_esp8266(char *buf, const char *fmt, va_list args);
+
+/**
  * @brief custom printdbg for lpuart1 serial port
  * * this function formats a string and prints it to the serial console.
  * @details supported format specifiers:
