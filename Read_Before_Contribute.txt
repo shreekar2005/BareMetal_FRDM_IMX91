@@ -1,0 +1,17 @@
+Naming in Baremetal_FRDM_IMX91 poject.
+Please follow these rules if you are willing to contribute to this project, then it will be easier to understand code.
+
+Note:
+=> camelCase: The first word is lowercase, and every following word starts with a capital letter (e.g., studentAge, calculateTotal).
+=> PascalCase: Every word starts with a capital letter (e.g., StudentRecord, CalculateSum).
+=> snake_case: All letters are lowercase, with words separated by underscores (e.g., user_name, max_value).
+=> SCREAMING_SNAKE_CASE: All uppercase letters with underscores (e.g., MAX_BUFFER_SIZE, PI_VALUE).
+
+1. Function naming:
+	1. Functions defined in /lib and /include must be named as <periferal>PascalCaseName(); e.g. void gpioPinINIT(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode);
+	2. Functions defined in littleOS/include and littleOS/src must be named as snake_case_name(); e.g. void os_start(void);
+
+2. Variable naming:
+	1. Macro and Constant name must be SCREAMING_SNAKE_CASE_NAME; e.g. #define LPUART_STAT_TDRE
+	2. Normal variable name must be camelCaseName; e.g. int strSize;
+	3. Ponter variable name must be snake_case_name; e.g. uintptr_t mux_reg_address;
