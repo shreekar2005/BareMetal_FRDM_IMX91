@@ -18,12 +18,12 @@ void input_thread(void* arg) {
     char cmd[128];
     int cmd_idx = 0;
     
-    printdbg("\n> ");
+    print_dbg("\n> ");
 
     while(!os_halt) {
         char c;
         while(1) {
-            c = lpuart_getchar_nonblocking(LPUART1);
+            c = lpuartGetCharNonBlocking(LPUART1);
             if (c != '\0') break;
         }
         
@@ -32,7 +32,7 @@ void input_thread(void* arg) {
             for (int i = 0; i < num_autotasks; i++) {
                 os_kill_thread(*(autotasks[i].id_ptr));
             }
-            printdbg("^C\n[System] All active background tasks forcefully killed.\n> ");
+            print_dbg("^C\n[System] All active background tasks forcefully killed.\n> ");
             cmd_idx = 0;
             continue;
         }
@@ -40,7 +40,7 @@ void input_thread(void* arg) {
         if (c == ASCII_BACKSPACE || c == ASCII_DEL) {
             if (cmd_idx > 0) {
                 cmd_idx--;
-                printdbg("\b \b");
+                print_dbg("\b \b");
             }
             continue;
         }
@@ -51,12 +51,12 @@ void input_thread(void* arg) {
             if (cmd_idx > 0) handleCommand(cmd);
             
             cmd_idx = 0;
-            if (!os_halt) printdbg("\n> ");
+            if (!os_halt) print_dbg("\n> ");
         } 
         else if (c >= 32 && c <= 126) {
             if (cmd_idx < 127) {
                 cmd[cmd_idx++] = c;
-                printdbg("%c", c);
+                print_dbg("%c", c);
             }
         }
     }

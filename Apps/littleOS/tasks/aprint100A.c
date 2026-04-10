@@ -6,9 +6,9 @@
 void aprint100A_thread(void* arg) {
     os_stop_scheduling();
     for(int i = 0; i < 100; i++) {
-        printdbg("A");
-        os_sleep_ms(50); // Auto-downgrades to busy-wait safely!
+        print_dbg("A");
+        thread_sleep(50); // Auto-downgrades to busy-wait safely!
     }
-    printdbg("\n> ");
+    print_dbg("\n> ");
     os_start_scheduling();
 }

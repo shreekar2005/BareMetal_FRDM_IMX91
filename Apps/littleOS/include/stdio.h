@@ -13,7 +13,7 @@ typedef __builtin_va_list va_list;
 /**
  * @brief custom vprint_uart for LPUART ports 
  * this function formats a string and prints it to the specified LPUART port.
- * Internally used by printdbg
+ * Internally used by print_dbg
  * @param uart pointer to the LPUART peripheral (e.g., LPUART1 for debug, LPUART4 for ESP8266)
  * @param format the null-terminated format string
  * @param args variable argument list
@@ -30,7 +30,7 @@ int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args);
 int vprint_esp8266(char *buf, const char *fmt, va_list args);
 
 /**
- * @brief custom printdbg for lpuart1 serial port
+ * @brief custom print_dbg for lpuart1 serial port
  * * this function formats a string and prints it to the serial console.
  * @details supported format specifiers:
  * %c - character
@@ -54,6 +54,6 @@ int vprint_esp8266(char *buf, const char *fmt, va_list args);
  * @param ... variable arguments
  * @return total number of characters printed
  */
-int printdbg(const char *format, ...);
+int print_dbg(const char *format, ...);
 
 #endif

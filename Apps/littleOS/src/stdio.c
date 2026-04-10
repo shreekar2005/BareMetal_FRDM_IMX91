@@ -3,7 +3,7 @@
 
 static void printCharStr(LPUART_TypeDef *uart, const char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
-        lpuart_putchar(uart, str[i]);
+        lpuartPutChar(uart, str[i]);
     }
 }
 
@@ -474,7 +474,7 @@ int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args) {
     return chars_written;
 }
 
-int printdbg(const char *format, ...) {
+int print_dbg(const char *format, ...) {
     va_list args;
     va_start(args, format);
     // Print to your USB-C debug port (LPUART1)
@@ -483,7 +483,7 @@ int printdbg(const char *format, ...) {
     return chars_written;
 }
 
-int printrawesp(const char *format, ...) {
+int send_to_esp(const char *format, ...) {
     va_list args;
     va_start(args, format);
     // Print to your Wi-Fi module (LPUART4)

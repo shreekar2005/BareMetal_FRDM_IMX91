@@ -8,6 +8,6 @@
  */
 int main() {
     /* Initialize your hardware here */
-    lpuart_print_string(LPUART1, "Hello from __APP_NAME__ bare-metal!\n");
+    lpuartPrintString(LPUART1, "Hello from __APP_NAME__ bare-metal!\n");
     return 0;
 }

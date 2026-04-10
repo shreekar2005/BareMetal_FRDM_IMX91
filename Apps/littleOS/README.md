@@ -6,14 +6,14 @@ the os uses the arm generic timer to time-slice threads every 20ms, supports tru
 
 ## features
 * **preemptive & dynamic scheduling**: swap between round-robin (rr), fixed priority (pri), and earliest deadline first (edf) algorithms on the fly.
-* **wi-fi & tcp networking**: full hardware abstraction layer for the esp8266 module. supports station and access point modes, tcp server hosting, and bidirectional over-the-air cli execution via `nc` (netcat). includes a custom `printesp` with variadic argument formatting tailored for network payloads.
-* **true rtos blocking**: threads can voluntarily yield the cpu using `os_sleep_ms()`, completely eliminating busy-wait cpu starvation.
+* **wi-fi & tcp networking**: full hardware abstraction layer for the esp8266 module. supports station and access point modes, tcp server hosting, and bidirectional over-the-air cli execution via `nc` (netcat). includes a custom `print_esp` with variadic argument formatting tailored for network payloads.
+* **true rtos blocking**: threads can voluntarily yield the cpu using `thread_sleep()`, completely eliminating busy-wait cpu starvation.
 * **modular task registry**: add new os commands simply by dropping a `.c` file into the `tasks/` directory. a python pre-build script automatically generates the c headers, task arrays, and links them to the cli parser.
 * **advanced job dispatch**: background worker threads can be configured with specific execution targets, repetition periods, priorities, and deadlines via terminal flags.
 * **atomic control**: threads can call `os_stop_scheduling()` to block hardware timer preemptions and own the cpu. the os protects itself by auto-downgrading sleep requests to busy-waits during atomic blocks. it also uses hard irq masking (`msr daifset, #2`) for critical hardware rx sections to prevent uart buffer overruns.
 * **rtos task manager**: real-time profiling of thread states, completion targets, and turnaround times via the `stat` command.
 * **hardware power control**: true hard reboot using the lpwdog1 watchdog timer and physical poweroff via the snvs block.
-* **custom stdio**: full `printdbg` implementation over lpuart1 using gcc built-in variable arguments (no stdlib required). I have intentionally kept printdbg non-atomic, so we can feel preemption (e.g., thread changed when printing was happening).
+* **custom stdio**: full `print_dbg` implementation over lpuart1 using gcc built-in variable arguments (no stdlib required). I have intentionally kept print_dbg non-atomic, so we can feel preemption (e.g., thread changed when printing was happening).
 * **crash decoder**: catches synchronous exceptions, unhandled irqs, and data aborts, printing the exact faulting memory addresses.
 
 ## available cli commands
@@ -81,8 +81,8 @@ syntax: `<taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadlin
 ## file details
 * **cli.c / cli.h**: runs the main terminal thread. handles backspaces/ctrl+c, and dynamically dispatches tasks by reading the auto-generated registry.
 * **build_tasks.py**: pre-build script that scans the `tasks/` directory and writes `src/autotasks.c` to link your custom tasks to the kernel.
-* **cli_utility.c / cli_utility.h**: hardware abstractions for the cli (watchdog, power control, rtos table generation). also houses the `wifi_listener_forCLI_thread` which safely captures raw network packets in an interrupt-masked critical section.
-* **esp8266.c / esp8266.h**: wi-fi network driver. implements at-command parsing, hardware uart overrun protection, and acts as a transparent network socket to pass remote `nc` (netcat) commands directly into the os task dispatcher. includes `printesp()` for wireless data transmission.
+* **cli_utility.c / cli_utility.h**: hardware abstractions for the cli (watchdog, power control, rtos table generation). also houses the `espTCPServerListener_thread` which safely captures raw network packets in an interrupt-masked critical section.
+* **esp8266.c / esp8266.h**: wi-fi network driver. implements at-command parsing, hardware uart overrun protection, and acts as a transparent network socket to pass remote `nc` (netcat) commands directly into the os task dispatcher. includes `print_esp()` for wireless data transmission.
 * **gic.c / gic.h**: driver for the arm generic interrupt controller.
 * **irq.c**: central interrupt dispatcher. reads the fired hardware id and jumps to the correct driver.
 * **main.c**: bootloader and kernel init. sets up threads, initializes hardware (including wi-fi config), and starts the scheduler.
@@ -109,9 +109,9 @@ create a new `.c` file inside the `tasks/` directory. the name of the file will 
 
 // the function name MUST be the filename + "_thread"
 void mycmd_thread(void* arg) {
-    printdbg("\r\n[MYCMD] doing work...");
-    os_sleep_ms(500); // use os_sleep_ms to yield the cpu!
-    printdbg("\r\n[MYCMD] finished!");
+    print_dbg("\r\n[MYCMD] doing work...");
+    thread_sleep(500); // use thread_sleep to yield the cpu!
+    print_dbg("\r\n[MYCMD] finished!");
 }
 ```
 *note: the `// Task_Name :` comment on the very first line is required. the python script reads this to name your task in the `stat` menu!*

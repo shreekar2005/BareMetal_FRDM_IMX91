@@ -42,7 +42,7 @@ void esp_thread(void* arg) {
     }
     arg2[i] = '\0';
 
-    if (my_strcmp(cmd, "ap-mode") == 0) {
+    if (strcmp(cmd, "ap-mode") == 0) {
         const char* ssid = (arg1[0] != '\0') ? arg1 : "littleOS";
         const char* pass = (arg2[0] != '\0') ? arg2 : "littleos";
         
@@ -50,42 +50,42 @@ void esp_thread(void* arg) {
         while(pass[pass_len] != '\0') pass_len++;
         
         if (pass_len < 8) {
-            printdbg("[ESP] Error: WPA2 passwords MUST be at least 8 characters long!\r\n");
+            print_dbg("[ESP] Error: WPA2 passwords MUST be at least 8 characters long!\r\n");
         } else {
             os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
-            init_esp_access_point(ssid, pass);
+            init_esp_as_access_point(ssid, pass);
             os_start_scheduling(); // Resume normal OS multitasking
         }
     }
 
-    else if (my_strcmp(cmd, "sta-mode") == 0) {
+    else if (strcmp(cmd, "sta-mode") == 0) {
         if (arg1[0] == '\0' || arg2[0] == '\0') {
-            printdbg("[ESP] Error: 'sta-mode' requires both <ssid_name> and <ssid_password>.\r\n");
+            print_dbg("[ESP] Error: 'sta-mode' requires both <ssid_name> and <ssid_password>.\r\n");
         } else {
             os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
-            init_esp_station(arg1, arg2);
+            init_esp_as_station(arg1, arg2);
             os_start_scheduling(); // Resume normal OS multitasking
         }
     } 
-    else if (my_strcmp(cmd, "tcp-server") == 0) {
+    else if (strcmp(cmd, "tcp-server") == 0) {
         // Use default port 8080 if arg1 is empty
-        int port = (arg1[0] != '\0') ? my_atoi(arg1) : 8080;
+        int port = (arg1[0] != '\0') ? atoi(arg1) : 8080;
         os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
-        init_esp_tcp_server(port);
+        start_esp_tcp_server(port);
         os_start_scheduling(); // Resume normal OS multitasking
     } 
-    else if (my_strcmp(cmd, "echo") == 0) {
+    else if (strcmp(cmd, "echo") == 0) {
         // Send everything typed after "echo " over Wi-Fi
         if (print_buffer[remainder_ptr] != '\0') {
             os_stop_scheduling(); // Lock scheduling
-            printesp("%s\n", (const char*)&print_buffer[remainder_ptr]);
+            print_esp("%s\n", (const char*)&print_buffer[remainder_ptr]);
             os_start_scheduling(); // Resume scheduling
-            printdbg("[ESP] Echo sent: %s\r\n", &print_buffer[remainder_ptr]);
+            print_dbg("[ESP] Echo sent: %s\r\n", &print_buffer[remainder_ptr]);
         } else {
-            printdbg("[ESP] Error: Nothing to echo. Usage: esp echo <message>\r\n");
+            print_dbg("[ESP] Error: Nothing to echo. Usage: esp echo <message>\r\n");
         }
     }
-    else if (my_strcmp(cmd, "status") == 0) {
+    else if (strcmp(cmd, "status") == 0) {
         os_stop_scheduling(); // Lock scheduling
         print_esp_status();     // Call hardware driver to query module
         os_start_scheduling(); // Resume scheduling
@@ -93,14 +93,14 @@ void esp_thread(void* arg) {
 
     else {
         // Print updated help menu
-        printdbg("[ESP] Invalid argument.\r\n");
-        printdbg("Usage:\r\n");
-        printdbg("  ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\r\n");
-        printdbg("  sta-mode   <ssid_name> <ssid_password>  (Both required)\r\n");
-        printdbg("  tcp-server [port_number]                (Default: 8080)\r\n");
-        printdbg("  echo       <message>                    (Sends text to TCP clients)\r\n");
-        printdbg("  status                                  (Shows current mode, IP, MAC)\r\n");
+        print_dbg("[ESP] Invalid argument.\r\n");
+        print_dbg("Usage:\r\n");
+        print_dbg("  ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\r\n");
+        print_dbg("  sta-mode   <ssid_name> <ssid_password>  (Both required)\r\n");
+        print_dbg("  tcp-server [port_number]                (Default: 8080)\r\n");
+        print_dbg("  echo       <message>                    (Sends text to TCP clients)\r\n");
+        print_dbg("  status                                  (Shows current mode, IP, MAC)\r\n");
     }
     
-    printdbg("\n> ");
+    print_dbg("\n> ");
 }

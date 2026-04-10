@@ -112,7 +112,7 @@ void os_kill_thread(int thread_id);
  * @brief blocks the current thread for a specific time, yielding the cpu to other threads
  * @param ms time to sleep in milliseconds
  */
-void os_sleep_ms(uint32_t ms);
+void thread_sleep(uint32_t ms);
 
 /**
  * @brief gives up remaining time slice immediately

@@ -12,7 +12,7 @@ void func_inc(void* arg) {
 }
 
 void race_thread(void* arg) {
-    printdbg("\r\n[RACE] Starting race condition test...\r\n");
+    print_dbg("\r\n[RACE] Starting race condition test...\r\n");
     shared_counter = 0; // Reset in case we run the command multiple times
     
     int t1 = os_create_thread("Race1", func_inc, NULL);
@@ -24,10 +24,10 @@ void race_thread(void* arg) {
     os_join_thread(t1);
     os_join_thread(t2);
     
-    printdbg("\r\n[RACE] Expected: 20000000");
-    printdbg("\r\n[RACE] Actual:   %d\r\n", shared_counter);
+    print_dbg("\r\n[RACE] Expected: 20000000");
+    print_dbg("\r\n[RACE] Actual:   %d\r\n", shared_counter);
     
     int data_loss = 20000000 - shared_counter;
-    printdbg("[RACE] Context switches caused a loss of %d increments!\r\n", data_loss);
-    printdbg("\n> ");
+    print_dbg("[RACE] Context switches caused a loss of %d increments!\r\n", data_loss);
+    print_dbg("\n> ");
 }

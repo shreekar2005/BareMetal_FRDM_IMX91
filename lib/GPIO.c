@@ -1,6 +1,10 @@
 #include "GPIO.h"
 
-void initGPIO(GPIO_TypeDef *gpio) {
+/**
+ * @brief Enables the clock for the GPIO block. (NOT FULLY IMPLEMENTED)
+ * @param gpio Pointer to the GPIO instance (e.g. GPIO1).
+ */
+static void gpioEnableClock(GPIO_TypeDef *gpio) {
     /** i.MX91 Specific Note: 
      * Actual clock enablement on the i.MX9x series usually requires interacting 
      * with the CCM (Clock Control Module) LPCG registers. 
@@ -17,21 +21,21 @@ void initGPIO(GPIO_TypeDef *gpio) {
         // Enable GPIO4 clock in CCM
     }
     
-    gpio->PDOR = 0x00000000; // Reset default outputs to 0
 }
 
-void setPinMode(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode) {
+void gpioPinINIT(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode) {
     /* Note: ANALOG and ALTERNATE_FUNCTION modes are intentionally ignored here.
-     * They must be configured using the IOMUXC via setPinMux().
+     * They must be configured using the IOMUXC via iomuxSetPadAltMode().
      */
     if (pin > 31) return;
+    gpioEnableClock(gpio);
     if (mode == INPUT_MODE)
         gpio->PDDR &= ~(1 << pin); // Clear bit in Data Direction Register to set as input
     else if (mode == OUTPUT_MODE)
         gpio->PDDR |= (1 << pin); // Set bit in Data Direction Register to set as output
 }
 
-void digitalWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value) {
+void gpioWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value) {
     if (pin > 31) return;
 
     if (value == HIGH) {
@@ -45,7 +49,7 @@ void digitalWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value) {
     }
 }
 
-uint8_t digitalRead(GPIO_TypeDef *gpio, uint8_t pin) {
+uint8_t gpioRead(GPIO_TypeDef *gpio, uint8_t pin) {
     if (pin > 31) return LOW; // Bounds check
 
     if (gpio->PDIR & (1 << pin)) {

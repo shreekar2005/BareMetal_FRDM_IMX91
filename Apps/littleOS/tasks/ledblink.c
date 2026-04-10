@@ -5,10 +5,10 @@
 #include "GPIO.h"
 
 void ledblink_thread(void* arg) {
-    printdbg("\nLED Blink Thread Started!\n");
-    digitalWrite(GPIO2, 4, HIGH); // GPIO2->PSOR = (1 << 4); 
-    os_sleep_ms(300);        
-    digitalWrite(GPIO2, 4, LOW); // GPIO2->PCOR = (1 << 4);
-    printdbg("LED Blink Thread Ended!\n");
-    printdbg("\n> ");
+    print_dbg("\nLED Blink Thread Started!\n");
+    gpioWrite(GPIO2, 4, HIGH); // GPIO2->PSOR = (1 << 4); 
+    thread_sleep(300);        
+    gpioWrite(GPIO2, 4, LOW); // GPIO2->PCOR = (1 << 4);
+    print_dbg("LED Blink Thread Ended!\n");
+    print_dbg("\n> ");
 }

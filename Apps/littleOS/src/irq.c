@@ -21,7 +21,7 @@ CPUState* irq_dispatcher(CPUState* current_state) {
         if (isr_table[iar] != 0) {
             next_state = isr_table[iar](current_state);
         } else {
-            printdbg("\r\n[Kernel] Warning: Unhandled IRQ fired!\r\n");
+            print_dbg("\r\n[Kernel] Warning: Unhandled IRQ fired!\r\n");
         }
         
         gic_end_of_interrupt(iar);

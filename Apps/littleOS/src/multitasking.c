@@ -8,7 +8,7 @@ int current_thread = -1;
 bool scheduling_enabled = true; 
 enum SchedAlgo current_algo = SCHED_RR; 
 
-extern uint32_t sys_ctr_get_freq(void); 
+extern uint32_t sysctrGetFreq(void); 
 
 void os_yield(void) {
     __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
@@ -18,20 +18,20 @@ void os_yield(void) {
 }
 
 // Don't forget to declare the delay function at the top of the file if it isn't there!
-extern void sys_ctr_delay_ms(uint32_t ms);
+extern void sysctrDelayms(uint32_t ms);
 
-void os_sleep_ms(uint32_t ms) {
+void thread_sleep(uint32_t ms) {
     if (current_thread < 0) return;
     
     // Safety net for atomic blocks
     if (!scheduling_enabled) {
-        sys_ctr_delay_ms(ms);
+        sysctrDelayms(ms);
         return;
     }
     
     uint64_t current_ticks;
     __asm__ volatile("mrs %0, cntpct_el0" : "=r" (current_ticks));
-    uint32_t freq = sys_ctr_get_freq();
+    uint32_t freq = sysctrGetFreq();
     uint64_t sleep_ticks = ((uint64_t)freq * ms) / 1000ULL;
     
     threads[current_thread].wakeup_tick = current_ticks + sleep_ticks;
@@ -48,7 +48,7 @@ void os_sleep_ms(uint32_t ms) {
 void os_thread_exit(void) {
     uint64_t end_ticks;
     __asm__ volatile("mrs %0, cntpct_el0" : "=r" (end_ticks));
-    uint32_t freq = sys_ctr_get_freq();
+    uint32_t freq = sysctrGetFreq();
     
     threads[current_thread].last_exec_time_ms = ((end_ticks - threads[current_thread].last_start_tick) * 1000ULL) / freq;
     
@@ -73,7 +73,7 @@ void os_init_scheduler(void) {
         threads[i].last_exec_time_ms = 0;
         threads[i].sleeping = false;
         threads[i].wakeup_tick = 0;
-        my_strcpy(threads[i].name, "EMPTY");
+        strcpy(threads[i].name, "EMPTY");
     }
 }
 
@@ -113,7 +113,7 @@ void os_thread_start(int thread_id) {
         
         uint64_t current_ticks;
         __asm__ volatile("mrs %0, cntpct_el0" : "=r" (current_ticks));
-        uint32_t freq = sys_ctr_get_freq();
+        uint32_t freq = sysctrGetFreq();
         
         if (t->deadline_offset_ms == -1) {
             t->absolute_deadline_tick = 0xFFFFFFFFFFFFFFFFULL;
@@ -145,11 +145,11 @@ void os_join_thread(int thread_id) {
     if (thread_id < 0 || thread_id >= num_threads) return;
     if (thread_id == current_thread) return; 
     if (!scheduling_enabled) {
-        printdbg("\n[FATAL] os_join_thread called inside atomic block! Deadlock avoided.\n");
+        print_dbg("\n[FATAL] os_join_thread called inside atomic block! Deadlock avoided.\n");
         return;
     }
     while (threads[thread_id].active) {
-        os_sleep_ms(1);
+        thread_sleep(1);
     }
 }
 
@@ -157,7 +157,7 @@ int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
     if (num_threads >= MAX_THREADS) return -1;
 
     Thread* t = &threads[num_threads];
-    my_strcpy(t->name, name);
+    strcpy(t->name, name);
     t->entrypoint = entrypoint;
     t->arg = arg;
     t->active = false; 

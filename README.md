@@ -307,7 +307,7 @@ bypasses software loops by tapping directly into the 64-bit arm `CNTPCT_EL0` phy
 
 ### `LPUART.h` & `LPUART.c`
 
-hijacks u-boot's pre-configured baud rate to provide serial output. includes custom `uart_print_dec` for formatting integers, and a `lpuart_getchar_nonblocking` function to intercept `Ctrl+C` commands mid-execution without freezing the processor.
+hijacks u-boot's pre-configured baud rate to provide serial output. includes custom `uart_print_dec` for formatting integers, and a `lpuartGetCharNonBlocking` function to intercept `Ctrl+C` commands mid-execution without freezing the processor.
 
 ---
 

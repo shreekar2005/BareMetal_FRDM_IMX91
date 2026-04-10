@@ -58,18 +58,12 @@ typedef struct {
 
 
 /**
- * @brief Initializes the GPIO block and provides clock. (NOT FULLY IMPLEMENTED FOR i.MX91 - SEE COMMENTS)
- * @param gpio Pointer to the GPIO instance (e.g., GPIO1).
- */
-void initGPIO(GPIO_TypeDef *gpio);
-
-/**
  * @brief Initializes GPIO and sets the pin mode. (ONLY INPUT OUTPUT MODE ARE SUPPORTED IN THIS FUNCTION - SEE COMMENTS)
  * @param gpio Pointer to the GPIO instance.
  * @param pin Pin number (0-31).
  * @param mode Target pin mode (INPUT or OUTPUT).
  */
-void setPinMode(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode);
+void gpioPinINIT(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode);
 
 /**
  * @brief Sets the output state of a specified GPIO pin.
@@ -77,7 +71,7 @@ void setPinMode(GPIO_TypeDef *gpio, uint8_t pin, GPIO_PinMode mode);
  * @param pin Pin number (0-31).
  * @param value State to write (HIGH or LOW).
  */
-void digitalWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value);
+void gpioWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value);
 
 /**
  * @brief Reads the input state of a specified GPIO pin.
@@ -85,6 +79,6 @@ void digitalWrite(GPIO_TypeDef *gpio, uint8_t pin, uint8_t value);
  * @param pin Pin number (0-31).
  * @return State of the pin (HIGH or LOW).
  */
-uint8_t digitalRead(GPIO_TypeDef *gpio, uint8_t pin);
+uint8_t gpioRead(GPIO_TypeDef *gpio, uint8_t pin);
 
 #endif /* GPIO_H */

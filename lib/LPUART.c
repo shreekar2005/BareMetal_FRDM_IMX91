@@ -1,6 +1,6 @@
 #include "LPUART.h"
 
-void lpuart_putchar(LPUART_TypeDef *lpuart, char c) {
+void lpuartPutChar(LPUART_TypeDef *lpuart, char c) {
     /* Automatically inject a carriage return before a newline */
     if (c == '\n') {
         while (!(lpuart->STAT & LPUART_STAT_TDRE)); 
@@ -12,34 +12,34 @@ void lpuart_putchar(LPUART_TypeDef *lpuart, char c) {
     lpuart->DATA = c;
 }
 
-void lpuart_print_string(LPUART_TypeDef *lpuart, const char *str) {
+void lpuartPrintString(LPUART_TypeDef *lpuart, const char *str) {
     while (*str) {
-        lpuart_putchar(lpuart, *str++);
+        lpuartPutChar(lpuart, *str++);
     }
 }
 
-void lpuart_print_hex(LPUART_TypeDef *lpuart, uint32_t val) {
-    lpuart_print_string(lpuart, "0x");
+void lpuartPrintHex(LPUART_TypeDef *lpuart, uint32_t val) {
+    lpuartPrintString(lpuart, "0x");
     for (int i = 28; i >= 0; i -= 4) {
         uint8_t nibble = (val >> i) & 0xF;
-        if (nibble < 10) lpuart_putchar(lpuart, '0' + nibble);
-        else lpuart_putchar(lpuart, 'A' + (nibble - 10));
+        if (nibble < 10) lpuartPutChar(lpuart, '0' + nibble);
+        else lpuartPutChar(lpuart, 'A' + (nibble - 10));
     }
 }
 
-char lpuart_getchar_blocking(LPUART_TypeDef *lpuart) {
+char lpuartGetCharBlocking(LPUART_TypeDef *lpuart) {
     while (!(lpuart->STAT & LPUART_STAT_RDRF)); 
     return (char)(lpuart->DATA & 0xFF);
 }
 
-char lpuart_getchar_nonblocking(LPUART_TypeDef *lpuart) {
+char lpuartGetCharNonBlocking(LPUART_TypeDef *lpuart) {
     if (lpuart->STAT & LPUART_STAT_RDRF) {
         return (char)(lpuart->DATA & 0xFF);
     }
     return '\0'; 
 }
 
-void lpuart_init(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_hz) {
+void lpuartINIT(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_hz) {
     uint32_t sbr;
 
     /* Disable TX and RX before changing baud rate */
@@ -58,12 +58,4 @@ void lpuart_init(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_h
 
     /* Enable Transmitter and Receiver */
     lpuart->CTRL |= (LPUART_CTRL_TE | LPUART_CTRL_RE);
-}
-
-void initLPUART1(uint32_t baudrate, uint32_t src_clock_hz) {
-    lpuart_init(LPUART1, baudrate, src_clock_hz);
-}
-
-void initLPUART4(uint32_t baudrate, uint32_t src_clock_hz) {
-    lpuart_init(LPUART4, baudrate, src_clock_hz);
 }

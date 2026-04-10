@@ -9,7 +9,7 @@ extern void vector_table(void);
 extern void register_irq(uint32_t intid, CPUState* (*handler)(CPUState*));
 
 CPUState* timer_handler(CPUState* current_state) {
-    uint32_t freq = sys_ctr_get_freq();
+    uint32_t freq = sysctrGetFreq();
     uint32_t ticks_for_20ms = freq / (1000 / SCHEDULER_TICK_MS);
     
     __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_20ms));
@@ -18,6 +18,9 @@ CPUState* timer_handler(CPUState* current_state) {
     return schedule_tick(current_state);
 }
 
+/**
+ * @brief Initializes the hardware timer to generate periodic interrupts for the RTOS scheduler.
+ */
 void os_timer_init(void) {
     register_irq(30, timer_handler);
     gic_enable_interrupt(30);
@@ -29,7 +32,7 @@ void os_timer_init(void) {
     hcr |= (1 << 4) | (1 << 3); 
     __asm__ volatile("msr hcr_el2, %0" : : "r" (hcr));
 
-    uint32_t freq = sys_ctr_get_freq();
+    uint32_t freq = sysctrGetFreq();
     uint32_t ticks_for_20ms = freq / (1000 / SCHEDULER_TICK_MS);
     __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_20ms));
     __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (1));

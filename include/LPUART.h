@@ -70,35 +70,35 @@ typedef struct {
  * @param lpuart Pointer to the LPUART instance (e.g., LPUART1).
  * @param c The character to send.
  */
-void lpuart_putchar(LPUART_TypeDef *lpuart, char c);
+void lpuartPutChar(LPUART_TypeDef *lpuart, char c);
 
 /**
  * @brief Sends a null-terminated string over the specified LPUART.
  * @param lpuart Pointer to the LPUART instance.
  * @param str Pointer to the string.
  */
-void lpuart_print_string(LPUART_TypeDef *lpuart, const char *str);
+void lpuartPrintString(LPUART_TypeDef *lpuart, const char *str);
 
 /**
  * @brief Prints a 32-bit integer in hexadecimal format.
  * @param lpuart Pointer to the LPUART instance.
  * @param val The 32-bit value to print.
  */
-void lpuart_print_hex(LPUART_TypeDef *lpuart, uint32_t val);
+void lpuartPrintHex(LPUART_TypeDef *lpuart, uint32_t val);
 
 /**
  * @brief Waits infinitely until a character is received. (Blocking)
  * @param lpuart Pointer to the LPUART instance.
  * @return The received character.
  */
-char lpuart_getchar_blocking(LPUART_TypeDef *lpuart);
+char lpuartGetCharBlocking(LPUART_TypeDef *lpuart);
 
 /**
  * @brief Checks for a received character and returns immediately. (Non-blocking)
  * @param lpuart Pointer to the LPUART instance.
  * @return The received character, or '\0' if no character is available.
  */
-char lpuart_getchar_nonblocking(LPUART_TypeDef *lpuart);
+char lpuartGetCharNonBlocking(LPUART_TypeDef *lpuart);
 
 /**
  * @brief Base LPUART Initialization. Configures baud rate and enables TX/RX.
@@ -106,20 +106,7 @@ char lpuart_getchar_nonblocking(LPUART_TypeDef *lpuart);
  * @param baudrate Target baud rate (e.g., 115200).
  * @param src_clock_hz Source clock frequency in Hz.
  */
-void lpuart_init(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_hz);
+void lpuartINIT(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_hz);
 
-/**
- * @brief Initializes LPUART1 with the specified baud rate.
- * @param baudrate Target baud rate (e.g., 115200).
- * @param src_clock_hz Source clock frequency in Hz.
- */
-void initLPUART1(uint32_t baudrate, uint32_t src_clock_hz);
-
-/**
- * @brief Initializes LPUART4 with the specified baud rate.
- * @param baudrate Target baud rate (e.g. 115200).
- * @param src_clock_hz Source clock frequency in Hz. (e.g. 24000000 for 24 MHz)
- */
-void initLPUART4(uint32_t baudrate, uint32_t src_clock_hz);
 
 #endif /* LPUART_H */
