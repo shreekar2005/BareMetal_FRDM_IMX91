@@ -115,7 +115,7 @@ void clear_terminal(void) {
 
 void print_help(void){
     print_dbg("\n[Help] Available Commands:\n");
-    print_dbg(" stat                 - View RTOS Task Manager\n");
+    print_dbg(" taskinfo             - View RTOS Task Manager\n");
     print_dbg(" clear                - Clear the terminal screen\n");
     print_dbg(" reboot/restart/reset - Hardware reboot\n");
     print_dbg(" shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
@@ -140,8 +140,10 @@ void print_taskinfo(void) {
     print_dbg("\n---------------------------------------------------------------------------------------");
     
     for (int i = 0; i < numThreads; i++) {
+        const char* state_str = get_thread_state_name(threads[i].currentState);
+        
         print_dbg("\n%2d | %-16s | %-7s | %3d | %6d | %6d | ", 
-            i, threads[i].name, threads[i].active ? "RUNNING" : "SLEEP",
+            i, threads[i].name, state_str,
             threads[i].priority, threads[i].deadlineOffset_ms, threads[i].period_ms);
         
         if (threads[i].executionsTarget == -1) {

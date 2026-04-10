@@ -177,8 +177,8 @@ void init_esp_as_station(const char* ssid, const char* password) {
         return;
     }
 
-    print_dbg("[Wi-Fi] Attempting connection... (20 sec timeout)\r\n");
     /* Connect to the Access Point: AT+CWJAP="ssid","pwd" */
+    print_dbg("[Wi-Fi] Attempting connection... (20 sec timeout)\r\n");
     send_to_esp("AT+CWJAP=\"%s\",\"%s\"\r\n", ssid, password);
     if (wait_for_esp_ok(20)==false) {
         print_dbg("[Wi-Fi] Failed to connect to Access Point.\r\n");

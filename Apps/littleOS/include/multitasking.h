@@ -7,6 +7,19 @@
 #define MAX_THREADS 16 /**< total max threads allowed in system */
 
 /**
+ * @brief process states based on the process state diagram
+ */
+enum ThreadState {
+    STATE_NEW,
+    STATE_READY,
+    STATE_RUN,
+    STATE_WAIT_BLOCK,
+    STATE_TERMINATE,
+    STATE_SUSPEND_READY,
+    STATE_SUSPEND_WAIT
+};
+
+/**
  * @brief available scheduling algorithms for the rtos
  */
 enum SchedAlgo {
@@ -32,6 +45,9 @@ typedef struct {
     
     char name[16]; /**< human readable name for stat command */
     
+    // state tracking
+    enum ThreadState currentState; /**< maps to process state diagram */
+
     // rtos parameters
     int priority; /**< 0 is highest priority, 255 is lowest */
     int deadlineOffset_ms; /**< relative time to finish job in milliseconds (-1 for infinite) */
@@ -146,5 +162,12 @@ CPUState* os_schedule(CPUState* current_state);
  * @brief kills thread gracefully when its function returns
  */
 void os_thread_exit(void);
+
+/**
+ * @brief returns a string representation of the thread state
+ * @param state the ThreadState enum value
+ * @return human readable string of the state
+ */
+const char* get_thread_state_name(enum ThreadState state);
 
 #endif

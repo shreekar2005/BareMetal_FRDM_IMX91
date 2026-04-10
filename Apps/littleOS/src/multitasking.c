@@ -9,6 +9,19 @@ int currentThread = -1;
 bool isSchedulingEnabled = true; 
 enum SchedAlgo currentSchedAlgo = SCHED_RR; 
 
+const char* get_thread_state_name(enum ThreadState state) {
+    switch (state) {
+        case STATE_NEW: return "NEW";
+        case STATE_READY: return "READY";
+        case STATE_RUN: return "RUN";
+        case STATE_WAIT_BLOCK: return "BLOCK";
+        case STATE_TERMINATE: return "TERM";
+        case STATE_SUSPEND_READY: return "S_READY";
+        case STATE_SUSPEND_WAIT: return "S_WAIT";
+        default: return "UNKNOWN";
+    }
+}
+
 void os_yield(void) {
     __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
     __asm__ volatile("nop");
@@ -33,6 +46,7 @@ void thread_sleep(uint32_t ms) {
     threads[currentThread].wakeupTick = current_ticks + sleep_ticks;
     threads[currentThread].sleeping = true;
     threads[currentThread].active = false; 
+    threads[currentThread].currentState = STATE_WAIT_BLOCK;
     
     os_yield(); 
     
@@ -49,6 +63,7 @@ void os_thread_exit(void) {
     threads[currentThread].lastExecTime_ms = ((end_ticks - threads[currentThread].lastStartTick) * 1000ULL) / freq;
     
     threads[currentThread].active = false; 
+    threads[currentThread].currentState = STATE_TERMINATE;
     os_yield(); 
     while(1) { __asm__ volatile("wfi"); }
 }
@@ -60,6 +75,7 @@ void os_init_scheduler(void) {
     currentSchedAlgo = SCHED_RR;
     for (int i = 0; i < MAX_THREADS; i++) {
         threads[i].active = false;
+        threads[i].currentState = STATE_NEW;
         threads[i].priority = 128; 
         threads[i].deadlineOffset_ms = -1; 
         threads[i].period_ms = 0; 
@@ -80,6 +96,11 @@ void os_start_scheduling(void) { isSchedulingEnabled = true; }
 void os_suspend_thread(int thread_id) {
     if (thread_id >= 0 && thread_id < numThreads) {
         threads[thread_id].active = false;
+        if (threads[thread_id].sleeping) {
+            threads[thread_id].currentState = STATE_SUSPEND_WAIT;
+        } else {
+            threads[thread_id].currentState = STATE_SUSPEND_READY;
+        }
     }
 }
 
@@ -90,6 +111,7 @@ void os_kill_thread(int thread_id) {
         threads[thread_id].sleeping = false;
         threads[thread_id].executionsTarget = 0;
         threads[thread_id].executionsDone = 0;
+        threads[thread_id].currentState = STATE_TERMINATE;
     }
 }
 
@@ -134,6 +156,7 @@ void os_thread_start(int thread_id) {
             t->executionsDone++;
         }
         t->active = true;
+        t->currentState = STATE_READY;
     }
 }
 
@@ -157,6 +180,7 @@ int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
     t->entrypoint = entrypoint;
     t->arg = arg;
     t->active = false; 
+    t->currentState = STATE_NEW;
     t->priority = 128;
     t->deadlineOffset_ms = -1;
     t->period_ms = 0;
@@ -170,6 +194,7 @@ int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
     os_thread_start(numThreads);
     t->active = false; 
     t->executionsDone = 0; 
+    t->currentState = STATE_NEW;
 
     numThreads++;
     return numThreads - 1; 
@@ -180,6 +205,9 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
 
     if (currentThread >= 0) {
         threads[currentThread].cpustate_ptr = current_cpustate_ptr;
+        if (threads[currentThread].currentState == STATE_RUN) {
+            threads[currentThread].currentState = STATE_READY;
+        }
     }
 
     uint64_t current_ticks;
@@ -192,6 +220,7 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
             if (current_ticks >= threads[i].wakeupTick) {
                 threads[i].sleeping = false;
                 threads[i].active = true;
+                threads[i].currentState = STATE_READY;
             }
         }
         // Revive dead periodic tasks (Wipes their stack to start fresh)
@@ -209,7 +238,10 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
         do {
             currentThread++;
             if (currentThread >= numThreads) currentThread = 0;
-            if (threads[currentThread].active) return threads[currentThread].cpustate_ptr;
+            if (threads[currentThread].active) {
+                threads[currentThread].currentState = STATE_RUN;
+                return threads[currentThread].cpustate_ptr;
+            }
         } while (currentThread != starting_thread);
     } 
     else if (currentSchedAlgo == SCHED_PRIORITY) {
@@ -223,6 +255,7 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
         }
         if (best_thread != -1) {
             currentThread = best_thread;
+            threads[currentThread].currentState = STATE_RUN;
             return threads[currentThread].cpustate_ptr;
         }
     }
@@ -239,6 +272,7 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
         }
         if (best_thread != -1) {
             currentThread = best_thread;
+            threads[currentThread].currentState = STATE_RUN;
             return threads[currentThread].cpustate_ptr;
         }
     }
