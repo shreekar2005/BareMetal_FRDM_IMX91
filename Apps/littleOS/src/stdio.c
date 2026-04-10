@@ -1,5 +1,6 @@
-#include "include/stdio.h"
 #include <stdbool.h>
+#include "SYS_CTR.h"
+#include "include/stdio.h"
 
 static void printCharStr(LPUART_TypeDef *uart, const char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
@@ -490,4 +491,38 @@ int send_to_esp(const char *format, ...) {
     int chars_written = vprint_uart(LPUART4, format, args); 
     va_end(args);
     return chars_written;
+}
+
+int print_esp(const char *format, ...) {
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
+    
+    // format the string into our local staging buffer using the stdio helper
+    int len = vprint_esp8266(buffer, format, args);
+    va_end(args);
+    
+    if (len <= 0) return 0;
+
+    // calculate the exact wire length.
+    int wire_len = 0;
+    for (int i = 0; i < len; i++) {
+        if (buffer[i] == '\n') wire_len++; // account for lpuartPutChar injecting \r
+        wire_len++;
+    }
+
+    // send the CIPSEND command
+    send_to_esp("AT+CIPSEND=0,%d\r\n", wire_len);
+
+    // waiting for the ESP8266 to output the '>' prompt indicating it is ready
+    // 2-second hardware timeout
+    uint64_t targetClockTick = sysctrGetTicks() + (2 * sysctrGetFreq());
+    while (sysctrGetTicks() < targetClockTick) {
+        if (lpuartGetCharNonBlocking(LPUART4) == '>') {
+            break;
+        }
+    }
+    
+    send_to_esp("%s", buffer);
+    return len;
 }

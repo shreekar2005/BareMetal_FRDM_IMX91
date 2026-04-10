@@ -1,7 +1,8 @@
 // Task_Name : Race Condition
+
+#include <stddef.h>
 #include "include/multitasking.h"
 #include "include/stdio.h"
-#include <stddef.h>
 
 volatile int shared_counter = 0;
 

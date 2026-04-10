@@ -2,7 +2,7 @@
 .global os_start
 .extern irq_dispatcher
 .extern os_fatal_error
-.extern schedule_tick
+.extern os_schedule
 
 .section .text
 .align 11 
@@ -140,6 +140,6 @@ restore_context:
 
 os_start:
     mov x0, #0
-    bl schedule_tick
+    bl os_schedule
     mov sp, x0 
     b restore_context

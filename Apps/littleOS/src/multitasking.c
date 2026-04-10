@@ -1,14 +1,13 @@
+#include "SYS_CTR.h"
 #include "include/multitasking.h"
 #include "include/string.h"
 #include "include/stdio.h"
 
 Thread threads[MAX_THREADS];
-int num_threads = 0;
-int current_thread = -1;
-bool scheduling_enabled = true; 
-enum SchedAlgo current_algo = SCHED_RR; 
-
-extern uint32_t sysctrGetFreq(void); 
+int numThreads = 0;
+int currentThread = -1;
+bool isSchedulingEnabled = true; 
+enum SchedAlgo currentSchedAlgo = SCHED_RR; 
 
 void os_yield(void) {
     __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
@@ -17,15 +16,12 @@ void os_yield(void) {
     __asm__ volatile("nop");
 }
 
-// Don't forget to declare the delay function at the top of the file if it isn't there!
-extern void sysctrDelayms(uint32_t ms);
-
 void thread_sleep(uint32_t ms) {
-    if (current_thread < 0) return;
+    if (currentThread < 0) return;
     
     // Safety net for atomic blocks
-    if (!scheduling_enabled) {
-        sysctrDelayms(ms);
+    if (!isSchedulingEnabled) {
+        sysctrDelay_ms(ms);
         return;
     }
     
@@ -34,13 +30,13 @@ void thread_sleep(uint32_t ms) {
     uint32_t freq = sysctrGetFreq();
     uint64_t sleep_ticks = ((uint64_t)freq * ms) / 1000ULL;
     
-    threads[current_thread].wakeup_tick = current_ticks + sleep_ticks;
-    threads[current_thread].sleeping = true;
-    threads[current_thread].active = false; 
+    threads[currentThread].wakeupTick = current_ticks + sleep_ticks;
+    threads[currentThread].sleeping = true;
+    threads[currentThread].active = false; 
     
     os_yield(); 
     
-    while(threads[current_thread].sleeping) {
+    while(threads[currentThread].sleeping) {
         __asm__ volatile("nop");
     }
 }
@@ -50,80 +46,80 @@ void os_thread_exit(void) {
     __asm__ volatile("mrs %0, cntpct_el0" : "=r" (end_ticks));
     uint32_t freq = sysctrGetFreq();
     
-    threads[current_thread].last_exec_time_ms = ((end_ticks - threads[current_thread].last_start_tick) * 1000ULL) / freq;
+    threads[currentThread].lastExecTime_ms = ((end_ticks - threads[currentThread].lastStartTick) * 1000ULL) / freq;
     
-    threads[current_thread].active = false; 
+    threads[currentThread].active = false; 
     os_yield(); 
     while(1) { __asm__ volatile("wfi"); }
 }
 
 void os_init_scheduler(void) {
-    num_threads = 0;
-    current_thread = -1;
-    scheduling_enabled = true;
-    current_algo = SCHED_RR;
+    numThreads = 0;
+    currentThread = -1;
+    isSchedulingEnabled = true;
+    currentSchedAlgo = SCHED_RR;
     for (int i = 0; i < MAX_THREADS; i++) {
         threads[i].active = false;
         threads[i].priority = 128; 
-        threads[i].deadline_offset_ms = -1; 
+        threads[i].deadlineOffset_ms = -1; 
         threads[i].period_ms = 0; 
-        threads[i].executions_target = 0;
-        threads[i].executions_done = 0;
-        threads[i].last_start_tick = 0;
-        threads[i].last_exec_time_ms = 0;
+        threads[i].executionsTarget = 0;
+        threads[i].executionsDone = 0;
+        threads[i].lastStartTick = 0;
+        threads[i].lastExecTime_ms = 0;
         threads[i].sleeping = false;
-        threads[i].wakeup_tick = 0;
+        threads[i].wakeupTick = 0;
         strcpy(threads[i].name, "EMPTY");
     }
 }
 
-void os_set_scheduling_algo(enum SchedAlgo algo) { current_algo = algo; }
-void os_stop_scheduling(void) { scheduling_enabled = false; }
-void os_start_scheduling(void) { scheduling_enabled = true; }
+void os_set_scheduling_algo(enum SchedAlgo algo) { currentSchedAlgo = algo; }
+void os_stop_scheduling(void) { isSchedulingEnabled = false; }
+void os_start_scheduling(void) { isSchedulingEnabled = true; }
 
 void os_suspend_thread(int thread_id) {
-    if (thread_id >= 0 && thread_id < num_threads) {
+    if (thread_id >= 0 && thread_id < numThreads) {
         threads[thread_id].active = false;
     }
 }
 
 void os_kill_thread(int thread_id) {
-    if (thread_id >= 0 && thread_id < num_threads) {
+    if (thread_id >= 0 && thread_id < numThreads) {
         // Strip away all active states so the scheduler ignores it immediately
         threads[thread_id].active = false;
         threads[thread_id].sleeping = false;
-        threads[thread_id].executions_target = 0;
-        threads[thread_id].executions_done = 0;
+        threads[thread_id].executionsTarget = 0;
+        threads[thread_id].executionsDone = 0;
     }
 }
 
 void os_set_thread_rtos(int thread_id, int priority, int deadline_ms, uint32_t period_ms, int exec_target) {
-    if (thread_id >= 0 && thread_id < num_threads) {
+    if (thread_id >= 0 && thread_id < numThreads) {
         threads[thread_id].priority = priority;
-        threads[thread_id].deadline_offset_ms = deadline_ms;
+        threads[thread_id].deadlineOffset_ms = deadline_ms;
         threads[thread_id].period_ms = period_ms;
-        threads[thread_id].executions_target = exec_target;
-        threads[thread_id].executions_done = 0; 
+        threads[thread_id].executionsTarget = exec_target;
+        threads[thread_id].executionsDone = 0; 
     }
 }
 
 void os_thread_start(int thread_id) {
-    if (thread_id >= 0 && thread_id < num_threads) {
+    if (thread_id >= 0 && thread_id < numThreads) {
         Thread* t = &threads[thread_id];
         
         uint64_t current_ticks;
         __asm__ volatile("mrs %0, cntpct_el0" : "=r" (current_ticks));
         uint32_t freq = sysctrGetFreq();
         
-        if (t->deadline_offset_ms == -1) {
-            t->absolute_deadline_tick = 0xFFFFFFFFFFFFFFFFULL;
+        if (t->deadlineOffset_ms == -1) {
+            t->absoluteDeadlineTick = 0xFFFFFFFFFFFFFFFFULL;
         } else {
-            uint64_t deadline_ticks = ((uint64_t)freq * t->deadline_offset_ms) / 1000ULL;
-            t->absolute_deadline_tick = current_ticks + deadline_ticks;
+            uint64_t deadline_ticks = ((uint64_t)freq * t->deadlineOffset_ms) / 1000ULL;
+            t->absoluteDeadlineTick = current_ticks + deadline_ticks;
         }
 
         uint64_t period_ticks = ((uint64_t)freq * t->period_ms) / 1000ULL;
-        t->next_period_tick = current_ticks + period_ticks;
+        t->nextPeriodTick = current_ticks + period_ticks;
 
         if (!t->active) {
             t->cpustate_ptr = (CPUState*)(t->stack + sizeof(t->stack) - sizeof(CPUState));
@@ -134,17 +130,17 @@ void os_thread_start(int thread_id) {
             t->cpustate_ptr->cpsr = 0x009; 
             t->cpustate_ptr->sp = (uint64_t)t->cpustate_ptr;
             
-            t->last_start_tick = current_ticks;
-            t->executions_done++;
+            t->lastStartTick = current_ticks;
+            t->executionsDone++;
         }
         t->active = true;
     }
 }
 
 void os_join_thread(int thread_id) {
-    if (thread_id < 0 || thread_id >= num_threads) return;
-    if (thread_id == current_thread) return; 
-    if (!scheduling_enabled) {
+    if (thread_id < 0 || thread_id >= numThreads) return;
+    if (thread_id == currentThread) return; 
+    if (!isSchedulingEnabled) {
         print_dbg("\n[FATAL] os_join_thread called inside atomic block! Deadlock avoided.\n");
         return;
     }
@@ -154,96 +150,96 @@ void os_join_thread(int thread_id) {
 }
 
 int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
-    if (num_threads >= MAX_THREADS) return -1;
+    if (numThreads >= MAX_THREADS) return -1;
 
-    Thread* t = &threads[num_threads];
+    Thread* t = &threads[numThreads];
     strcpy(t->name, name);
     t->entrypoint = entrypoint;
     t->arg = arg;
     t->active = false; 
     t->priority = 128;
-    t->deadline_offset_ms = -1;
+    t->deadlineOffset_ms = -1;
     t->period_ms = 0;
-    t->executions_target = 0;
-    t->executions_done = 0;
-    t->last_start_tick = 0;
-    t->last_exec_time_ms = 0;
+    t->executionsTarget = 0;
+    t->executionsDone = 0;
+    t->lastStartTick = 0;
+    t->lastExecTime_ms = 0;
     t->sleeping = false;
-    t->wakeup_tick = 0;
+    t->wakeupTick = 0;
 
-    os_thread_start(num_threads);
+    os_thread_start(numThreads);
     t->active = false; 
-    t->executions_done = 0; 
+    t->executionsDone = 0; 
 
-    num_threads++;
-    return num_threads - 1; 
+    numThreads++;
+    return numThreads - 1; 
 }
 
-CPUState* schedule_tick(CPUState* current_cpustate_ptr) {
-    if (num_threads == 0 || !scheduling_enabled) return current_cpustate_ptr;
+CPUState* os_schedule(CPUState* current_cpustate_ptr) {
+    if (numThreads == 0 || !isSchedulingEnabled) return current_cpustate_ptr;
 
-    if (current_thread >= 0) {
-        threads[current_thread].cpustate_ptr = current_cpustate_ptr;
+    if (currentThread >= 0) {
+        threads[currentThread].cpustate_ptr = current_cpustate_ptr;
     }
 
     uint64_t current_ticks;
     __asm__ volatile("mrs %0, cntpct_el0" : "=r" (current_ticks));
     
     // The Wakeup & Revival Loop
-    for (int i = 0; i < num_threads; i++) {
+    for (int i = 0; i < numThreads; i++) {
         // Wake up sleeping threads (Without wiping their stack)
         if (threads[i].sleeping) {
-            if (current_ticks >= threads[i].wakeup_tick) {
+            if (current_ticks >= threads[i].wakeupTick) {
                 threads[i].sleeping = false;
                 threads[i].active = true;
             }
         }
         // Revive dead periodic tasks (Wipes their stack to start fresh)
-        else if (!threads[i].active && i != current_thread) {
-            if (threads[i].executions_target == -1 || threads[i].executions_done < threads[i].executions_target) {
-                if (current_ticks >= threads[i].next_period_tick) {
+        else if (!threads[i].active && i != currentThread) {
+            if (threads[i].executionsTarget == -1 || threads[i].executionsDone < threads[i].executionsTarget) {
+                if (current_ticks >= threads[i].nextPeriodTick) {
                     os_thread_start(i); 
                 }
             }
         }
     }
 
-    if (current_algo == SCHED_RR) {
-        int starting_thread = current_thread;
+    if (currentSchedAlgo == SCHED_RR) {
+        int starting_thread = currentThread;
         do {
-            current_thread++;
-            if (current_thread >= num_threads) current_thread = 0;
-            if (threads[current_thread].active) return threads[current_thread].cpustate_ptr;
-        } while (current_thread != starting_thread);
+            currentThread++;
+            if (currentThread >= numThreads) currentThread = 0;
+            if (threads[currentThread].active) return threads[currentThread].cpustate_ptr;
+        } while (currentThread != starting_thread);
     } 
-    else if (current_algo == SCHED_PRIORITY) {
+    else if (currentSchedAlgo == SCHED_PRIORITY) {
         int best_thread = -1;
         int highest_pri = 999999; 
-        for (int i = 0; i < num_threads; i++) {
+        for (int i = 0; i < numThreads; i++) {
             if (threads[i].active && threads[i].priority < highest_pri) {
                 highest_pri = threads[i].priority;
                 best_thread = i;
             }
         }
         if (best_thread != -1) {
-            current_thread = best_thread;
-            return threads[current_thread].cpustate_ptr;
+            currentThread = best_thread;
+            return threads[currentThread].cpustate_ptr;
         }
     }
-    else if (current_algo == SCHED_EDF) {
+    else if (currentSchedAlgo == SCHED_EDF) {
         int best_thread = -1;
         uint64_t earliest_deadline = 0xFFFFFFFFFFFFFFFFULL;
-        for (int i = 0; i < num_threads; i++) {
+        for (int i = 0; i < numThreads; i++) {
             if (threads[i].active) {
-                if (best_thread == -1 || threads[i].absolute_deadline_tick < earliest_deadline) {
-                    earliest_deadline = threads[i].absolute_deadline_tick;
+                if (best_thread == -1 || threads[i].absoluteDeadlineTick < earliest_deadline) {
+                    earliest_deadline = threads[i].absoluteDeadlineTick;
                     best_thread = i;
                 }
             }
         }
         if (best_thread != -1) {
-            current_thread = best_thread;
-            return threads[current_thread].cpustate_ptr;
+            currentThread = best_thread;
+            return threads[currentThread].cpustate_ptr;
         }
     }
 

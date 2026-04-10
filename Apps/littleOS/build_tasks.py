@@ -47,7 +47,7 @@ def main():
         f.write("} TaskRegistry;\n\n")
         
         f.write(f"extern TaskRegistry autotasks[{max(1, len(tasks))}];\n")
-        f.write("extern const int num_autotasks;\n\n")
+        f.write("extern const int numAutotasks;\n\n")
         f.write("\nvoid init_all_tasks(void);\n\n")
         f.write("#endif\n")
 
@@ -71,10 +71,10 @@ def main():
             for t in tasks:
                 f.write(f'    {{"{t["cmd"]}", "{t["display"]}", {t["func"]}, &{t["id_var"]}}},\n')
             f.write("};\n")
-            f.write(f"const int num_autotasks = {len(tasks)};\n\n")
+            f.write(f"const int numAutotasks = {len(tasks)};\n\n")
         else:
             f.write("TaskRegistry autotasks[1] = {0};\n")
-            f.write("const int num_autotasks = 0;\n\n")
+            f.write("const int numAutotasks = 0;\n\n")
 
         f.write("void init_all_tasks(void) {\n")
         for t in tasks:

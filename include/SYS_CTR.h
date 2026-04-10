@@ -19,12 +19,12 @@ uint32_t sysctrGetFreq(void);
  * @brief Blocks execution for a precise number of microseconds.
  * @param us Microseconds to delay.
  */
-void sysctrDelayus(uint32_t us);
+void sysctrDelay_us(uint32_t us);
 
 /**
  * @brief Blocks execution for a precise number of milliseconds.
  * @param ms Milliseconds to delay.
  */
-void sysctrDelayms(uint32_t ms);
+void sysctrDelay_ms(uint32_t ms);
 
 #endif /* SYS_CTR_H */

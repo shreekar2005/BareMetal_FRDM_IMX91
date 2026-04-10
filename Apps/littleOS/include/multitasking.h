@@ -34,31 +34,31 @@ typedef struct {
     
     // rtos parameters
     int priority; /**< 0 is highest priority, 255 is lowest */
-    int deadline_offset_ms; /**< relative time to finish job in milliseconds (-1 for infinite) */
-    uint64_t absolute_deadline_tick; /**< exact hardware tick when job must be done */
+    int deadlineOffset_ms; /**< relative time to finish job in milliseconds (-1 for infinite) */
+    uint64_t absoluteDeadlineTick; /**< exact hardware tick when job must be done */
     
     // periodic parameters
     uint32_t period_ms; /**< if > 0, task will auto revive after this many ms */
-    uint64_t next_period_tick; /**< hardware tick when dead task should wake up */
+    uint64_t nextPeriodTick; /**< hardware tick when dead task should wake up */
     
     // execution tracking
-    int executions_target; /**< how many times to run (-1 for infinite) */
-    int executions_done;   /**< how many times it has finished reviving */
+    int executionsTarget; /**< how many times to run (-1 for infinite) */
+    int executionsDone;   /**< how many times it has finished reviving */
     
     // profiling
-    uint64_t last_start_tick; /**< the hardware tick when the thread was last dispatched */
-    uint32_t last_exec_time_ms; /**< turnaround time of the last completed execution */
+    uint64_t lastStartTick; /**< the hardware tick when the thread was last dispatched */
+    uint32_t lastExecTime_ms; /**< turnaround time of the last completed execution */
     
     // sleep tracking
     volatile bool sleeping; /**< true if thread is voluntarily blocked */
-    uint64_t wakeup_tick; /**< exact hardware tick when sleeping thread should resume */
+    uint64_t wakeupTick; /**< exact hardware tick when sleeping thread should resume */
 } Thread;
 
 extern Thread threads[MAX_THREADS];
-extern int current_thread;
-extern int num_threads;
-extern bool scheduling_enabled; /**< global flag to control preemptive switching */
-extern enum SchedAlgo current_algo; /**< current active scheduling algorithm */
+extern int currentThread;
+extern int numThreads;
+extern bool isSchedulingEnabled; /**< global flag to control preemptive switching */
+extern enum SchedAlgo currentSchedAlgo; /**< current active scheduling algorithm */
 
 /**
  * @brief zeros out the thread array and resets scheduler state
@@ -140,7 +140,7 @@ void os_set_scheduling_algo(enum SchedAlgo algo);
  * @param current_state registers of dying thread
  * @return registers of new thread
  */
-CPUState* schedule_tick(CPUState* current_state);
+CPUState* os_schedule(CPUState* current_state);
 
 /**
  * @brief kills thread gracefully when its function returns

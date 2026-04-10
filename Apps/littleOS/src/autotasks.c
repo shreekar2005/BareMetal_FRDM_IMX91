@@ -28,7 +28,7 @@ TaskRegistry autotasks[7] = {
     {"esp", "ESP Commands", esp_thread, &esp_thread_id},
     {"aprint100A", "AtomicPrint A's", aprint100A_thread, &aprint100A_thread_id},
 };
-const int num_autotasks = 7;
+const int numAutotasks = 7;
 
 void init_all_tasks(void) {
     print100o_thread_id = os_create_thread("Print o's", print100o_thread, NULL);

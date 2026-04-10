@@ -1,10 +1,10 @@
+#include <stdbool.h>
+#include "SYS_CTR.h"
 #include "include/esp8266.h"
 #include "include/stdio.h"
 #include "include/cli_utility.h"
 #include "include/string.h"
 #include "include/multitasking.h"
-#include "SYS_CTR.h"
-#include <stdbool.h>
 
 /**
  * @brief custom send_to_esp for ESP Wi-Fi port
@@ -30,10 +30,10 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
     bool success = false;
     bool timed_out = true;
     
-    uint64_t target_clock_tick = sysctrGetTicks() + timeout_sec * sysctrGetFreq(); 
+    uint64_t targetClockTick = sysctrGetTicks() + timeout_sec * sysctrGetFreq(); 
     print_dbg("[ESP8266] ");
     
-    while (sysctrGetTicks() < target_clock_tick) {
+    while (sysctrGetTicks() < targetClockTick) {
         /* clear Overrun errors just in case */
         if (LPUART4->STAT & (0xF << 16)) {
             LPUART4->STAT |= (0xF << 16); 
@@ -215,44 +215,6 @@ void start_esp_tcp_server(int port) {
     print_dbg("[Wi-Fi] TCP Server is running and listening!\r\n");
 }
 
-
-/**
- * @brief Formats a string and sends it over Wi-Fi as a TCP payload.
- */
-int print_esp(const char *format, ...) {
-    char buffer[256];
-    va_list args;
-    va_start(args, format);
-    
-    // format the string into our local staging buffer using the stdio helper
-    int len = vprint_esp8266(buffer, format, args);
-    va_end(args);
-    
-    if (len <= 0) return 0;
-
-    // calculate the exact wire length.
-    int wire_len = 0;
-    for (int i = 0; i < len; i++) {
-        if (buffer[i] == '\n') wire_len++; // account for lpuartPutChar injecting \r
-        wire_len++;
-    }
-
-    // send the CIPSEND command
-    send_to_esp("AT+CIPSEND=0,%d\r\n", wire_len);
-
-    // waiting for the ESP8266 to output the '>' prompt indicating it is ready
-    // 2-second hardware timeout
-    uint64_t target_clock_tick = sysctrGetTicks() + (2 * sysctrGetFreq());
-    while (sysctrGetTicks() < target_clock_tick) {
-        if (lpuartGetCharNonBlocking(LPUART4) == '>') {
-            break;
-        }
-    }
-    
-    send_to_esp("%s", buffer);
-    return len;
-}
-
 void espTCPServerListener_thread(void *arg) {
     char buffer[128];
     int idx = 0;
@@ -270,7 +232,7 @@ void espTCPServerListener_thread(void *arg) {
             // ENTER CRITICAL SECTION
             os_stop_scheduling();
 
-            int local_state = 1; // 1 = wait for ':', 2 = read payload
+            int localState = 1; // 1 = wait for ':', 2 = read payload
             idx = 0;
             volatile int timeout = 1000000; // Safety timeout against infinite freezes
             
@@ -278,10 +240,10 @@ void espTCPServerListener_thread(void *arg) {
                 char temp_c = lpuartGetCharNonBlocking(LPUART4);
                 if (temp_c == '\0') continue;
                 
-                if (local_state == 1) {
-                    if (temp_c == ':') local_state = 2; // Found payload start!
+                if (localState == 1) {
+                    if (temp_c == ':') localState = 2; // Found payload start!
                 } 
-                else if (local_state == 2) {
+                else if (localState == 2) {
                     // Read until newline
                     if (temp_c == '\n' || temp_c == '\r') {
                         break; // Packet fully received!

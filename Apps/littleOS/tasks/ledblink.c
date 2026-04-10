@@ -1,8 +1,8 @@
 // Task_Name : LED Blink
 
+#include "GPIO.h"
 #include "include/multitasking.h"
 #include "include/stdio.h"
-#include "GPIO.h"
 
 void ledblink_thread(void* arg) {
     print_dbg("\nLED Blink Thread Started!\n");

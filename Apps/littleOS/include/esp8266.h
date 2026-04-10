@@ -1,9 +1,8 @@
 #ifndef ESP8266_H
 #define ESP8266_H
 
+#include <stdint.h>
 #include "LPUART.h"
-#include "stdint.h"
-
 
 /**
  * @brief Queries the ESP8266 for its current Wi-Fi mode, IP address, and TCP connections.
@@ -32,17 +31,7 @@ void init_esp_as_access_point(const char* ssid, const char* password);
  */
 void init_esp_as_station(const char* ssid, const char* password);
 
-/**
- * @brief Formats a string and sends it over Wi-Fi to clients connected to the ESP8266 tcp-server.
- * This is like print_dbg but for your ESP8266's TCP connection instead of your serial console. You can use this to send dynamic messages from your RTOS to your laptop/phone over Wi-Fi!
- * @param format the null-terminated format string (supports same specifiers as print_dbg)
- * @return total number of characters sent (not counting the injected '\r' characters for the ESP AT parser)
- */
-int print_esp(const char *format, ...);
-
 /* * Background RTOS Task to listen for RX from ESP8266, we can execute CLI commands from remote clients */
 void espTCPServerListener_thread(void *arg);
-
-
 
 #endif /* ESP8266_H */

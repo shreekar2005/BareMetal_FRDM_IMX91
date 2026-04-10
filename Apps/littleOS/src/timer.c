@@ -10,12 +10,12 @@ extern void register_irq(uint32_t intid, CPUState* (*handler)(CPUState*));
 
 CPUState* timer_handler(CPUState* current_state) {
     uint32_t freq = sysctrGetFreq();
-    uint32_t ticks_for_20ms = freq / (1000 / SCHEDULER_TICK_MS);
+    uint32_t ticksFor20ms = freq / (1000 / SCHEDULER_TICK_MS);
     
-    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_20ms));
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticksFor20ms));
     __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (1));
 
-    return schedule_tick(current_state);
+    return os_schedule(current_state);
 }
 
 /**
@@ -33,8 +33,8 @@ void os_timer_init(void) {
     __asm__ volatile("msr hcr_el2, %0" : : "r" (hcr));
 
     uint32_t freq = sysctrGetFreq();
-    uint32_t ticks_for_20ms = freq / (1000 / SCHEDULER_TICK_MS);
-    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticks_for_20ms));
+    uint32_t ticksFor20ms = freq / (1000 / SCHEDULER_TICK_MS);
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (ticksFor20ms));
     __asm__ volatile("msr cntp_ctl_el0, %0" : : "r" (1));
     
     __asm__ volatile("msr daifclr, #2");

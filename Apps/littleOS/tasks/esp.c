@@ -5,7 +5,7 @@
 #include "include/esp8266.h"
 #include "include/string.h"
 
-extern volatile char print_buffer[128];
+extern volatile char print_buffer[128]; /**< buffer defined in cli.c */
 
 void esp_thread(void* arg) {
 
@@ -95,8 +95,8 @@ void esp_thread(void* arg) {
         // Print updated help menu
         print_dbg("[ESP] Invalid argument.\r\n");
         print_dbg("Usage:\r\n");
-        print_dbg("  ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\r\n");
         print_dbg("  sta-mode   <ssid_name> <ssid_password>  (Both required)\r\n");
+        print_dbg("  ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\r\n");
         print_dbg("  tcp-server [port_number]                (Default: 8080)\r\n");
         print_dbg("  echo       <message>                    (Sends text to TCP clients)\r\n");
         print_dbg("  status                                  (Shows current mode, IP, MAC)\r\n");

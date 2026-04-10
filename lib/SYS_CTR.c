@@ -14,7 +14,7 @@ uint32_t sysctrGetFreq(void) {
     return freq;
 }
 
-void sysctrDelayus(uint32_t us) {
+void sysctrDelay_us(uint32_t us) {
     uint64_t start_ticks = sysctrGetTicks();
     
     /* Calculate how many CPU ticks equal the requested microseconds */
@@ -27,6 +27,6 @@ void sysctrDelayus(uint32_t us) {
     }
 }
 
-void sysctrDelayms(uint32_t ms) {
-    sysctrDelayus(ms * 1000);
+void sysctrDelay_ms(uint32_t ms) {
+    sysctrDelay_us(ms * 1000);
 }

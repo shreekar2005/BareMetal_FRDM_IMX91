@@ -1,9 +1,9 @@
 #include <stdint.h>
+#include "LPUART.h"
 #include "include/cli.h"
 #include "include/cli_utility.h"
 #include "include/string.h"
 #include "include/stdio.h"
-#include "LPUART.h"
 #include "include/multitasking.h"
 #include "include/autotasks.h"
 
@@ -12,7 +12,6 @@
 #define ASCII_DEL 0x7F
 
 volatile char print_buffer[128];
-volatile bool os_halt = false;
 
 void input_thread(void* arg) {
     char cmd[128];
@@ -20,7 +19,7 @@ void input_thread(void* arg) {
     
     print_dbg("\n> ");
 
-    while(!os_halt) {
+    while(1) {
         char c;
         while(1) {
             c = lpuartGetCharNonBlocking(LPUART1);
@@ -29,7 +28,7 @@ void input_thread(void* arg) {
         
         if (c == ASCII_CTRL_C) {
             // LOOP THROUGH AUTO-REGISTRY AND KILL EVERYTHING
-            for (int i = 0; i < num_autotasks; i++) {
+            for (int i = 0; i < numAutotasks; i++) {
                 os_kill_thread(*(autotasks[i].id_ptr));
             }
             print_dbg("^C\n[System] All active background tasks forcefully killed.\n> ");
@@ -51,7 +50,7 @@ void input_thread(void* arg) {
             if (cmd_idx > 0) handleCommand(cmd);
             
             cmd_idx = 0;
-            if (!os_halt) print_dbg("\n> ");
+            print_dbg("\n> ");
         } 
         else if (c >= 32 && c <= 126) {
             if (cmd_idx < 127) {

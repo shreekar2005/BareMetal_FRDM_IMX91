@@ -36,7 +36,7 @@ void lpuart_print_dec(LPUART_TypeDef *lpuart, uint32_t val) {
 uint32_t sonar_read_mm(void) {
     /* 1. Send mandatory 10-microsecond HIGH pulse */
     GPIO2->PSOR = (1 << TRIG_PIN);
-    sysctrDelayus(10);
+    sysctrDelay_us(10);
     GPIO2->PCOR = (1 << TRIG_PIN);
 
     /* 2. Wait for Echo pin to go HIGH */
@@ -76,7 +76,7 @@ uint32_t sonar_read_filtered_mm(void) {
     for(int i = 0; i < NUM_READINGS; i++) {
         readings[i] = sonar_read_mm();
         /* Wait 10ms between pings so the previous sound wave can die out */
-        sysctrDelayms(10); 
+        sysctrDelay_ms(10); 
     }
     
     /* Simple Bubble Sort to order the 3 readings from smallest to largest */

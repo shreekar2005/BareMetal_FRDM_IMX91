@@ -56,4 +56,12 @@ int vprint_esp8266(char *buf, const char *fmt, va_list args);
  */
 int print_dbg(const char *format, ...);
 
+/**
+ * @brief Formats a string and sends it over Wi-Fi to clients connected to the ESP8266 tcp-server.
+ * This is like print_dbg but for your ESP8266's TCP connection instead of your serial console. You can use this to send dynamic messages from your RTOS to your laptop/phone over Wi-Fi!
+ * @param format the null-terminated format string (supports same specifiers as print_dbg)
+ * @return total number of characters sent (not counting the injected '\r' characters for the ESP AT parser)
+ */
+int print_esp(const char *format, ...);
+
 #endif

@@ -10,7 +10,7 @@ typedef struct {
 } TaskRegistry;
 
 extern TaskRegistry autotasks[7];
-extern const int num_autotasks;
+extern const int numAutotasks;
 
 
 void init_all_tasks(void);

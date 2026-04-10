@@ -1,7 +1,7 @@
+#include <stdint.h>
 #include "include/cli_utility.h"
 #include "include/stdio.h"
 #include "include/multitasking.h"
-#include <stdint.h>
 #include "include/autotasks.h"
 #include "include/string.h"
 
@@ -21,8 +21,8 @@ void handleCommand(const char* cmd) {
     if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
         print_help();
     }
-    else if (strcmp(cmd, "stat") == 0) {
-        print_stat();
+    else if (strcmp(cmd, "taskinfo") == 0) {
+        print_taskinfo();
     }
     else if (strcmp(cmd, "clear") == 0) {
         clear_terminal();
@@ -40,34 +40,34 @@ void handleCommand(const char* cmd) {
         print_dbg("\n[System] Scheduler algorithm changed.");
     }
     else {
-        int target_id = -1;
+        int targetID = -1;
         int i = 0;
         
         // DYNAMIC TASK MATCHER
-        for (int t = 0; t < num_autotasks; t++) {
+        for (int t = 0; t < numAutotasks; t++) {
             int len = strlen(autotasks[t].cmd_string);
             if (strncmp(cmd, autotasks[t].cmd_string, len) == 0) {
                 // Ensure it's an exact match or followed by space
                 if (cmd[len] == ' ' || cmd[len] == '\0') {
-                    target_id = *(autotasks[t].id_ptr);
+                    targetID = *(autotasks[t].id_ptr);
                     i = len;
                     break;
                 }
             }
         }
         
-        if (target_id != -1) {
+        if (targetID != -1) {
             // GLOBAL STRING EXTRACTOR (works for any command!)
-            int buf_idx = 0;
+            int print_buffer_idx = 0;
             while(cmd[i] == ' ') i++; 
             if (cmd[i] == '"') {
                 i++; 
-                while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
+                while(cmd[i] != '\0' && cmd[i] != '"' && print_buffer_idx < 127) print_buffer[print_buffer_idx++] = cmd[i++];
                 if (cmd[i] == '"') i++; 
             } else {
-                while(cmd[i] != '\0' && buf_idx < 127) print_buffer[buf_idx++] = cmd[i++];
+                while(cmd[i] != '\0' && print_buffer_idx < 127) print_buffer[print_buffer_idx++] = cmd[i++];
             }
-            print_buffer[buf_idx] = '\0';
+            print_buffer[print_buffer_idx] = '\0';
             
             // PARSE FLAGS
             int n = get_flag_int(cmd, "-n ", 1);
@@ -75,9 +75,9 @@ void handleCommand(const char* cmd) {
             int pri = get_flag_int(cmd, "-pri ", 128);
             int d = get_flag_int(cmd, "-d ", -1);
             
-            os_set_thread_rtos(target_id, pri, d, per, n);
+            os_set_thread_rtos(targetID, pri, d, per, n);
             // print_dbg("\n[System] Dispatching Task (n:%d per:%dms pri:%d d:%dms).", n, per, pri, d);
-            os_thread_start(target_id); 
+            os_thread_start(targetID); 
             
         } else {
             print_dbg("\n[System] Unknown command. Type 'help' for options.");
@@ -122,35 +122,35 @@ void print_help(void){
     print_dbg(" Ctrl+C               - To stop all threads\n");
     print_dbg(" sched [rr|pri|edf]   - Change RTOS scheduler algorithm\n");
     print_dbg("\nDynamic Tasks (Auto-Loaded from tasks/):\n");
-    for (int i = 0; i < num_autotasks; i++) {
+    for (int i = 0; i < numAutotasks; i++) {
         print_dbg("   %-16s - %s\n", autotasks[i].cmd_string, autotasks[i].display_name);
     }
     print_dbg(" Defaults: -n 1, -per 0, -pri 128, -d -1\n");
     print_dbg(" Syntax: <taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadline_ms>\n");
 }
 
-void print_stat(void) {
+void print_taskinfo(void) {
     const char* algo_name = "UNKNOWN";
-    if (current_algo == SCHED_RR) algo_name = "Round Robin (RR)";
-    else if (current_algo == SCHED_PRIORITY) algo_name = "Fixed Priority (PRI)";
-    else if (current_algo == SCHED_EDF) algo_name = "Earliest Deadline First (EDF)";
+    if (currentSchedAlgo == SCHED_RR) algo_name = "Round Robin (RR)";
+    else if (currentSchedAlgo == SCHED_PRIORITY) algo_name = "Fixed Priority (PRI)";
+    else if (currentSchedAlgo == SCHED_EDF) algo_name = "Earliest Deadline First (EDF)";
 
     print_dbg("\n[System] Active Scheduler: %s\n", algo_name);
     print_dbg("\nID | Name             | State   | Pri | Deadln | Period | Execs     | Turnaround Time");
     print_dbg("\n---------------------------------------------------------------------------------------");
     
-    for (int i = 0; i < num_threads; i++) {
+    for (int i = 0; i < numThreads; i++) {
         print_dbg("\n%2d | %-16s | %-7s | %3d | %6d | %6d | ", 
             i, threads[i].name, threads[i].active ? "RUNNING" : "SLEEP",
-            threads[i].priority, threads[i].deadline_offset_ms, threads[i].period_ms);
+            threads[i].priority, threads[i].deadlineOffset_ms, threads[i].period_ms);
         
-        if (threads[i].executions_target == -1) {
-            print_dbg("%4d/INF  | ", threads[i].executions_done);
+        if (threads[i].executionsTarget == -1) {
+            print_dbg("%4d/INF  | ", threads[i].executionsDone);
         } else {
-            print_dbg("%4d/%-4d | ", threads[i].executions_done, threads[i].executions_target);
+            print_dbg("%4d/%-4d | ", threads[i].executionsDone, threads[i].executionsTarget);
         }
         
-        print_dbg("%9d ms", threads[i].last_exec_time_ms);
+        print_dbg("%9d ms", threads[i].lastExecTime_ms);
     }
 }
 
