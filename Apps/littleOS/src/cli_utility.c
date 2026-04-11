@@ -152,7 +152,7 @@ void print_taskinfo(void) {
             print_dbg("%4d/%-4d | ", threads[i].executionsDone, threads[i].executionsTarget);
         }
         
-        print_dbg("%9d ms", threads[i].lastExecTime_ms);
+        print_dbg("%9d ms", threads[i].lastTurnaroundTime_ms);
     }
 }
 

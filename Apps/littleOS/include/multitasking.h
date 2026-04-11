@@ -63,7 +63,7 @@ typedef struct {
     
     // profiling
     uint64_t lastStartTick; /**< the hardware tick when the thread was last dispatched */
-    uint32_t lastExecTime_ms; /**< turnaround time of the last completed execution */
+    uint32_t lastTurnaroundTime_ms; /**< turnaround time of the last completed execution */
     
     // sleep tracking
     volatile bool sleeping; /**< true if thread is voluntarily blocked */
@@ -71,7 +71,7 @@ typedef struct {
 } Thread;
 
 extern Thread threads[MAX_THREADS];
-extern int currentThread;
+extern int currentThread_idx;
 extern int numThreads;
 extern bool isSchedulingEnabled; /**< global flag to control preemptive switching */
 extern enum SchedAlgo currentSchedAlgo; /**< current active scheduling algorithm */
