@@ -5,6 +5,12 @@
 #include "LPUART.h"
 
 /**
+ * @brief Initializes the ESP8266 Wi-Fi module's hardware interrupts.
+ * This function registers the LPUART4 RX ISR with the OS, enables the interrupt in the GIC, and configures the LPUART4 hardware to generate interrupts when data is received from the ESP8266. Must be called once during system initialization.
+ */
+void esp_init(void);
+
+/**
  * @brief Queries the ESP8266 for its current Wi-Fi mode, IP address, and TCP connections.
  */
 void print_esp_status(void);

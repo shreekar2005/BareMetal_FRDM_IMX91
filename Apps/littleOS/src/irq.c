@@ -2,8 +2,7 @@
 #include "include/multitasking.h"
 #include "include/gic.h"
 #include "include/stdio.h"
-
-typedef CPUState* (*irq_handler_t)(CPUState*);
+#include "include/irq.h"
 
 static irq_handler_t isr_table[1024] = {0};
 

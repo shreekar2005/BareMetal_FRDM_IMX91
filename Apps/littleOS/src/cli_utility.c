@@ -21,6 +21,12 @@ void handleCommand(const char* cmd) {
     if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
         print_help();
     }
+    else if (strcmp(cmd, "killall") == 0) {
+        for (int i = 0; i < numAutotasks; i++) {
+                os_kill_thread(*(autotasks[i].id_ptr));
+            }
+            print_dbg("^C\n[System] All active background tasks forcefully killed.\n> ");
+    }
     else if (strcmp(cmd, "taskinfo") == 0) {
         print_taskinfo();
     }

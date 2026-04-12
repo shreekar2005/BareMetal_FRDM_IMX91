@@ -23,12 +23,12 @@ usb_ums_install: pre_build
 	$(MAKE) -C ../.. APP=$(APP) usb_ums_install
 
 .venv:
-	python3 -m venv flask_webapp_esp_bridge/.venv
+	python3 -m venv python_server_and_webapp/.venv
 
-initflask: .venv
-	flask_webapp_esp_bridge/.venv/bin/pip install -r flask_webapp_esp_bridge/requirements.txt
+initpy: .venv
+	python_server_and_webapp/.venv/bin/pip install -r python_server_and_webapp/requirements.txt
 
-runflask: initflask
-	flask_webapp_esp_bridge/.venv/bin/python flask_webapp_esp_bridge/app.py 
+runpy: initpy
+	python_server_and_webapp/.venv/bin/python python_server_and_webapp/app.py 
 
-.PHONY: all pre_build clear clean usb_pendrive_install usb_serial_install usb_ums_install initflask runflask
+.PHONY: all pre_build clear clean usb_pendrive_install usb_serial_install usb_ums_install initpy runpy

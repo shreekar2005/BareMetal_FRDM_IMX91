@@ -1,17 +1,18 @@
 import socket
 import threading
 import datetime
+import time
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
 LAPTOP_TCP_PORT = 5555
-NXP_IP = "192.168.21.234" # Change this to your ESP's IP
 NXP_PORT = 8080
 
 # SHARED STATE
 # Both threads can read and write to this variable
 LATEST_NXP_STATUS = "Awaiting status push from NXP..."
+LATEST_NXP_IP = None  # <--- This will be dynamically updated!
 
 
 # FLASK WEB ROUTES (Port 5000)
@@ -26,19 +27,22 @@ def get_status():
 
 @app.route('/api/command', methods=['POST'])
 def send_command():
-    # The web browser sends a command here
+    global LATEST_NXP_IP  # Grab the dynamic IP
+
     cmd = request.json.get('command', '')
     if not cmd:
         return jsonify({"error": "Empty command"}), 400
 
-    # Magically prepend 'exec ' so the user doesn't have to!
+    if not LATEST_NXP_IP:
+        return jsonify({"error": "No NXP board has connected to the Hub yet!"}), 400
+
     full_command = f"exec {cmd}\n"
     
     try:
-        # Connect to the NXP's 8080 server and inject the command
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(3)
-        s.connect((NXP_IP, NXP_PORT))
+        # Connect using the dynamically learned IP!
+        s.connect((LATEST_NXP_IP, NXP_PORT)) 
         s.send(full_command.encode('utf-8'))
         s.close()
         return jsonify({"success": True, "sent": full_command})
@@ -48,7 +52,9 @@ def send_command():
 
 # RAW TCP SERVER THREAD (Port 5555)
 def raw_tcp_server_thread():
-    global LATEST_NXP_STATUS
+    global LATEST_NXP_STATUS, LATEST_NXP_IP
+    import time
+    
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(("0.0.0.0", LAPTOP_TCP_PORT))
     server.listen(5)
@@ -56,28 +62,37 @@ def raw_tcp_server_thread():
 
     while True:
         client, addr = server.accept()
-        # Read the raw payload from the NXP
+        
+        # --- THE MAGIC BULLET ---
+        # Capture the exact IP of the NXP board that just connected
+        LATEST_NXP_IP = addr[0] 
+        # ------------------------
+
         data = client.recv(4096).decode('utf-8', errors='ignore')
-        client.close() # Instantly close the socket
+        client.close()
 
         if "GET_TIME" in data:
-            print(f"[*] Time sync requested by NXP ({addr[0]})")
+            print(f"[*] Time sync requested by NXP ({LATEST_NXP_IP})")
             now = datetime.datetime.now().strftime("%H:%M:%S %d:%m:%Y")
             cmd = f"exec datetime --set {now}\n"
+            
+            time.sleep(1) 
+            
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.connect((NXP_IP, NXP_PORT))
+                s.settimeout(3)
+                # Connect right back to the exact IP that just asked!
+                s.connect((LATEST_NXP_IP, NXP_PORT)) 
                 s.send(cmd.encode('utf-8'))
                 s.close()
                 print(f"[+] Synced time to NXP: {now}")
-            except:
-                print("[-] Failed to send time to NXP")
+            except Exception as e:
+                print(f"[-] Failed to send time to NXP: {e}")
                 
         elif data.startswith("STATUS:"):
-            # If the NXP sends "STATUS: <huge string of data>"
-            # We strip off the "STATUS:" prefix and save it to the global variable
             LATEST_NXP_STATUS = data[7:]
-            print(f"[+] Received system status update from NXP ({len(LATEST_NXP_STATUS)} bytes)")
+            print(f"[+] Received system status update from {LATEST_NXP_IP}")
+
 
 if __name__ == "__main__":
     # start the raw TCP server in a background thread

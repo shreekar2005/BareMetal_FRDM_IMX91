@@ -7,6 +7,8 @@
 #define GICD_CTLR        (*(volatile uint32_t*)(GICD_BASE + 0x0000))
 #define GICR_WAKER       (*(volatile uint32_t*)(GICR_BASE + 0x0014))
 
+extern void* vector_table; // Defined in your vector.S
+
 void gic_init(void) {
     GICD_CTLR |= 2; 
     GICR_WAKER &= ~(1 << 1); 
@@ -41,4 +43,19 @@ uint32_t gic_acknowledge_interrupt(void) {
 
 void gic_end_of_interrupt(uint32_t iar) {
     __asm__ volatile("msr S3_0_C12_C12_1, %0" : : "r" (iar));
+}
+
+
+void cpu_exceptions_init(void) {
+    // 1. Tell CPU where the Exception Vector Table is
+    __asm__ volatile("msr vbar_el2, %0" : : "r" (&vector_table));
+
+    // 2. Route physical IRQs to Exception Level 2 (Hypervisor/OS Level)
+    uint64_t hcr;
+    __asm__ volatile("mrs %0, hcr_el2" : "=r" (hcr));
+    hcr |= (1 << 4) | (1 << 3); 
+    __asm__ volatile("msr hcr_el2, %0" : : "r" (hcr));
+
+    // 3. Unmask the CPU Master IRQ Pin (DAIF clear)
+    __asm__ volatile("msr daifclr, #2");
 }

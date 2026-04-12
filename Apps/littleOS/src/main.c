@@ -35,7 +35,7 @@ void hardware_init(void) {
 /** @brief Main function, entrypoint after start.S */
 int main() {
     hardware_init();
-    
+
     print_dbg("\033[2J\033[H"); 
     print_dbg("=================================\r\n");
     print_dbg("     littleOS RTOS Core          \r\n");
@@ -52,26 +52,32 @@ int main() {
     print_dbg("[Boot] Initializing Task Registry...\r\n");
     init_all_tasks(); 
 
-    print_dbg("[Boot] Starting Core CLI...\r\n");
-    int cli_thread_id = os_create_thread("CLI", input_thread, NULL);
-    os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
-    os_thread_start(cli_thread_id); 
-
-    print_dbg("[Boot] Starting WiFi Listener...\r\n");
-    int wifi_listener_thread_id = os_create_thread("WiFiListener", espTCPServerListener_thread, NULL);
-    os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
-    os_thread_start(wifi_listener_thread_id);
-
     // int statistics_thread_id = 5;
     // os_set_thread_rtos(statistics_thread_id, 127, -1, 5000, -1);
 
     print_dbg("[Boot] Initializing GIC...\r\n");
-    gic_init(); 
+    gic_init();
 
-    print_dbg("[Boot] Initializing Timers...\r\n");
+    print_dbg("[Boot] Giving CPU vector_table address...\r\n");
+    cpu_exceptions_init();
+
+    print_dbg("[Boot] Registering ESP8266 IRQ...\r\n");
+    esp_init();
+
+    print_dbg("[Boot] Registering Timer IRQ...\r\n");
     os_timer_init(); 
+
+    print_dbg("[Boot] Creating WiFi Listener Thread...\r\n");
+    int wifi_listener_thread_id = os_create_thread("WiFiListener", espTCPServerListener_thread, NULL);
+    os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
+    os_thread_start(wifi_listener_thread_id);
+
+    print_dbg("[Boot] Creating CLI Thread...\r\n");
+    int cli_thread_id = os_create_thread("CLI", input_thread, NULL);
+    os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
+    os_thread_start(cli_thread_id); 
     
-    print_dbg("[Boot] Setup complete! Calling os_start()...\r\n");
+    print_dbg("[Boot] Setup complete! Starting Threads...\r\n");
     os_start();      
 
     print_dbg("\r\n[Kernel] System safely halted.\r\n");

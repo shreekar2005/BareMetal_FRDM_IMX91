@@ -4,6 +4,12 @@
 #include <stdint.h>
 
 /**
+ * @brief Initializes the CPU Core Exception state.
+ * Must be called exactly once during boot.
+ */
+void cpu_exceptions_init(void);
+
+/**
  * @brief initializes generic interrupt controller
  */
 void gic_init(void);

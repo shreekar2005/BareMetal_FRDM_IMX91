@@ -5,6 +5,80 @@
 #include "include/cli_utility.h"
 #include "include/string.h"
 #include "include/multitasking.h"
+#include "include/gic.h"
+#include "include/irq.h"
+
+#define IMX91_LPUART4_IRQ_ID  101  /* GIC IRQ ID = SPI Number + 32 and in manual SPI Number is 69 */
+
+// ----------------------------------- RING BUFFER ARCHITECTURE and ISR START-----------------------------------
+
+// BUFFER ARCHITECTURE
+#define ESP_RX_BUFFER_SIZE 2048
+
+typedef struct {
+    volatile char data[ESP_RX_BUFFER_SIZE];
+    volatile int head; // Written by the Hardware Interrupt
+    volatile int tail; // Read by the OS Thread
+} RingBuffer;
+
+static RingBuffer esp_rx_buffer = { .head = 0, .tail = 0 };
+
+/**
+ * @brief Safely pops a character from the ring buffer.
+ * @return The character, or '\0' if buffer is empty.
+ */
+static char ring_buffer_pop(void) {
+    char c = '\0';
+    if (esp_rx_buffer.head != esp_rx_buffer.tail) {
+        c = esp_rx_buffer.data[esp_rx_buffer.tail];
+        esp_rx_buffer.tail = (esp_rx_buffer.tail + 1) % ESP_RX_BUFFER_SIZE;
+    }
+    return c;
+}
+
+// ISR
+/**
+ * @brief Hardware IRQ Handler for LPUART4. 
+ * This executes instantly when the ESP8266 sends a byte.
+ */
+CPUState* lpuart4_rx_isr(CPUState* current_state) {
+    uint32_t stat = LPUART4->STAT;
+
+    /* Clear Hardware Overrun Flags */
+    if (stat & (0xF << 16)) {
+        LPUART4->STAT |= (0xF << 16); 
+    }
+
+    /* Check if Receive Data Register is Full (RDRF is bit 21 in NXP LPUART) */
+    if (stat & (1 << 21)) {
+        char c = (char)(LPUART4->DATA & 0xFF); // Read hardware FIFO
+        
+        // Calculate next head position
+        int next_head = (esp_rx_buffer.head + 1) % ESP_RX_BUFFER_SIZE;
+        
+        // If buffer isn't full, save the byte. (If full, it drops the byte)
+        if (next_head != esp_rx_buffer.tail) {
+            esp_rx_buffer.data[esp_rx_buffer.head] = c;
+            esp_rx_buffer.head = next_head;
+        }
+    }
+
+    return current_state; // Return without forcing a context switch
+}
+
+// -----------------------------------RING BUFFER ARCHITECTURE and ISR END-----------------------------------
+
+void esp_init(void) {
+
+    /* Register the ISR with your OS Dispatcher */
+    register_irq(IMX91_LPUART4_IRQ_ID, lpuart4_rx_isr);
+    
+    /* Enable the Interrupt in the ARM GIC */
+    gic_enable_interrupt(IMX91_LPUART4_IRQ_ID);
+    
+    /* Enable Receiver Interrupts in the LPUART Hardware itself */
+    LPUART4->CTRL |= (1 << 21);
+}
 
 /* Actively listens to the ESP8266 until it sees "OK" or "ERROR", or times out */
 static bool wait_for_esp_ok(uint32_t timeout_sec) {
@@ -22,7 +96,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
             LPUART4->STAT |= (0xF << 16); 
         }
 
-        c = lpuartGetCharNonBlocking(LPUART4);
+        c = ring_buffer_pop();
         
         if (c != '\0') {
             
@@ -35,7 +109,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
                 // Read the final '\r' and '\n' to clear the pipe before exiting
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
-                    char flush_c = lpuartGetCharNonBlocking(LPUART4);
+                    char flush_c = ring_buffer_pop();
                     if (flush_c == '\n') break;
                 }
                 success = true;
@@ -54,7 +128,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
             if (prev == 'I' && c == 'L') {
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
-                    if (lpuartGetCharNonBlocking(LPUART4) == '\n') break;
+                    if (ring_buffer_pop() == '\n') break;
                 }
                 success = false;
                 timed_out = false;
@@ -173,27 +247,26 @@ void init_esp_as_station(const char* ssid, const char* password) {
 void start_esp_tcp_server(int port) {
     print_dbg("\r\n[Wi-Fi] Starting TCP Server on port %d...\r\n", port);
 
-    /* Enable Multiple Connections (Required for Server mode) */
+    /* Enable Multiple Connections */
     send_to_esp("AT+CIPMUX=1\r\n");
     if (wait_for_esp_ok(5)==false) {
         print_dbg("[Wi-Fi] Failed to enable multiple connections.\r\n");
         return;
     }
 
-    /* Start the Server: AT+CIPSERVER=<mode>,<port> 
-     * Mode 1 = Create server */
+    /* This forces the ESP to include the sender's IP address in the +IPD string */
+    send_to_esp("AT+CIPDINFO=1\r\n");
+    wait_for_esp_ok(3);
+
+    /* Start the Server */
     send_to_esp("AT+CIPSERVER=1,%d\r\n", port);
     if (wait_for_esp_ok(5)==false) {
         print_dbg("[Wi-Fi] Failed to start TCP server.\r\n");
         return;
     }
     
-    /* Check the ESP's IP address so you know where to connect */
     send_to_esp("AT+CIFSR\r\n");
-    if (wait_for_esp_ok(5)==false) {
-        print_dbg("[Wi-Fi] Failed to retrieve IP address.\r\n");
-        return;
-    }
+    wait_for_esp_ok(5);
 
     print_dbg("[Wi-Fi] TCP Server is running and listening!\r\n");
 }
@@ -206,6 +279,10 @@ void start_esp_tcp_server(int port) {
  */
 void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     print_dbg("\r\n[Wi-Fi] Sending trigger to %s:%d...\r\n", ip, port);
+
+    // Ensure the ESP8266 is in Multiple Connection Mode before using Link ID 4
+    send_to_esp("AT+CIPMUX=1\r\n");
+    wait_for_esp_ok(2);
 
     // Open Socket #4 as a TCP Client
     send_to_esp("AT+CIPSTART=4,\"TCP\",\"%s\",%d\r\n", ip, port);
@@ -226,7 +303,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
             LPUART4->STAT |= (0xF << 16); 
         }
 
-        char c = lpuartGetCharNonBlocking(LPUART4);
+        char c = ring_buffer_pop();
         if (c != '\0') {
             /* Print the characters so your terminal log makes sense */
             if(c != '\r' && c != '\n') print_dbg("%c", c);
@@ -249,61 +326,96 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     wait_for_esp_ok(3);
 
     // Close Socket #4
-    send_to_esp("AT+CIPCLOSE=4\r\n");
-    wait_for_esp_ok(2);
+    send_to_esp("AT+CIPCLOSE=4\r\n"); // We DO NOT use wait_for_esp_ok(). We do a 100ms "Blind Flush".
+    // We silently eat whatever the ESP spits out (OK, UNLINK, ERROR, etc.)
+    uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
+    while (sysctrGetTicks() < flush_target) {
+        if (LPUART4->STAT & (0xF << 16)) {
+            LPUART4->STAT |= (0xF << 16); 
+        }
+        /* Silently read and discard characters */
+        ring_buffer_pop(); 
+        __asm__ volatile("nop");
+    }
     
     print_dbg("[Wi-Fi] Trigger sent successfully.\r\n");
 }
 
 void espTCPServerListener_thread(void *arg) {
     char buffer[128];
-    int idx = 0;
+    char header[64]; 
+    char remote_ip[24]; 
     
+    // PERSISTENT STATE MACHINE VARIABLES
+    int state = 0;     // 0 = Wait for '+', 1 = Read Header, 2 = Read Payload
+    int idx = 0;       // Payload buffer index
+    int h_idx = 0;     // Header buffer index
+
+    print_dbg("[Wi-Fi] Asynchronous Listener Thread Started.\r\n");
+
     while(1) {
-        /* Clear hardware errors (Overrun) to keep the line open */
-        if (LPUART4->STAT & (0xF << 16)) {
-            LPUART4->STAT |= (0xF << 16); 
-        }
-
-        char c = lpuartGetCharNonBlocking(LPUART4);
+        // Pop a byte from RAM (returns instantly, doesn't wait for hardware)
+        char c = ring_buffer_pop();
         
-        if (c == '+') {
-            
-            // ENTER CRITICAL SECTION
-            os_stop_scheduling();
+        // If the buffer is empty, yield the CPU to let ledblink/print100 run!
+        if (c == '\0') {
+            thread_sleep(5); // Yield CPU for 5ms (or thread_yield() if implemented)
+            continue;
+        }
+        
+        // Process the character through the State Machine
+        switch (state) {
+            case 0: // Waiting for +IPD
+                if (c == '+') {
+                    state = 1;
+                    h_idx = 0;
+                    idx = 0;
+                }
+                break;
 
-            int localState = 1; // 1 = wait for ':', 2 = read payload
-            idx = 0;
-            volatile int timeout = 1000000; // Safety timeout against infinite freezes
-            
-            while(timeout--) {
-                char temp_c = lpuartGetCharNonBlocking(LPUART4);
-                if (temp_c == '\0') continue;
-                
-                if (localState == 1) {
-                    if (temp_c == ':') localState = 2; // Found payload start!
-                } 
-                else if (localState == 2) {
-                    // Read until newline
-                    if (temp_c == '\n' || temp_c == '\r') {
-                        break; // Packet fully received!
-                    } else {
-                        if (idx < 127) buffer[idx++] = temp_c;
+            case 1: // Reading Header metadata until ':'
+                if (c == ':') {
+                    header[h_idx] = '\0'; 
+                    state = 2; 
+                } else {
+                    if (h_idx < 63) header[h_idx++] = c;
+                }
+                break;
+
+            case 2: // Reading Payload until Newline
+                if (c == '\n' || c == '\r') {
+                    buffer[idx] = '\0';
+                    
+                    /* --- Parse the IP from the header --- */
+                    int comma_count = 0;
+                    int ip_ptr = 0;
+                    remote_ip[0] = 'U'; remote_ip[1] = 'n'; remote_ip[2] = 'k'; remote_ip[3] = '\0'; 
+                    
+                    for (int i = 0; header[i] != '\0'; i++) {
+                        if (header[i] == ',') { comma_count++; continue; }
+                        
+                        if (comma_count == 3) {
+                            if (header[i] != '"' && ip_ptr < 23) {
+                                remote_ip[ip_ptr++] = header[i];
+                            }
+                        }
+                        if (comma_count == 4) break; 
                     }
-                }
-            }
-            
-            os_start_scheduling(); // Exit critical section, re-enable RTOS scheduling and timer interrupts
+                    remote_ip[ip_ptr] = '\0';
+                    /* ------------------------------------ */
 
-            /* Now process the fully captured string safely outside the critical zone */
-            if (idx > 0) {
-                buffer[idx] = '\0';
-                print_dbg("[ESP8266-remote]: %s\r\n", buffer);
-                
-                if (strncmp(buffer, "exec ", 5) == 0) {
-                    handleCommand(buffer + 5); 
+                    print_dbg("[ESP8266-remote-%s] %s\r\n", remote_ip, buffer);
+                    
+                    if (strncmp(buffer, "exec ", 5) == 0) {
+                        handleCommand(buffer + 5); 
+                    }
+                    
+                    // Reset back to waiting for the next packet
+                    state = 0; 
+                } else {
+                    if (idx < 127) buffer[idx++] = c;
                 }
-            }
+                break;
         }
     }
 }

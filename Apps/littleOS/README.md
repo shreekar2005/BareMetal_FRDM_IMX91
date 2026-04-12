@@ -41,7 +41,7 @@ Start background tasks by typing their name followed by optional flags:
 ## IoT Command Hub & RTC Synchronization
 littleOS goes beyond basic Wi-Fi by acting as a true Edge Node, bridging bare-metal hardware with a modern web interface.
 
-### The Flask WebApp Bridge (`flask_webapp_esp_bridge/`)
+### The Flask WebApp Bridge (`python_server_and_webapp/`)
 A centralized Python Command & Control Hub that runs on your laptop. It utilizes a dual-thread design:
 1. **Raw TCP Listener (Port 5555)**: A background thread that listens for asynchronous hardware triggers and status payloads directly from the NXP board.
 2. **Web Interface (Port 5000)**: A frontend UI featuring a hacker-style terminal and live status monitor. Any command typed in the browser is dynamically injected into the littleOS Wi-Fi listener.
@@ -61,7 +61,7 @@ Because the bare-metal OS lacks an internet DNS resolver and native NTP capabili
 ├── build_tasks.py              # Pre-build registry generator
 ├── ESP8266_connections.md      # Hardware wiring guide
 ├── ESP8266_PinDiagram.png
-├── flask_webapp_esp_bridge/    # IoT Command Hub
+├── python_server_and_webapp/    # IoT Command Hub
 │   ├── app.py                  # Dual-thread Flask/TCP Server
 │   ├── requirements.txt
 │   └── templates/
