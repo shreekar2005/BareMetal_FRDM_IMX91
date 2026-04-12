@@ -247,7 +247,7 @@ void print_stats(threadStatParams allThreads[], espStatParams espInstance, const
         allThreads[i].name, allThreads[i].current_state, allThreads[i].priority, allThreads[i].deadline, allThreads[i].period, allThreads[i].targetExecs, allThreads[i].doneExecs, allThreads[i].lastTAT);
     }
 
-    print_dbg("ESP status:\n");
+    print_dbg("\n\n\nESP status:\n");
     if(espInstance.reachable == true) print_dbg("Reachable = true\n");
     else print_dbg("Reachable = false\n");
     print_dbg("Operating mode of ESP = %d\n", espInstance.op_mode);
