@@ -62,6 +62,9 @@ int main() {
     os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
     os_thread_start(wifi_listener_thread_id);
 
+    // int statistics_thread_id = 5;
+    // os_set_thread_rtos(statistics_thread_id, 127, -1, 5000, -1);
+
     print_dbg("[Boot] Initializing GIC...\r\n");
     gic_init(); 
 

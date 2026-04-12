@@ -1,3 +1,5 @@
+// Task_Name :Show stats
+
 # include "include/multitasking.h"
 # include "include/statistics.h"
 # include "include/string.h"
@@ -6,11 +8,19 @@ void statistics_thread(void* arg)
 {
     // pollPeriod = *(int*)(arg);
     // pollPeriod = pollPeriod<3?3:pollPeriod;
-    pollPeriod=5;
+    pollPeriod = 5; //in seconds
     while(1)
     {
         threadStatParams allThreads[numThreads];
         getTasksInfo(allThreads);
+
+        switch(currentSchedAlgo)
+        {
+            case SCHED_RR: schedAlgo = "Round Robin"; break;
+            case SCHED_PRIORITY: schedAlgo = "Priority Scheduling"; break;
+            case SCHED_EDF: schedAlgo = "Earliest Deadline First"; break;
+            default: schedAlgo = "Unknown";
+        }
 
         espStatParams espInstance;
         espInstance.reachable=false;
@@ -24,7 +34,18 @@ void statistics_thread(void* arg)
         getEspInfo(&espInstance);
         os_start_scheduling();
 
-        print_stats(allThreads, espInstance);
+        uint64_t ticks = sysctrGetTicks();
+        uint64_t freq = sysctrGetFreq();
+        uint64_t uptime_sec = ticks/freq;
+        int sec = uptime_sec%60;
+        uptime_sec/=60;
+        int min = uptime_sec%60;
+        uptime_sec/=60;
+        int hr = uptime_sec;
+
+        print_dbg("\n\n\n[statistics]\n");
+        print_dbg("%d hrs : %d min : %d sec\n", hr, min, sec);
+        print_stats(allThreads, espInstance, schedAlgo);
 
         thread_sleep(pollPeriod*1000);
     }
@@ -43,8 +64,6 @@ void getTasksInfo(threadStatParams allThreads[])
         allThreads[i].period = threads[i].period_ms; // can be -1
         allThreads[i].lastTAT = threads[i].lastTurnaroundTime_ms;
     }
-
-    schedAlgo = currentSchedAlgo;
 }
 
 void getEspInfo(espStatParams* espInstance)
@@ -54,7 +73,7 @@ void getEspInfo(espStatParams* espInstance)
     {
         espInstance->reachable = true;
     }
-
+    
     send_to_esp("AT+CWMODE?\r\n"); //op_mode check
     if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 3))
     {
@@ -154,7 +173,13 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec) {
     bool timed_out = true;
 
     // Initialize buffer as empty string
-    if (max_len > 0) buffer[0] = '\0';
+    if (max_len > 0)
+    {
+        for(int i=0;i<max_len;i++)
+        {
+            buffer[i]='\0';
+        }
+    }
 
     uint64_t targetClockTick = sysctrGetTicks() + timeout_sec * sysctrGetFreq(); 
 
@@ -212,9 +237,9 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec) {
     return success;
 }
 
-void print_stats(threadStatParams allThreads[], espStatParams espInstance)
+void print_stats(threadStatParams allThreads[], espStatParams espInstance, const char* schedAlgo)
 {
-    print_dbg("Current scheduling algorithm used = %-16s\n", schedAlgo);
+    print_dbg("\n\n****Current scheduling algorithm used = %s****\n", schedAlgo);
     for(int i=0;i<numThreads;i++)
     {
         print_dbg("\nThread %d\n", (i+1));
@@ -223,21 +248,15 @@ void print_stats(threadStatParams allThreads[], espStatParams espInstance)
     }
 
     print_dbg("ESP status:\n");
-    bool reachable;
-    int op_mode;
-    char router_ssid[33];   // Max 32 chars for WPA2 + null terminator
-    char router_mac[18];    // 17 chars for XX:XX:XX:XX:XX:XX + null terminator
-    char esp_ip[16];        // 15 chars for 255.255.255.255 + null terminator
-    char esp_mac[18];
     if(espInstance.reachable == true) print_dbg("Reachable = true\n");
     else print_dbg("Reachable = false\n");
-    print_dbg("Operating mode of ESP = %d\n", op_mode);
-    if(router_ssid != '\0') print_dbg("Router ssid = %-16s\n", router_ssid);
+    print_dbg("Operating mode of ESP = %d\n", espInstance.op_mode);
+    if(espInstance.router_ssid[0] != '\0') print_dbg("Router ssid = %-16s\n", espInstance.router_ssid);
     else print_dbg("Router ssid = Not applicable\n");
-    if(router_mac != '\0') print_dbg("Router mac = %-16s\n", router_mac);
+    if(espInstance.router_mac[0] != '\0') print_dbg("Router mac = %-16s\n", espInstance.router_mac);
     else print_dbg("Router mac = Not applicable\n");
-    if(esp_ip!='\0') print_dbg("ESP IP = %-16s\n", esp_ip);
+    if(espInstance.esp_ip[0] !='\0') print_dbg("ESP IP = %-16s\n", espInstance.esp_ip);
     else print_dbg("ESP IP = Not applicable\n");
-    if(esp_mac!='\0') print_dbg("ESP mac = %-16s\n", esp_mac);
+    if(espInstance.esp_mac[0] !='\0') print_dbg("ESP mac = %-16s\n", espInstance.esp_mac);
     else print_dbg("ESP mac = Not applicable\n");
 }

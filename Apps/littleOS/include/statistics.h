@@ -5,9 +5,11 @@
 
 int pollPeriod;
 
-int schedAlgo;
+int uptime;
 
 char raw_esp_response_buffer[256];
+
+const char* schedAlgo;
 
 typedef struct {
     const char* name;
@@ -47,4 +49,4 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
  */
 void parse_esp_response(const char* raw_buffer);
 
-void print_stats(threadStatParams allThreads[], espStatParams espInstance);
+void print_stats(threadStatParams allThreads[], espStatParams espInstance, const char* schedAlgo);
