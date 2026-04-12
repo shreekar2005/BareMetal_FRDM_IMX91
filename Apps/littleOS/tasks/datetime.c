@@ -16,7 +16,7 @@ void datetime_thread(void* arg) {
     char arg2[32] = {0};
     int ptr = 0, i = 0;
 
-    // Parse main command (e.g., --show, --sync, --set)
+    // Parse main command (e.g., show, sync, set)
     while (print_buffer[ptr] == ' ') ptr++;
     while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 15) cmd[i++] = print_buffer[ptr++];
     cmd[i] = '\0';
@@ -34,11 +34,11 @@ void datetime_thread(void* arg) {
     arg2[i] = '\0';
 
 
-    if (strcmp(cmd, "--show") == 0) {
+    if (strcmp(cmd, "show") == 0) {
         print_dbg("\r\n[RTC] Current System Date/Time:\r\n");
         print_dbg("      %02d:%02d:%02d  %02d/%02d/%04d\r\n", sys_hour, sys_min, sys_sec, sys_day, sys_month, sys_year);
     } 
-    else if (strcmp(cmd, "--set") == 0) {
+    else if (strcmp(cmd, "set") == 0) {
         if (arg1[0] == '\0' || arg2[0] == '\0') {
             print_dbg("[RTC] Error: Requires <hh:mm:ss> <dd:mm:yyyy>\r\n");
         } else {
@@ -54,7 +54,7 @@ void datetime_thread(void* arg) {
             print_dbg("[RTC] Hardware clock updated successfully!\r\n");
         }
     } 
-    else if (strcmp(cmd, "--sync") == 0) {
+    else if (strcmp(cmd, "sync") == 0) {
         // We need the IP of your laptop. If not provided, use a default.
         const char* target_ip = (arg1[0] != '\0') ? arg1 : "192.168.21.100"; // Put your laptop IP here!
         int target_port = (arg2[0] != '\0') ? atoi(arg2) : 5000;
@@ -70,9 +70,9 @@ void datetime_thread(void* arg) {
     else {
         // Help Menu
         print_dbg("\r\n[RTC] Invalid argument. Usage:\r\n");
-        print_dbg("  datetime --show                                  (Prints current time)\r\n");
-        print_dbg("  datetime --sync <laptop_ip> <port>               (Fetches real time via TCP)\r\n");
-        print_dbg("  datetime --set  <hh:mm:ss> <dd:mm:yyyy>          (Manually update RTC)\r\n");
+        print_dbg("  datetime show                                  (Prints current time)\r\n");
+        print_dbg("  datetime sync <laptop_ip> <port>               (Fetches real time via TCP)\r\n");
+        print_dbg("  datetime set  <hh:mm:ss> <dd:mm:yyyy>          (Manually update RTC)\r\n");
     }
 
     print_dbg("\n> ");

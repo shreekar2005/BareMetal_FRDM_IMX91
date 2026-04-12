@@ -12,7 +12,7 @@ NXP_PORT = 8080
 # SHARED STATE
 # Both threads can read and write to this variable
 LATEST_NXP_STATUS = "Awaiting status push from NXP..."
-LATEST_NXP_IP = None  # <--- This will be dynamically updated!
+LATEST_NXP_IP = None  # This will be dynamically updated!
 
 
 # FLASK WEB ROUTES (Port 5000)
@@ -74,7 +74,7 @@ def raw_tcp_server_thread():
         if "GET_TIME" in data:
             print(f"[*] Time sync requested by NXP ({LATEST_NXP_IP})")
             now = datetime.datetime.now().strftime("%H:%M:%S %d:%m:%Y")
-            cmd = f"exec datetime --set {now}\n"
+            cmd = f"exec datetime set {now}\n"
             
             time.sleep(1) 
             

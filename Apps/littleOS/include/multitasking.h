@@ -41,7 +41,6 @@ typedef struct {
     CPUState* cpustate_ptr; /**< fake cpu state stored at top of stack */
     void (*entrypoint)(void*); /**< function pointer for thread logic */
     void* arg; /**< arguments for function */
-    volatile bool active; /**< if false, scheduler will skip it */
     
     char name[16]; /**< human readable name for stat command */
     
@@ -66,7 +65,6 @@ typedef struct {
     uint32_t lastTurnaroundTime_ms; /**< turnaround time of the last completed execution */
     
     // sleep tracking
-    volatile bool sleeping; /**< true if thread is voluntarily blocked */
     uint64_t wakeupTick; /**< exact hardware tick when sleeping thread should resume */
 } Thread;
 
