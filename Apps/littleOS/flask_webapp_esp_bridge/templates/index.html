@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>littleOS Command Center</title>
+    <style>
+        body { background-color: #121212; color: #00ff00; font-family: monospace; margin: 0; padding: 20px; }
+        h1 { border-bottom: 1px solid #00ff00; padding-bottom: 10px; }
+        .container { display: flex; gap: 20px; }
+        .panel { border: 1px solid #00ff00; padding: 15px; width: 50%; height: 70vh; overflow-y: auto; background: #0a0a0a; }
+        .input-group { margin-top: 20px; display: flex; }
+        input[type="text"] { flex-grow: 1; background: #000; border: 1px solid #00ff00; color: #00ff00; padding: 10px; font-family: monospace; font-size: 16px; outline: none; }
+        button { background: #00ff00; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; font-family: monospace; }
+        button:hover { background: #00cc00; }
+        pre { margin: 0; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+    <h1>[littleOS] Remote IoT Command Hub</h1>
+
+    <div class="container">
+        <div class="panel">
+            <h3>>> Terminal</h3>
+            <div id="terminal-log" style="color: #aaa; margin-bottom: 15px;"></div>
+            
+            <div class="input-group">
+                <span style="padding: 10px;">></span>
+                <input type="text" id="cmdInput" placeholder="Enter command (e.g. ledblink -n 5)..." autocomplete="off" onkeypress="handleEnter(event)">
+                <button onclick="sendCommand()">SEND</button>
+            </div>
+            <p style="font-size: 12px; color: #555;">* 'exec' is prepended automatically.</p>
+        </div>
+
+        <div class="panel">
+            <h3>>> Live System Status</h3>
+            <pre id="status-display">Loading...</pre>
+        </div>
+    </div>
+
+    <script>
+        // Send command to Flask
+        function sendCommand() {
+            const input = document.getElementById('cmdInput');
+            const cmd = input.value;
+            if (!cmd) return;
+
+            // Log it locally
+            document.getElementById('terminal-log').innerHTML += `<div><span style="color:white">> ${cmd}</span></div>`;
+            input.value = '';
+
+            // Send via AJAX
+            fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.error) {
+                    document.getElementById('terminal-log').innerHTML += `<div style="color:red">[!] Error: ${data.error}</div>`;
+                } else {
+                    document.getElementById('terminal-log').innerHTML += `<div style="color:#00ff00">[+] Sent to NXP successfully.</div>`;
+                }
+            });
+        }
+
+        function handleEnter(e) { if(e.key === 'Enter') sendCommand(); }
+
+        // Fetch Live Status every 2 seconds
+        setInterval(() => {
+            fetch('/api/status')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('status-display').textContent = data.status;
+            });
+        }, 2000);
+    </script>
+</body>
+</html>

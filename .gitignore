@@ -58,3 +58,4 @@ dkms.conf
 
 # Ignore every app's build directory
 **/build/
+.venv

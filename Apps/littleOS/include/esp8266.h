@@ -31,6 +31,14 @@ void init_esp_as_access_point(const char* ssid, const char* password);
  */
 void init_esp_as_station(const char* ssid, const char* password);
 
+/**
+ * @brief Acts as a TCP client to send a raw string to a specific IP and Port.
+ * @param ip Destination IP address (e.g., "192.168.1.50")
+ * @param port Destination Port (e.g., 5000)
+ * @param payload The data to send (e.g., "GET_TIME")
+ */
+void esp_tcp_client_send(const char* ip, int port, const char* payload);
+
 /* * Background RTOS Task to listen for RX from ESP8266, we can execute CLI commands from remote clients */
 void espTCPServerListener_thread(void *arg);
 

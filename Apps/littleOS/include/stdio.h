@@ -64,4 +64,14 @@ int print_dbg(const char *format, ...);
  */
 int print_esp(const char *format, ...);
 
+/**
+ * @brief custom send_to_esp for ESP Wi-Fi port
+ * * this function formats a string and prints it to the ESP network module.
+ * @details supports the exact same format specifiers and flags as print_dbg.
+ * @param format the null-terminated format string
+ * @param ... variable arguments
+ * @return total number of characters printed
+ */
+int send_to_esp(const char *format, ...);
+
 #endif

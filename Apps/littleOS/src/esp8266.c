@@ -6,23 +6,6 @@
 #include "include/string.h"
 #include "include/multitasking.h"
 
-/**
- * @brief custom send_to_esp for ESP Wi-Fi port
- * * this function formats a string and prints it to the ESP network module.
- * @details supports the exact same format specifiers and flags as print_dbg.
- * * @param format the null-terminated format string
- * @param ... variable arguments
- * @return total number of characters printed
- */
-static int send_to_esp(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    // Print to your Wi-Fi module (LPUART4)
-    int chars_written = vprint_uart(LPUART4, format, args); 
-    va_end(args);
-    return chars_written;
-}
-
 /* Actively listens to the ESP8266 until it sees "OK" or "ERROR", or times out */
 static bool wait_for_esp_ok(uint32_t timeout_sec) {
     char c;
@@ -213,6 +196,63 @@ void start_esp_tcp_server(int port) {
     }
 
     print_dbg("[Wi-Fi] TCP Server is running and listening!\r\n");
+}
+
+/**
+ * @brief Acts as a TCP client to send a raw string to a specific IP and Port.
+ * @param ip Destination IP address (e.g., "192.168.1.50")
+ * @param port Destination Port (e.g., 5000)
+ * @param payload The data to send (e.g., "GET_TIME")
+ */
+void esp_tcp_client_send(const char* ip, int port, const char* payload) {
+    print_dbg("\r\n[Wi-Fi] Sending trigger to %s:%d...\r\n", ip, port);
+
+    // Open Socket #4 as a TCP Client
+    send_to_esp("AT+CIPSTART=4,\"TCP\",\"%s\",%d\r\n", ip, port);
+    if (wait_for_esp_ok(5) == false) {
+        print_dbg("[Wi-Fi] Failed to connect to remote server.\r\n");
+        return;
+    }
+
+    // Calculate length and send the CIPSEND command
+    int len = strlen(payload);
+    send_to_esp("AT+CIPSEND=4,%d\r\n", len);
+    
+    // Wait for the '>' prompt indicating ESP is ready for raw data
+    uint64_t targetClockTick = sysctrGetTicks() + (2 * sysctrGetFreq());
+    while (sysctrGetTicks() < targetClockTick) {
+        /* Clear Overrun errors just in case */
+        if (LPUART4->STAT & (0xF << 16)) {
+            LPUART4->STAT |= (0xF << 16); 
+        }
+
+        char c = lpuartGetCharNonBlocking(LPUART4);
+        if (c != '\0') {
+            /* Print the characters so your terminal log makes sense */
+            if(c != '\r' && c != '\n') print_dbg("%c", c);
+            if(c == '\n') print_dbg("\\r");
+            if(c == '\r') print_dbg("\\r");
+            
+            // Break exactly when the ESP gives the green light
+            if (c == '>') {
+                print_dbg("\r\n"); // Clean up terminal newline
+                break;
+            }
+        }
+        __asm__ volatile("nop"); 
+    }
+
+    // Blast the payload
+    send_to_esp("%s", payload);
+    
+    // Wait for "SEND OK" (Uses your existing function, which catches 'O' and 'K' perfectly!)
+    wait_for_esp_ok(3);
+
+    // Close Socket #4
+    send_to_esp("AT+CIPCLOSE=4\r\n");
+    wait_for_esp_ok(2);
+    
+    print_dbg("[Wi-Fi] Trigger sent successfully.\r\n");
 }
 
 void espTCPServerListener_thread(void *arg) {
