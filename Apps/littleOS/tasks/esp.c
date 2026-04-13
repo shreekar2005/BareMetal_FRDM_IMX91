@@ -90,6 +90,11 @@ void esp_thread(void* arg) {
         print_esp_status();     // Call hardware driver to query module
         os_start_scheduling(); // Resume scheduling
     }
+    else if (strcmp(cmd, "reboot") == 0) {
+        os_stop_scheduling(); // Lock scheduling
+        esp_reboot();         // Reboot the ESP8266 module
+        os_start_scheduling(); // Resume scheduling (in case reboot fails)
+    }
 
     else {
         // Print updated help menu
@@ -99,6 +104,7 @@ void esp_thread(void* arg) {
         print_dbg("[ESP-Thread]   ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\n");
         print_dbg("[ESP-Thread]   tcp-server [port_number]                (Default: 8080)\n");
         print_dbg("[ESP-Thread]   echo       <message>                    (Sends text to TCP clients)\n");
+        print_dbg("[ESP-Thread]   reboot                                  (Reboots the ESP8266 module)\n");
         print_dbg("[ESP-Thread]   status                                  (Shows current mode, IP, MAC)\n");
     }
 }

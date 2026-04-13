@@ -10,8 +10,9 @@ extern volatile char print_buffer[128];
 
 /* STACK OVERFLOW PREVENTION : Moving massive arrays from the 4KB RTOS Thread Stack to static BSS memory. */
 static char payload_buffer[2048]; 
-static char raw_esp_response_buffer[256];
+static char raw_esp_response_buffer[512]; 
 static threadStatParams allThreads[MAX_THREADS];
+
 
 static void append_int(char* buf, int val) {
     char temp[16];
@@ -102,12 +103,14 @@ void statistics_thread(void* arg)
     }
 
     espStatParams espInstance;
+    
+    char* p = (char*)&espInstance;
+    for(unsigned int clr = 0; clr < sizeof(espStatParams); clr++) {
+        p[clr] = '\0';
+    }
+
     espInstance.reachable=false;
     espInstance.op_mode=-1;
-    espInstance.esp_ip[0]='\0';
-    espInstance.esp_mac[0]='\0';
-    espInstance.router_ssid[0]='\0';
-    espInstance.router_mac[0]='\0';
 
     os_stop_scheduling();
     getEspInfo(&espInstance);
@@ -210,6 +213,10 @@ void getTasksInfo(threadStatParams allThreads[])
 
 void getEspInfo(espStatParams* espInstance)
 {
+    while (esp_ring_buffer_pop() != '\0') {
+        __asm__ volatile("nop");
+    }
+
     send_to_esp("AT\r\n"); 
     if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 3))
     {
@@ -239,7 +246,7 @@ void getEspInfo(espStatParams* espInstance)
             {
                 jap_ptr += 8; 
                 int i = 0;
-                while (*jap_ptr != '"' && *jap_ptr != '\0' && i < 31) {
+                while (*jap_ptr != '"' && *jap_ptr != '\0' && *jap_ptr != '\r' && *jap_ptr != '\n' && i < 31) {
                     espInstance->router_ssid[i++] = *jap_ptr++;
                 }
                 espInstance->router_ssid[i] = '\0';
@@ -248,7 +255,7 @@ void getEspInfo(espStatParams* espInstance)
                 if (jap_ptr) {
                     jap_ptr += 2; 
                     i = 0;
-                    while (*jap_ptr != '"' && *jap_ptr != '\0' && i < 17) {
+                    while (*jap_ptr != '"' && *jap_ptr != '\0' && *jap_ptr != '\r' && *jap_ptr != '\n' && i < 17) {
                         espInstance->router_mac[i++] = *jap_ptr++;
                     }
                     espInstance->router_mac[i] = '\0';
@@ -273,7 +280,7 @@ void getEspInfo(espStatParams* espInstance)
             if (ip_ptr)
             {
                 int i = 0;
-                while (*ip_ptr != '"' && *ip_ptr != '\0' && i < 15) {
+                while (*ip_ptr != '"' && *ip_ptr != '\0' && *ip_ptr != '\r' && *ip_ptr != '\n' && i < 15) {
                     espInstance->esp_ip[i++] = *ip_ptr++;
                 }
                 espInstance->esp_ip[i] = '\0';
@@ -290,7 +297,7 @@ void getEspInfo(espStatParams* espInstance)
             if (mac_ptr)
             {
                 int i = 0;
-                while (*mac_ptr != '"' && *mac_ptr != '\0' && i < 17) {
+                while (*mac_ptr != '"' && *mac_ptr != '\0' && *mac_ptr != '\r' && *mac_ptr != '\n' && i < 17) {
                     espInstance->esp_mac[i++] = *mac_ptr++;
                 }
                 espInstance->esp_mac[i] = '\0';
@@ -298,6 +305,7 @@ void getEspInfo(espStatParams* espInstance)
         }
     }
 }
+
 
 bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec) {
     char c;

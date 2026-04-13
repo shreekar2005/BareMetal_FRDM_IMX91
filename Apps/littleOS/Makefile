@@ -35,6 +35,7 @@ initpy: setup_venv
 	$(PYTHON_SERVER_AND_WEBAPP_DIR)/.venv/bin/pip install -r $(PYTHON_SERVER_AND_WEBAPP_DIR)/requirements.txt
 
 runpy:
+	sudo fuser -k 5555/tcp || true
 	$(PYTHON_SERVER_AND_WEBAPP_DIR)/.venv/bin/python $(PYTHON_SERVER_AND_WEBAPP_DIR)/app.py 
 
 .PHONY: all pre_build clear clean usb_pendrive_install usb_serial_install usb_ums_install setup_venv initpy runpy

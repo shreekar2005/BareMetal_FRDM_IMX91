@@ -22,6 +22,10 @@ void input_thread(void* arg) {
     while(1) {
         char c;
         while(1) {
+            /* Violently clear UART hardware overrun/framing flags */
+            if (LPUART1->STAT & (0xF << 16)) {
+                LPUART1->STAT |= (0xF << 16); 
+            }
             c = lpuartGetCharNonBlocking(LPUART1);
             if (c != '\0') break;
         }

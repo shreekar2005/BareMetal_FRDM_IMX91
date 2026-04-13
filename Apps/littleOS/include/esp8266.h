@@ -28,6 +28,11 @@ char esp_ring_buffer_pop(void);
 void esp_init(void);
 
 /**
+ * @brief Reboots the ESP8266 module via software command.
+ */
+void esp_reboot(void);
+
+/**
  * @brief Queries the ESP8266 for its current Wi-Fi mode, IP address, and TCP connections.
  */
 void print_esp_status(void);

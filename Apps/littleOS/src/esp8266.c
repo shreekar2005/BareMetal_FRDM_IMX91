@@ -152,6 +152,35 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
     return success;
 }
 
+void esp_reboot(void) {
+    print_dbg("[ESP-Driver] Sending software reset command to ESP8266...\n");
+    
+    // Send the reset command
+    send_to_esp("AT+RST\r\n");
+
+    // The ESP usually says "OK" right before the silicon resets
+    wait_for_esp_ok(2);
+
+    print_dbg("[ESP-Driver] Waiting for ESP8266 silicon to reboot (3 seconds)...\n");
+
+    // MASSIVE BLIND FLUSH
+    uint64_t flush_target = sysctrGetTicks() + (3 * sysctrGetFreq()); 
+    while (sysctrGetTicks() < flush_target) {
+        
+        /* Violently clear UART hardware overrun/framing flags caused by the baud mismatch */
+        if (LPUART4->STAT & (0xF << 16)) {
+            LPUART4->STAT |= (0xF << 16); 
+        }
+        
+        /* Pop and destroy the garbage bytes */
+        esp_ring_buffer_pop(); 
+        
+        __asm__ volatile("nop");
+    }
+
+    print_dbg("[ESP-Driver] ESP8266 reboot complete.\n");
+}
+
 void print_esp_status(void) {
     /* Basic Hardware Ping */
     send_to_esp("AT\r\n");
@@ -342,15 +371,15 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     send_to_esp("AT+CIPCLOSE=4\r\n"); 
     wait_for_esp_ok(3);
 
-    // 100ms Blind Flush
-    // uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
-    // while (sysctrGetTicks() < flush_target) {
-    //     if (LPUART4->STAT & (0xF << 16)) {
-    //         LPUART4->STAT |= (0xF << 16); 
-    //     }
-    //     esp_ring_buffer_pop(); 
-    //     __asm__ volatile("nop");
-    // }
+    // 100ms Blind Flush (IDK WHY I AM KEEPING THIS AFTER wait_for_esp_ok(3))
+    uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
+    while (sysctrGetTicks() < flush_target) {
+        if (LPUART4->STAT & (0xF << 16)) {
+            LPUART4->STAT |= (0xF << 16); 
+        }
+        esp_ring_buffer_pop(); 
+        __asm__ volatile("nop");
+    }
     
     print_dbg("[ESP-Driver] TCP data sent successfully.\n");
 }

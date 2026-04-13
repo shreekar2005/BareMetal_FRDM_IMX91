@@ -96,9 +96,9 @@ def send_command():
 
 def raw_tcp_server_thread():
     global LATEST_NXP_STATUS, LATEST_NXP_IP
-    import time
     
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(("0.0.0.0", LAPTOP_TCP_PORT))
     server.listen(5)
     print(f"[*] IoT Hub: Raw TCP Server listening on port {LAPTOP_TCP_PORT}...")
@@ -139,11 +139,15 @@ def raw_tcp_server_thread():
                 LATEST_NXP_STATUS = parse_compact_status(data[status_idx + 8:])
                 print(f"[+] Received compact system status update from {LATEST_NXP_IP} ({len(data)} bytes)")
                 
-                # Push the update directly to the frontend via WebSockets
                 socketio.emit('status_update', {'status': LATEST_NXP_STATUS})
                 
         except Exception as global_e:
             print(f"[!] FATAL ERROR IN TCP BACKGROUND THREAD: {global_e}")
+        finally:
+            try:
+                client.close()
+            except:
+                pass
 
 if __name__ == "__main__":
     threading.Thread(target=raw_tcp_server_thread, daemon=True).start()
