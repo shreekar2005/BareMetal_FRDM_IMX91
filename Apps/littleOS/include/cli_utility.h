@@ -16,11 +16,6 @@ void system_poweroff(void);
  */
 void clear_terminal(void);
 
-/**
- * @brief prints the beautifully formatted rtos task manager table
- */
-void print_taskinfo(void);
-
 /***
  * @brief prints the help menu with available commands and dynamically loaded tasks
  */

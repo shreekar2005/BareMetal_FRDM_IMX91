@@ -10,29 +10,70 @@ LAPTOP_TCP_PORT = 5555
 NXP_PORT = 8080
 
 # SHARED STATE
-# Both threads can read and write to this variable
 LATEST_NXP_STATUS = "Awaiting status push from NXP..."
-LATEST_NXP_IP = None  # This will be dynamically updated!
+LATEST_NXP_IP = None  
 
+def parse_compact_status(raw_data):
+    html = "<h2>[NXP LittleOS Dashboard]</h2>"
+    uptime_str = ""
+    sched_str = ""
+    esp_str = "<h3>[Wi-Fi Bridge - ESP8266]</h3><ul style='list-style-type: none; padding-left: 0;'>"
+    
+    threads = []
+    
+    # Reverted to splitting by '\n' to verify your UART fix
+    for line in raw_data.strip().split('\n'):
+        try:
+            parts = line.split(',')
+            if parts[0] == 'U' and len(parts) >= 4:
+                uptime_str = f"<p><b>Uptime:</b> {parts[1]}h : {parts[2]}m : {parts[3]}s</p>"
+            elif parts[0] == 'S' and len(parts) >= 2:
+                sched_str = f"<p><b>Scheduler:</b> {parts[1]}</p>"
+            elif parts[0] == 'T' and len(parts) >= 10:
+                threads.append(parts)
+            elif parts[0] == 'E' and len(parts) >= 7:
+                reachable = "[ONLINE]" if parts[1] == "1" else "[OFFLINE]"
+                status_color = "#00ff00" if parts[1] == "1" else "red"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>Status:</b> <span style='color: {status_color}; font-weight: bold;'>{reachable}</span></li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>Op Mode:</b> {parts[2]}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>SSID:</b> {parts[3]}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>Router MAC:</b> {parts[4]}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>IP Address:</b> {parts[5]}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>ESP MAC:</b> {parts[6]}</li>"
+        except Exception:
+            pass 
+            
+    esp_str += "</ul>"
+    
+    html += uptime_str + sched_str
+    
+    if threads:
+        html += "<h3>[Active Threads]</h3>"
+        html += "<table border='1' cellpadding='8' style='border-collapse: collapse; width: 100%; text-align: center; font-family: monospace; background-color: #111; color: #00ff00; border-color: #00ff00;'>"
+        html += "<tr style='background-color: #222;'><th>ID</th><th>Name</th><th>State</th><th>Pri</th><th>Dead</th><th>Per</th><th>Targ</th><th>Done</th><th>TAT (ms)</th></tr>"
+        for t in threads:
+            state_color = "#00ff00" if t[3] == "RUN" else "orange" if t[3] == "READY" else "red" if t[3] == "TERM" else "#0088ff"
+            html += f"<tr><td>{t[1]}</td><td>{t[2]}</td><td style='color: {state_color}; font-weight: bold;'>{t[3]}</td><td>{t[4]}</td><td>{t[5]}</td><td>{t[6]}</td><td>{t[7]}</td><td>{t[8]}</td><td>{t[9]}</td></tr>"
+        html += "</table><br>"
+        
+    html += esp_str
+    return html
 
-# FLASK WEB ROUTES (Port 5000)
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
-    # The web browser asks for this every 2 seconds
     return jsonify({"status": LATEST_NXP_STATUS})
 
 @app.route('/api/command', methods=['POST'])
 def send_command():
-    global LATEST_NXP_IP  # Grab the dynamic IP
+    global LATEST_NXP_IP 
 
     cmd = request.json.get('command', '')
     if not cmd:
         return jsonify({"error": "Empty command"}), 400
-
     if not LATEST_NXP_IP:
         return jsonify({"error": "No NXP board has connected to the Hub yet!"}), 400
 
@@ -41,7 +82,6 @@ def send_command():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(3)
-        # Connect using the dynamically learned IP!
         s.connect((LATEST_NXP_IP, NXP_PORT)) 
         s.send(full_command.encode('utf-8'))
         s.close()
@@ -49,8 +89,6 @@ def send_command():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# RAW TCP SERVER THREAD (Port 5555)
 def raw_tcp_server_thread():
     global LATEST_NXP_STATUS, LATEST_NXP_IP
     import time
@@ -61,43 +99,47 @@ def raw_tcp_server_thread():
     print(f"[*] IoT Hub: Raw TCP Server listening on port {LAPTOP_TCP_PORT}...")
 
     while True:
-        client, addr = server.accept()
-        
-        # --- THE MAGIC BULLET ---
-        # Capture the exact IP of the NXP board that just connected
-        LATEST_NXP_IP = addr[0] 
-        # ------------------------
+        try:
+            client, addr = server.accept()
+            LATEST_NXP_IP = addr[0] 
 
-        data = client.recv(4096).decode('utf-8', errors='ignore')
-        client.close()
-
-        if "GET_TIME" in data:
-            print(f"[*] Time sync requested by NXP ({LATEST_NXP_IP})")
-            now = datetime.datetime.now().strftime("%H:%M:%S %d:%m:%Y")
-            cmd = f"exec datetime set {now}\n"
-            
-            time.sleep(1) 
-            
+            client.settimeout(5.0) 
+            data = ""
             try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(3)
-                # Connect right back to the exact IP that just asked!
-                s.connect((LATEST_NXP_IP, NXP_PORT)) 
-                s.send(cmd.encode('utf-8'))
-                s.close()
-                print(f"[+] Synced time to NXP: {now}")
-            except Exception as e:
-                print(f"[-] Failed to send time to NXP: {e}")
-                
-        elif data.startswith("STATUS:"):
-            LATEST_NXP_STATUS = data[7:]
-            print(f"[+] Received system status update from {LATEST_NXP_IP}")
+                while True:
+                    chunk = client.recv(4096).decode('utf-8', errors='ignore')
+                    if not chunk: 
+                        break 
+                    data += chunk
+            except socket.timeout:
+                pass 
+            
+            client.close()
 
+            if "GET_TIME" in data:
+                print(f"[*] Time sync requested by NXP ({LATEST_NXP_IP})")
+                now = datetime.datetime.now().strftime("%H:%M:%S %d:%m:%Y")
+                cmd = f"exec datetime set {now}\n"
+                time.sleep(1) 
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.settimeout(3)
+                    s.connect((LATEST_NXP_IP, NXP_PORT)) 
+                    s.send(cmd.encode('utf-8'))
+                    s.close()
+                    print(f"[+] Synced time to NXP: {now}")
+                except Exception as e:
+                    print(f"[-] Failed to send time to NXP: {e}")
+                    
+            elif "STATUS:\n" in data:
+                status_idx = data.find("STATUS:\n")
+                LATEST_NXP_STATUS = parse_compact_status(data[status_idx + 8:])
+                print(f"[+] Received compact system status update from {LATEST_NXP_IP} ({len(data)} bytes)")
+                
+        except Exception as global_e:
+            print(f"[!] FATAL ERROR IN TCP BACKGROUND THREAD: {global_e}")
 
 if __name__ == "__main__":
-    # start the raw TCP server in a background thread
     threading.Thread(target=raw_tcp_server_thread, daemon=True).start()
-    
-    # start the Flask web server in the main thread
     print("[*] IoT Hub: Web Interface starting on port 5000...")
     app.run(host="0.0.0.0", port=5000, debug=False)

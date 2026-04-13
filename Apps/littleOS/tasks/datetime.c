@@ -55,8 +55,8 @@ void datetime_thread(void* arg) {
         }
     } 
     else if (strcmp(cmd, "sync") == 0) {
-        // We need the IP of your laptop. If not provided, use a default.
-        const char* target_ip = (arg1[0] != '\0') ? arg1 : "192.168.21.100"; // Put your laptop IP here!
+        // We need the IP of your server. If not provided, use a default.
+        const char* target_ip = (arg1[0] != '\0') ? arg1 : "192.168.21.100"; // Put your server IP here!
         int target_port = (arg2[0] != '\0') ? atoi(arg2) : 5000;
         
         print_dbg("[RTC] Requesting time sync from %s:%d...\r\n", target_ip, target_port);
@@ -71,7 +71,7 @@ void datetime_thread(void* arg) {
         // Help Menu
         print_dbg("\r\n[RTC] Invalid argument. Usage:\r\n");
         print_dbg("  datetime show                                  (Prints current time)\r\n");
-        print_dbg("  datetime sync <laptop_ip> <port>               (Fetches real time via TCP)\r\n");
+        print_dbg("  datetime sync <server_ip> <port>               (Fetches real time via TCP)\r\n");
         print_dbg("  datetime set  <hh:mm:ss> <dd:mm:yyyy>          (Manually update RTC)\r\n");
     }
 

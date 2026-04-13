@@ -4,6 +4,10 @@
 
 static void printCharStr(LPUART_TypeDef *uart, const char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
+        /* ONLY inject carriage return for the local debug console (LPUART1) */
+        if (uart == LPUART1 && str[i] == '\n') {
+            lpuartPutChar(uart, '\r');
+        }
         lpuartPutChar(uart, str[i]);
     }
 }
@@ -507,7 +511,7 @@ int print_esp(const char *format, ...) {
     // calculate the exact wire length.
     int wire_len = 0;
     for (int i = 0; i < len; i++) {
-        if (buffer[i] == '\n') wire_len++; // account for lpuartPutChar injecting \r
+        // if (buffer[i] == '\n') wire_len++; // NO LONGER account for lpuartPutChar injecting \r
         wire_len++;
     }
 

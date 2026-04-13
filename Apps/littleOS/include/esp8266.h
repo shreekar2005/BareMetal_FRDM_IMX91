@@ -4,6 +4,23 @@
 #include <stdint.h>
 #include "LPUART.h"
 
+#define IMX91_LPUART4_IRQ_ID  101  /* GIC IRQ ID = SPI Number + 32 and in manual SPI Number is 69 */
+#define ESP_RX_BUFFER_SIZE 2048
+
+typedef struct {
+    volatile char data[ESP_RX_BUFFER_SIZE];
+    volatile int head; // Written by the Hardware Interrupt
+    volatile int tail; // Read by the OS Thread
+} RingBuffer;
+
+extern RingBuffer esp_rx_buffer;
+
+/**
+ * @brief Safely pops a character from the ring buffer.
+ * @return The character, or '\0' if buffer is empty.
+ */
+char esp_ring_buffer_pop(void);
+
 /**
  * @brief Initializes the ESP8266 Wi-Fi module's hardware interrupts.
  * This function registers the LPUART4 RX ISR with the OS, enables the interrupt in the GIC, and configures the LPUART4 hardware to generate interrupts when data is received from the ESP8266. Must be called once during system initialization.

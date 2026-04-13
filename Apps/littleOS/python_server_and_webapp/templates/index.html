@@ -35,22 +35,19 @@
 
         <div class="panel">
             <h3>>> Live System Status</h3>
-            <pre id="status-display">Loading...</pre>
+            <div id="status-display">Loading...</div>
         </div>
     </div>
 
     <script>
-        // Send command to Flask
         function sendCommand() {
             const input = document.getElementById('cmdInput');
             const cmd = input.value;
             if (!cmd) return;
 
-            // Log it locally
             document.getElementById('terminal-log').innerHTML += `<div><span style="color:white">> ${cmd}</span></div>`;
             input.value = '';
 
-            // Send via AJAX
             fetch('/api/command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -68,12 +65,11 @@
 
         function handleEnter(e) { if(e.key === 'Enter') sendCommand(); }
 
-        // Fetch Live Status every 2 seconds
         setInterval(() => {
             fetch('/api/status')
             .then(res => res.json())
             .then(data => {
-                document.getElementById('status-display').textContent = data.status;
+                document.getElementById('status-display').innerHTML = data.status;
             });
         }, 2000);
     </script>

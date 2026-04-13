@@ -1,116 +1,267 @@
-// Task_Name :Show stats
+// Task_Name : Show/Send Statistics
 
-# include "include/multitasking.h"
-# include "include/statistics.h"
-# include "include/string.h"
+#include "include/multitasking.h"
+#include "tasks_include/statistics.h"
+#include "include/string.h"
+#include "include/stdio.h"
+#include "include/esp8266.h"
+
+extern volatile char print_buffer[128];
+
+/* STACK OVERFLOW PREVENTION : Moving massive arrays from the 4KB RTOS Thread Stack to static BSS memory. */
+static char payload_buffer[2048]; 
+static char raw_esp_response_buffer[256];
+static threadStatParams allThreads[MAX_THREADS];
+
+static void append_int(char* buf, int val) {
+    char temp[16];
+    int i = 0;
+    if (val == 0) {
+        temp[i++] = '0';
+    } else {
+        if (val < 0) {
+            strcat(buf, "-");
+            val = -val;
+        }
+        while (val > 0) {
+            temp[i++] = (val % 10) + '0';
+            val /= 10;
+        }
+    }
+    int len = strlen(buf);
+    while (i > 0) {
+        buf[len++] = temp[--i];
+    }
+    buf[len] = '\0';
+}
+
+/* Safely slices large strings into 64-byte chunks to prevent vsprintf buffer overflows */
+static void safe_chunked_print(const char* str) {
+    char chunk[64];
+    int i = 0;
+    while(str[i] != '\0') {
+        int j = 0;
+        while(j < 63 && str[i] != '\0') {
+            chunk[j++] = str[i++];
+        }
+        chunk[j] = '\0';
+        print_dbg("%s", chunk);
+    }
+}
+
+void getTasksInfo(threadStatParams allThreads[]);
+void getEspInfo(espStatParams* espInstance);
+bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
+void build_stats_string(char* buffer, threadStatParams allThreads[], espStatParams espInstance);
 
 void statistics_thread(void* arg)
 {
-    // pollPeriod = *(int*)(arg);
-    // pollPeriod = pollPeriod<3?3:pollPeriod;
-    pollPeriod = 5; //in seconds
-    while(1)
-    {
-        threadStatParams allThreads[numThreads];
-        getTasksInfo(allThreads);
+    char action[16] = {0};
+    char arg_ip[32] = {0};
+    char arg_port[32] = {0};
+    int ptr = 0, i = 0;
 
-        switch(currentSchedAlgo)
-        {
-            case SCHED_RR: schedAlgo = "Round Robin"; break;
-            case SCHED_PRIORITY: schedAlgo = "Priority Scheduling"; break;
-            case SCHED_EDF: schedAlgo = "Earliest Deadline First"; break;
-            default: schedAlgo = "Unknown";
+    while (print_buffer[ptr] == ' ') ptr++;
+    while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 15) action[i++] = print_buffer[ptr++];
+    action[i] = '\0';
+
+    if (action[0] == '\0' || strcmp(action, "help") == 0 || strcmp(action, "?") == 0 || strcmp(action, "--help") == 0) {
+        print_dbg("\r\n[statistics] Usage:\r\n");
+        print_dbg("  statistics show                                  (prints statistics to debug console)\r\n");
+        print_dbg("  statistics sendto <target_ip> <target_port>      (Sends to custom IP and Port)\r\n");
+        print_dbg(">");
+        return; 
+    }
+
+    if (strcmp(action, "sendto") == 0) {
+        i = 0;
+        while (print_buffer[ptr] == ' ') ptr++;
+        while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 31) arg_ip[i++] = print_buffer[ptr++];
+        arg_ip[i] = '\0';
+
+        i = 0;
+        while (print_buffer[ptr] == ' ') ptr++;
+        while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 31) arg_port[i++] = print_buffer[ptr++];
+        arg_port[i] = '\0';
+
+        if (arg_ip[0] != '\0') {
+            bool has_dot = false;
+            for(int j = 0; arg_ip[j] != '\0'; j++) {
+                if(arg_ip[j] == '.') has_dot = true;
+            }
+            if (!has_dot && strcmp(arg_ip, "localhost") != 0) {
+                print_dbg("\r\n[statistics] Invalid IP argument: %s\r\n", arg_ip);
+                print_dbg("Type 'statistics help' for usage.\r\n\n> ");
+                return;
+            }
+        }
+    } else if (strcmp(action, "show") != 0) {
+        print_dbg("\r\n[statistics] Unknown command: %s\r\n", action);
+        print_dbg("Type 'statistics help' for usage.\r\n\n> ");
+        return;
+    }
+
+    const char* target_ip = (arg_ip[0] != '\0') ? arg_ip : "192.168.4.2";
+    int target_port = (arg_port[0] != '\0') ? atoi(arg_port) : 5555;
+
+    /* Using the global static allThreads array to prevent VLA stack overflow */
+    getTasksInfo(allThreads);
+
+    const char* schedAlgo;
+    switch(currentSchedAlgo)
+    {
+        case SCHED_RR: schedAlgo = "Round Robin"; break;
+        case SCHED_PRIORITY: schedAlgo = "Priority Scheduling"; break;
+        case SCHED_EDF: schedAlgo = "Earliest Deadline First"; break;
+        default: schedAlgo = "Unknown";
+    }
+
+    espStatParams espInstance;
+    espInstance.reachable=false;
+    espInstance.op_mode=-1;
+    espInstance.esp_ip[0]='\0';
+    espInstance.esp_mac[0]='\0';
+    espInstance.router_ssid[0]='\0';
+    espInstance.router_mac[0]='\0';
+
+    os_stop_scheduling();
+    getEspInfo(&espInstance);
+    os_start_scheduling();
+
+    uint64_t ticks = sysctrGetTicks();
+    uint64_t freq = sysctrGetFreq();
+    uint64_t uptime_sec = ticks/freq;
+    int sec = uptime_sec % 60;
+    uptime_sec /= 60;
+    int min = uptime_sec % 60;
+    uptime_sec /= 60;
+    int hr = uptime_sec;
+
+    if (strcmp(action, "show") == 0) {
+        /* DIRECT TERMINAL PRINTING (TABLE FORMAT) */
+        print_dbg("\n\n[statistics]\n");
+        print_dbg("--- UPTIME ---\n");
+        print_dbg("%d hrs : %d min : %d sec\n\n", hr, min, sec);
+        print_dbg("--- SCHEDULER ---\nAlgo: %s\n\n", schedAlgo);
+
+        print_dbg("--- THREADS ---\n");
+        print_dbg("%-3s | %-16s | %-5s | %-4s | %-5s | %-5s | %-4s | %-5s | %-7s\n", 
+                  "ID", "Name", "State", "Pri", "Dead", "Per", "Targ", "Done", "TAT(ms)");
+        print_dbg("--------------------------------------------------------------------------------\n");
+        
+        for (int j = 0; j < numThreads; j++) {
+            print_dbg("%-3d | %-16s | %-5s | %-4d | %-5d | %-5d | %-4d | %-5d | %-7d\n",
+                      j + 1, 
+                      allThreads[j].name, 
+                      allThreads[j].current_state,
+                      (int)allThreads[j].priority, 
+                      (int)allThreads[j].deadline, 
+                      (int)allThreads[j].period,
+                      (int)allThreads[j].targetExecs, 
+                      (int)allThreads[j].doneExecs, 
+                      (int)allThreads[j].lastTAT);
         }
 
-        espStatParams espInstance;
-        espInstance.reachable=false;
-        espInstance.op_mode=-1;
-        espInstance.esp_ip[0]='\0';
-        espInstance.esp_mac[0]='\0';
-        espInstance.router_ssid[0]='\0';
-        espInstance.router_mac[0]='\0';
+        print_dbg("\n--- ESP STATUS ---\n");
+        print_dbg("Reachable: %s\n", espInstance.reachable ? "true" : "false");
+        print_dbg("Op Mode: %d\n", espInstance.op_mode);
+        print_dbg("Router SSID: %s\n", espInstance.router_ssid[0] != '\0' ? espInstance.router_ssid : "N/A");
+        print_dbg("Router MAC: %s\n", espInstance.router_mac[0] != '\0' ? espInstance.router_mac : "N/A");
+        print_dbg("ESP IP: %s\n", espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A");
+        print_dbg("ESP MAC: %s\n", espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A");
+        print_dbg("\n> ");
+    }
+    else if (strcmp(action, "sendto") == 0) {
+        /* COMPACT CSV PAYLOAD FOR WEB APP */
+        payload_buffer[0] = '\0';
+        
+        strcat(payload_buffer, "STATUS:\n");
+        
+        strcat(payload_buffer, "U,"); append_int(payload_buffer, hr); strcat(payload_buffer, ",");
+        append_int(payload_buffer, min); strcat(payload_buffer, ",");
+        append_int(payload_buffer, sec); strcat(payload_buffer, "\n");
+        
+        strcat(payload_buffer, "S,"); strcat(payload_buffer, schedAlgo); strcat(payload_buffer, "\n");
+        
+        for (int j = 0; j < numThreads; j++) {
+            strcat(payload_buffer, "T,"); append_int(payload_buffer, j + 1); strcat(payload_buffer, ",");
+            strcat(payload_buffer, allThreads[j].name); strcat(payload_buffer, ",");
+            strcat(payload_buffer, allThreads[j].current_state); strcat(payload_buffer, ",");
+            append_int(payload_buffer, allThreads[j].priority); strcat(payload_buffer, ",");
+            append_int(payload_buffer, allThreads[j].deadline); strcat(payload_buffer, ",");
+            append_int(payload_buffer, allThreads[j].period); strcat(payload_buffer, ",");
+            append_int(payload_buffer, allThreads[j].targetExecs); strcat(payload_buffer, ",");
+            append_int(payload_buffer, allThreads[j].doneExecs); strcat(payload_buffer, ",");
+            append_int(payload_buffer, allThreads[j].lastTAT); strcat(payload_buffer, "\n");
+        }
+        
+        strcat(payload_buffer, "E,"); 
+        append_int(payload_buffer, espInstance.reachable); strcat(payload_buffer, ",");
+        append_int(payload_buffer, espInstance.op_mode); strcat(payload_buffer, ",");
+        strcat(payload_buffer, espInstance.router_ssid[0] != '\0' ? espInstance.router_ssid : "N/A"); strcat(payload_buffer, ",");
+        strcat(payload_buffer, espInstance.router_mac[0] != '\0' ? espInstance.router_mac : "N/A"); strcat(payload_buffer, ",");
+        strcat(payload_buffer, espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A"); strcat(payload_buffer, ",");
+        strcat(payload_buffer, espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A"); strcat(payload_buffer, "\n");
 
         os_stop_scheduling();
-        getEspInfo(&espInstance);
+        esp_tcp_client_send(target_ip, target_port, payload_buffer); 
         os_start_scheduling();
-
-        uint64_t ticks = sysctrGetTicks();
-        uint64_t freq = sysctrGetFreq();
-        uint64_t uptime_sec = ticks/freq;
-        int sec = uptime_sec%60;
-        uptime_sec/=60;
-        int min = uptime_sec%60;
-        uptime_sec/=60;
-        int hr = uptime_sec;
-
-        print_dbg("\n\n\n[statistics]\n");
-        print_dbg("%d hrs : %d min : %d sec\n", hr, min, sec);
-        print_stats(allThreads, espInstance, schedAlgo);
-
-        thread_sleep(pollPeriod*1000);
     }
 }
 
 void getTasksInfo(threadStatParams allThreads[])
 {
-    // thread info
     for (int i = 0; i < numThreads; i++) {
         allThreads[i].name = threads[i].name;
         allThreads[i].current_state = get_thread_state_name(threads[i].currentState);
         allThreads[i].deadline = threads[i].deadlineOffset_ms;
         allThreads[i].doneExecs = threads[i].executionsDone;
-        allThreads[i].targetExecs = threads[i].executionsTarget; //can be -1
+        allThreads[i].targetExecs = threads[i].executionsTarget; 
         allThreads[i].priority = threads[i].priority;
-        allThreads[i].period = threads[i].period_ms; // can be -1
+        allThreads[i].period = threads[i].period_ms; 
         allThreads[i].lastTAT = threads[i].lastTurnaroundTime_ms;
     }
 }
 
 void getEspInfo(espStatParams* espInstance)
 {
-    send_to_esp("AT\r\n"); //reachability check
+    send_to_esp("AT\r\n"); 
     if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 3))
     {
         espInstance->reachable = true;
     }
     
-    send_to_esp("AT+CWMODE?\r\n"); //op_mode check
+    send_to_esp("AT+CWMODE?\r\n"); 
     if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 3))
     {
         const char* mode_ptr = strstr(raw_esp_response_buffer, "+CWMODE:");
         if (mode_ptr)
         {
-            mode_ptr += 8; // Move pointer past the "+CWMODE:" prefix
-        
-            // Extract the single digit mode directly to avoid atoi edge cases
+            mode_ptr += 8; 
             if (*mode_ptr >= '1' && *mode_ptr <= '3') {
                 espInstance->op_mode = *mode_ptr - '0';
             }
         }
     }
     
-
-    if (espInstance->op_mode == 1) //station mode
+    if (espInstance->op_mode == 1) 
     {
-        send_to_esp("AT+CWJAP?\r\n"); //router info
+        send_to_esp("AT+CWJAP?\r\n"); 
         if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 5))
         {
             const char* jap_ptr = strstr(raw_esp_response_buffer, "+CWJAP:\"");
             if (jap_ptr)
             {
-                jap_ptr += 8; // Move pointer past '+CWJAP:"'
-        
-                // Extract SSID until the next quote
+                jap_ptr += 8; 
                 int i = 0;
-                while (*jap_ptr != '"' && *jap_ptr != '\0' && i < 32) {
+                while (*jap_ptr != '"' && *jap_ptr != '\0' && i < 31) {
                     espInstance->router_ssid[i++] = *jap_ptr++;
                 }
                 espInstance->router_ssid[i] = '\0';
 
-                // Find the start of the MAC address (located after the next ',"')
                 jap_ptr = strstr(jap_ptr, ",\"");
                 if (jap_ptr) {
-                    jap_ptr += 2; // Move past ',"'
+                    jap_ptr += 2; 
                     i = 0;
                     while (*jap_ptr != '"' && *jap_ptr != '\0' && i < 17) {
                         espInstance->router_mac[i++] = *jap_ptr++;
@@ -120,18 +271,18 @@ void getEspInfo(espStatParams* espInstance)
             }   
         }
         
-        send_to_esp("AT+CIFSR\r\n"); //esp ip and mac
+        send_to_esp("AT+CIFSR\r\n"); 
         if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 3))
         {
             const char* ip_ptr = strstr(raw_esp_response_buffer, "+CIFSR:STAIP,\"");
             if (!ip_ptr)
             {
                 ip_ptr = strstr(raw_esp_response_buffer, "+CIFSR:APIP,\"");
-                if (ip_ptr) ip_ptr += 13; // Move past '+CIFSR:APIP,"'
+                if (ip_ptr) ip_ptr += 13; 
             }
             else
             {
-                ip_ptr += 14; // Move past '+CIFSR:STAIP,"'
+                ip_ptr += 14; 
             }
 
             if (ip_ptr)
@@ -143,14 +294,12 @@ void getEspInfo(espStatParams* espInstance)
                 espInstance->esp_ip[i] = '\0';
             }
 
-            // 6. Extract ESP MAC (AT+CIFSR)
-            // Could be STAMAC or APMAC
             const char* mac_ptr = strstr(raw_esp_response_buffer, "+CIFSR:STAMAC,\"");
             if (!mac_ptr) {
                 mac_ptr = strstr(raw_esp_response_buffer, "+CIFSR:APMAC,\"");
-                if (mac_ptr) mac_ptr += 14; // Move past '+CIFSR:APMAC,"'
+                if (mac_ptr) mac_ptr += 14; 
             } else {
-                mac_ptr += 15; // Move past '+CIFSR:STAMAC,"'
+                mac_ptr += 15; 
             }
 
             if (mac_ptr)
@@ -172,11 +321,8 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec) {
     bool success = false;
     bool timed_out = true;
 
-    // Initialize buffer as empty string
-    if (max_len > 0)
-    {
-        for(int i=0;i<max_len;i++)
-        {
+    if (max_len > 0) {
+        for(int i=0; i<max_len; i++) {
             buffer[i]='\0';
         }
     }
@@ -184,26 +330,19 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec) {
     uint64_t targetClockTick = sysctrGetTicks() + timeout_sec * sysctrGetFreq(); 
 
     while (sysctrGetTicks() < targetClockTick) {
-        /* Clear Overrun errors just in case */
-        if (LPUART4->STAT & (0xF << 16)) {
-            LPUART4->STAT |= (0xF << 16); 
-        }
-
-        c = lpuartGetCharNonBlocking(LPUART4);
+        
+        c = esp_ring_buffer_pop();
         
         if (c != '\0') {
-            // Save the character to our buffer, leaving room for null terminator
             if (idx < max_len - 1) {
                 buffer[idx++] = c;
                 buffer[idx] = '\0';
             }
 
-            // Check if ESP replied "OK"
             if (prev == 'O' && c == 'K') {
-                // Read the final '\r' and '\n' to clear the pipe before exiting
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
-                    char flush_c = lpuartGetCharNonBlocking(LPUART4);
+                    char flush_c = esp_ring_buffer_pop(); 
                     if (flush_c != '\0' && idx < max_len - 1) {
                         buffer[idx++] = flush_c;
                         buffer[idx] = '\0';
@@ -215,14 +354,12 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec) {
                 break;
             }
             
-            // Check if ESP replied ERR"OR"
             if (prev == 'O' && c == 'R') {
                 success = false;
                 timed_out = false;
                 break;
             }
 
-            // Check if ESP replied FA"IL"
             if (prev == 'I' && c == 'L') {
                 success = false;
                 timed_out = false;
@@ -237,26 +374,49 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec) {
     return success;
 }
 
-void print_stats(threadStatParams allThreads[], espStatParams espInstance, const char* schedAlgo)
+/* Retained for backward compatibility */
+void build_stats_string(char* buffer, threadStatParams allThreads[], espStatParams espInstance)
 {
-    print_dbg("\n\n****Current scheduling algorithm used = %s****\n", schedAlgo);
-    for(int i=0;i<numThreads;i++)
+    strcat(buffer, "--- THREADS ---\n");
+    for(int i=0; i<numThreads; i++)
     {
-        print_dbg("\nThread %d\n", (i+1));
-        print_dbg("\nName of thread = %-16s\nCurrent state of thread = %-16s\nPriority of thread = %d\nDeadline of thread = %d\nPeriod of thread = %d\nNo. of target executions of thread = %d\nNo. of executions done already = %6d\nLast turn-around-time of thread = %d\n",
-        allThreads[i].name, allThreads[i].current_state, allThreads[i].priority, allThreads[i].deadline, allThreads[i].period, allThreads[i].targetExecs, allThreads[i].doneExecs, allThreads[i].lastTAT);
+        strcat(buffer, "\nThread "); append_int(buffer, (i+1)); strcat(buffer, "\n");
+        
+        strcat(buffer, "Name: "); strcat(buffer, allThreads[i].name); strcat(buffer, "\n");
+        strcat(buffer, "State: "); strcat(buffer, allThreads[i].current_state); strcat(buffer, "\n");
+        
+        strcat(buffer, "Priority: "); append_int(buffer, allThreads[i].priority); strcat(buffer, "\n");
+        strcat(buffer, "Deadline: "); append_int(buffer, allThreads[i].deadline); strcat(buffer, "\n");
+        strcat(buffer, "Period: "); append_int(buffer, allThreads[i].period); strcat(buffer, "\n");
+        
+        strcat(buffer, "Target Execs: "); append_int(buffer, allThreads[i].targetExecs); strcat(buffer, "\n");
+        strcat(buffer, "Done Execs: "); append_int(buffer, allThreads[i].doneExecs); strcat(buffer, "\n");
+        strcat(buffer, "Last TAT: "); append_int(buffer, allThreads[i].lastTAT); strcat(buffer, " ms\n");
     }
 
-    print_dbg("\n\n\nESP status:\n");
-    if(espInstance.reachable == true) print_dbg("Reachable = true\n");
-    else print_dbg("Reachable = false\n");
-    print_dbg("Operating mode of ESP = %d\n", espInstance.op_mode);
-    if(espInstance.router_ssid[0] != '\0') print_dbg("Router ssid = %-16s\n", espInstance.router_ssid);
-    else print_dbg("Router ssid = Not applicable\n");
-    if(espInstance.router_mac[0] != '\0') print_dbg("Router mac = %-16s\n", espInstance.router_mac);
-    else print_dbg("Router mac = Not applicable\n");
-    if(espInstance.esp_ip[0] !='\0') print_dbg("ESP IP = %-16s\n", espInstance.esp_ip);
-    else print_dbg("ESP IP = Not applicable\n");
-    if(espInstance.esp_mac[0] !='\0') print_dbg("ESP mac = %-16s\n", espInstance.esp_mac);
-    else print_dbg("ESP mac = Not applicable\n");
+    strcat(buffer, "\n--- ESP STATUS ---\n");
+    if(espInstance.reachable == true) strcat(buffer, "Reachable: true\n");
+    else strcat(buffer, "Reachable: false\n");
+    
+    strcat(buffer, "Op Mode: "); append_int(buffer, espInstance.op_mode); strcat(buffer, "\n");
+    
+    strcat(buffer, "Router SSID: "); 
+    if(espInstance.router_ssid[0] != '\0') strcat(buffer, espInstance.router_ssid);
+    else strcat(buffer, "N/A");
+    strcat(buffer, "\n");
+
+    strcat(buffer, "Router MAC: "); 
+    if(espInstance.router_mac[0] != '\0') strcat(buffer, espInstance.router_mac);
+    else strcat(buffer, "N/A");
+    strcat(buffer, "\n");
+
+    strcat(buffer, "ESP IP: "); 
+    if(espInstance.esp_ip[0] !='\0') strcat(buffer, espInstance.esp_ip);
+    else strcat(buffer, "N/A");
+    strcat(buffer, "\n");
+
+    strcat(buffer, "ESP MAC: "); 
+    if(espInstance.esp_mac[0] !='\0') strcat(buffer, espInstance.esp_mac);
+    else strcat(buffer, "N/A");
+    strcat(buffer, "\n");
 }

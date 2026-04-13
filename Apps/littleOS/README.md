@@ -21,7 +21,6 @@ The OS uses the ARM Generic Timer to provide a 20ms time-slice for threads, supp
 
 ## Available CLI Commands
 * `help` or `?` - List all available commands (including dynamic tasks).
-* `taskinfo` - View the RTOS Task Manager (states, priorities, deadlines, turnaround times).
 * `clear` - Clear the terminal screen.
 * `reboot` / `restart` - Trigger a hardware watchdog reset.
 * `shutdown` / `poweroff` - Send power-down signal to the SNVS block.
@@ -36,7 +35,7 @@ Start background tasks by typing their name followed by optional flags:
 * `-pri`: Fixed priority (0-255). Default: 128.
 * `-d`: Deadline in milliseconds relative to start. Default: -1 (none).
 
-*Note: For remote execution via Wi-Fi, prefix commands with `exec` (e.g., `exec taskinfo`).*
+*Note: For remote execution via Wi-Fi, prefix commands with `exec` (e.g., `exec ledblink`).*
 
 ## IoT Command Hub & RTC Synchronization
 littleOS goes beyond basic Wi-Fi by acting as a true Edge Node, bridging bare-metal hardware with a modern web interface.
@@ -74,7 +73,7 @@ Because the bare-metal OS lacks an internet DNS resolver and native NTP capabili
 │   ├── esp8266.h               # Wi-Fi driver & AT engine
 │   ├── gic.h                   # ARM GICv3 driver
 │   ├── multitasking.h          # Scheduler & Threading core
-│   ├── statistics.h            # Profiling and metrics
+│   ├── status.h                # Profiling and metrics
 │   ├── stdio.h                 # Custom print_dbg (no stdlib)
 │   └── string.h                # Custom string/math helpers
 ├── linker.ld
@@ -104,7 +103,7 @@ Because the bare-metal OS lacks an internet DNS resolver and native NTP capabili
 │   ├── print100o.c
 │   ├── print100X.c
 │   ├── race.c                  # Critical section testing task
-│   └── statistics.c            # OS Profiler task
+│   └── status.c                # OS Profiler task
 └── ThreadStates.png            # Process state documentation
 ```
 

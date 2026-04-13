@@ -27,9 +27,6 @@ void handleCommand(const char* cmd) {
             }
             print_dbg("^C\n[System] All active background tasks forcefully killed.\n> ");
     }
-    else if (strcmp(cmd, "taskinfo") == 0) {
-        print_taskinfo();
-    }
     else if (strcmp(cmd, "clear") == 0) {
         clear_terminal();
     }
@@ -122,7 +119,6 @@ void clear_terminal(void) {
 void print_help(void){
     print_dbg("\n[Help] Available Commands:\n");
     print_dbg(" killall (or Ctrl+C)  - Stop all active threads immediately\n");
-    print_dbg(" taskinfo             - View RTOS Task Manager\n");
     print_dbg(" clear                - Clear the terminal screen\n");
     print_dbg(" reboot/restart/reset - Hardware reboot\n");
     print_dbg(" shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
@@ -133,33 +129,6 @@ void print_help(void){
     }
     print_dbg(" Defaults: -n 1, -per 0, -pri 128, -d -1\n");
     print_dbg(" Syntax: <taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadline_ms>\n");
-}
-
-void print_taskinfo(void) {
-    const char* algo_name = "UNKNOWN";
-    if (currentSchedAlgo == SCHED_RR) algo_name = "Round Robin (RR)";
-    else if (currentSchedAlgo == SCHED_PRIORITY) algo_name = "Fixed Priority (PRI)";
-    else if (currentSchedAlgo == SCHED_EDF) algo_name = "Earliest Deadline First (EDF)";
-
-    print_dbg("\n[System] Active Scheduler: %s\n", algo_name);
-    print_dbg("\nID | Name             | State   | Pri | Deadln | Period | Execs     | Turnaround Time");
-    print_dbg("\n---------------------------------------------------------------------------------------");
-    
-    for (int i = 0; i < numThreads; i++) {
-        const char* state_str = get_thread_state_name(threads[i].currentState);
-        
-        print_dbg("\n%2d | %-16s | %-7s | %3d | %6d | %6d | ", 
-            i, threads[i].name, state_str,
-            threads[i].priority, threads[i].deadlineOffset_ms, threads[i].period_ms);
-        
-        if (threads[i].executionsTarget == -1) {
-            print_dbg("%4d/INF  | ", threads[i].executionsDone);
-        } else {
-            print_dbg("%4d/%-4d | ", threads[i].executionsDone, threads[i].executionsTarget);
-        }
-        
-        print_dbg("%9d ms", threads[i].lastTurnaroundTime_ms);
-    }
 }
 
 /** @brief used to print fatal errors */

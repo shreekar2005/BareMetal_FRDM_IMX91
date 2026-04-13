@@ -1,15 +1,10 @@
-# include "include/multitasking.h"
+#ifndef STATUS_H
+#define STATUS_H
+
+#include "include/multitasking.h"
 #include "SYS_CTR.h"
 #include "include/stdio.h"
-# include <stdbool.h>
-
-int pollPeriod;
-
-int uptime;
-
-char raw_esp_response_buffer[256];
-
-const char* schedAlgo;
+#include <stdbool.h>
 
 typedef struct {
     const char* name;
@@ -26,8 +21,8 @@ typedef struct {
     char esp_mac[18];       // 17 chars + null terminator
 } espStatParams;
 
-// void setPollPeriod(int per);
-void statistics_thread(void* arg);
+// Task Entrypoint
+void status_thread(void* arg);
 
 void getTasksInfo(threadStatParams allThreads[]);
 void getEspInfo(espStatParams* espInstance);
@@ -41,12 +36,15 @@ void getEspInfo(espStatParams* espInstance);
  */
 bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
 
-/*-------------------------------------------------------------------------------------------------*/
-
 /**
  * @brief Parses raw AT command output from the ESP8266 into a structured format
  * @param raw_buffer The full string buffer containing the ESP's response
  */
 void parse_esp_response(const char* raw_buffer);
 
-void print_stats(threadStatParams allThreads[], espStatParams espInstance, const char* schedAlgo);
+/**
+ * @brief Constructs the final payload string from the gathered statistics
+ */
+void build_stats_string(char* buffer, threadStatParams allThreads[], espStatParams espInstance);
+
+#endif // STATUS_H

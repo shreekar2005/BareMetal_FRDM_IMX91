@@ -8,26 +8,13 @@
 #include "include/gic.h"
 #include "include/irq.h"
 
-#define IMX91_LPUART4_IRQ_ID  101  /* GIC IRQ ID = SPI Number + 32 and in manual SPI Number is 69 */
-
 // ----------------------------------- RING BUFFER ARCHITECTURE and ISR START-----------------------------------
 
 // BUFFER ARCHITECTURE
-#define ESP_RX_BUFFER_SIZE 2048
 
-typedef struct {
-    volatile char data[ESP_RX_BUFFER_SIZE];
-    volatile int head; // Written by the Hardware Interrupt
-    volatile int tail; // Read by the OS Thread
-} RingBuffer;
+RingBuffer esp_rx_buffer = { .head = 0, .tail = 0 };
 
-static RingBuffer esp_rx_buffer = { .head = 0, .tail = 0 };
-
-/**
- * @brief Safely pops a character from the ring buffer.
- * @return The character, or '\0' if buffer is empty.
- */
-static char ring_buffer_pop(void) {
+char esp_ring_buffer_pop(void) {
     char c = '\0';
     if (esp_rx_buffer.head != esp_rx_buffer.tail) {
         c = esp_rx_buffer.data[esp_rx_buffer.tail];
@@ -96,7 +83,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
             LPUART4->STAT |= (0xF << 16); 
         }
 
-        c = ring_buffer_pop();
+        c = esp_ring_buffer_pop();
         
         if (c != '\0') {
             
@@ -109,7 +96,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
                 // Read the final '\r' and '\n' to clear the pipe before exiting
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
-                    char flush_c = ring_buffer_pop();
+                    char flush_c = esp_ring_buffer_pop();
                     if (flush_c == '\n') break;
                 }
                 success = true;
@@ -128,7 +115,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
             if (prev == 'I' && c == 'L') {
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
-                    if (ring_buffer_pop() == '\n') break;
+                    if (esp_ring_buffer_pop() == '\n') break;
                 }
                 success = false;
                 timed_out = false;
@@ -271,16 +258,11 @@ void start_esp_tcp_server(int port) {
     print_dbg("[Wi-Fi] TCP Server is running and listening!\r\n");
 }
 
-/**
- * @brief Acts as a TCP client to send a raw string to a specific IP and Port.
- * @param ip Destination IP address (e.g., "192.168.1.50")
- * @param port Destination Port (e.g., 5000)
- * @param payload The data to send (e.g., "GET_TIME")
- */
+
 void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     print_dbg("\r\n[Wi-Fi] Sending trigger to %s:%d...\r\n", ip, port);
 
-    // Ensure the ESP8266 is in Multiple Connection Mode before using Link ID 4
+    // Ensure the ESP8266 is in Multiple Connection Mode
     send_to_esp("AT+CIPMUX=1\r\n");
     wait_for_esp_ok(2);
 
@@ -303,38 +285,52 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
             LPUART4->STAT |= (0xF << 16); 
         }
 
-        char c = ring_buffer_pop();
+        char c = esp_ring_buffer_pop();
         if (c != '\0') {
-            /* Print the characters so your terminal log makes sense */
             if(c != '\r' && c != '\n') print_dbg("%c", c);
-            if(c == '\n') print_dbg("\\r");
+            if(c == '\n') print_dbg("\\n");
             if(c == '\r') print_dbg("\\r");
             
             // Break exactly when the ESP gives the green light
             if (c == '>') {
-                print_dbg("\r\n"); // Clean up terminal newline
+                print_dbg(">"); 
                 break;
             }
         }
         __asm__ volatile("nop"); 
     }
 
-    // Blast the payload
-    send_to_esp("%s", payload);
+    /* ULTRA-GENTLE CHUNKING --- */
+    // Blast the payload safely to avoid ESP8266 "busy s..." UART overflows
+    int i = 0;
+    char chunk[1024]; // Reduced to 1KB per chunk at a time
+    while (payload[i] != '\0') {
+        int j = 0;
+        while (j < 1023 && payload[i] != '\0') {
+            chunk[j++] = payload[i++];
+        }
+        chunk[j] = '\0';
+        
+        send_to_esp("%s", chunk);
+        
+        // Give the ESP8266 300 milliseconds to process the 1024 bytes
+        sysctrDelay_ms(300); 
+    }
+    /* -------------------------------------- */
     
-    // Wait for "SEND OK" (Uses your existing function, which catches 'O' and 'K' perfectly!)
+    // Wait for "SEND OK"
     wait_for_esp_ok(3);
 
     // Close Socket #4
-    send_to_esp("AT+CIPCLOSE=4\r\n"); // We DO NOT use wait_for_esp_ok(). We do a 100ms "Blind Flush".
-    // We silently eat whatever the ESP spits out (OK, UNLINK, ERROR, etc.)
+    send_to_esp("AT+CIPCLOSE=4\r\n"); 
+    
+    // 100ms Blind Flush
     uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
     while (sysctrGetTicks() < flush_target) {
         if (LPUART4->STAT & (0xF << 16)) {
             LPUART4->STAT |= (0xF << 16); 
         }
-        /* Silently read and discard characters */
-        ring_buffer_pop(); 
+        esp_ring_buffer_pop(); 
         __asm__ volatile("nop");
     }
     
@@ -355,7 +351,7 @@ void espTCPServerListener_thread(void *arg) {
 
     while(1) {
         // Pop a byte from RAM (returns instantly, doesn't wait for hardware)
-        char c = ring_buffer_pop();
+        char c = esp_ring_buffer_pop();
         
         // If the buffer is empty, yield the CPU to let ledblink/print100 run!
         if (c == '\0') {

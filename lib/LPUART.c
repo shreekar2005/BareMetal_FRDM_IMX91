@@ -1,12 +1,6 @@
 #include "LPUART.h"
 
-void lpuartPutChar(LPUART_TypeDef *lpuart, char c) {
-    /* Automatically inject a carriage return before a newline */
-    if (c == '\n') {
-        while (!(lpuart->STAT & LPUART_STAT_TDRE)); 
-        lpuart->DATA = '\r';
-    }
-    
+void lpuartPutChar(LPUART_TypeDef *lpuart, char c) {    
     /* Send the actual character */
     while (!(lpuart->STAT & LPUART_STAT_TDRE)); 
     lpuart->DATA = c;

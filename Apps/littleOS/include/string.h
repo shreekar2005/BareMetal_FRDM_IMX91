@@ -47,4 +47,12 @@ void strcpy(char *dest, const char *src);
  */
 const char* strstr(const char *haystack, const char *needle);
 
+/**
+ * @brief appends a copy of the source string to the destination string
+ * @param dest the buffer where the string will be appended
+ * @param src the null-terminated string to append
+ * @return pointer to the destination string
+ */
+char* strcat(char *dest, const char *src);
+
 #endif

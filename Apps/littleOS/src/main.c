@@ -59,8 +59,8 @@ int main() {
     print_dbg("[Boot] Initializing Task Registry...\r\n");
     init_all_tasks(); 
 
-    // int statistics_thread_id = 5;
-    // os_set_thread_rtos(statistics_thread_id, 127, -1, 5000, -1);
+    // int status_thread_id = 5;
+    // os_set_thread_rtos(status_thread_id, 127, -1, 5000, -1);
 
     print_dbg("[Boot] Initializing GIC...\r\n");
     gic_init();
