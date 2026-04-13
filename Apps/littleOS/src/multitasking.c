@@ -3,11 +3,17 @@
 #include "include/string.h"
 #include "include/stdio.h"
 
+#define RR_TIME_QUANTUM_MS 20
+uint64_t quantum_ticks;
+
 Thread threads[MAX_THREADS];
 int numThreads = 0;
 int currentThread_idx = -1;
 bool isSchedulingEnabled = true; 
 enum SchedAlgo currentSchedAlgo = SCHED_RR; 
+
+// Tracks how long the current thread has been running in its RR slice
+static uint64_t rr_slice_start_tick = 0;
 
 const char* get_thread_state_name(enum ThreadState state) {
     switch (state) {
@@ -23,6 +29,10 @@ const char* get_thread_state_name(enum ThreadState state) {
 }
 
 void os_yield(void) {
+    if (currentThread_idx >= 0 && threads[currentThread_idx].currentState == STATE_RUN) {
+        threads[currentThread_idx].currentState = STATE_READY;
+    }
+    
     __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
     __asm__ volatile("nop");
     __asm__ volatile("nop");
@@ -66,10 +76,14 @@ void os_thread_exit(void) {
 }
 
 void os_init_scheduler(void) {
+    quantum_ticks = ((uint64_t)sysctrGetFreq() * RR_TIME_QUANTUM_MS) / 1000ULL;
+    
     numThreads = 0;
     currentThread_idx = -1;
     isSchedulingEnabled = true;
     currentSchedAlgo = SCHED_RR;
+    rr_slice_start_tick = 0;
+    
     for (int i = 0; i < MAX_THREADS; i++) {
         threads[i].currentState = STATE_NEW;
         threads[i].priority = 128; 
@@ -100,7 +114,6 @@ void os_suspend_thread(int thread_id) {
 
 void os_kill_thread(int thread_id) {
     if (thread_id >= 0 && thread_id < numThreads) {
-        // Strip away all active states so the scheduler ignores it immediately
         threads[thread_id].executionsTarget = 0;
         threads[thread_id].executionsDone = 0;
         threads[thread_id].currentState = STATE_TERMINATE;
@@ -191,25 +204,23 @@ int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
 CPUState* os_schedule(CPUState* current_cpustate_ptr) {
     if (numThreads == 0 || !isSchedulingEnabled) return current_cpustate_ptr;
 
+    // Save dying/yielding thread state without blindly demoting it
     if (currentThread_idx >= 0) {
         threads[currentThread_idx].cpustate_ptr = current_cpustate_ptr;
-        if (threads[currentThread_idx].currentState == STATE_RUN) {
-            threads[currentThread_idx].currentState = STATE_READY;
-        }
     }
 
-    uint64_t current_ticks;
-    current_ticks = sysctrGetTicks();
+    uint64_t current_ticks = sysctrGetTicks();
+    uint32_t freq = sysctrGetFreq();
     
     // The Wakeup & Revival Loop
     for (int i = 0; i < numThreads; i++) {
-        // Wake up sleeping threads (Without wiping their stack)
+        // Wake up sleeping threads
         if (threads[i].currentState == STATE_WAIT_BLOCK) {
             if (current_ticks >= threads[i].wakeupTick) {
                 threads[i].currentState = STATE_READY;
             }
         }
-        // Revive dead periodic tasks (Wipes their stack to start fresh)
+        // Revive dead periodic tasks
         else if ((threads[i].currentState == STATE_TERMINATE || threads[i].currentState == STATE_NEW) && i != currentThread_idx) {
             if (threads[i].executionsTarget == -1 || threads[i].executionsDone < threads[i].executionsTarget) {
                 if (current_ticks >= threads[i].nextPeriodTick) {
@@ -220,45 +231,88 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
     }
 
     if (currentSchedAlgo == SCHED_RR) {
-        int startingThread_idx = currentThread_idx;
-        do {
-            currentThread_idx++;
-            if (currentThread_idx >= numThreads) currentThread_idx = 0;
-            if (threads[currentThread_idx].currentState == STATE_READY) {
+        bool needs_switch = false;
+        
+        // Switch if thread yielded/died
+        if (currentThread_idx < 0 || threads[currentThread_idx].currentState != STATE_RUN) {
+            needs_switch = true;
+        } else {
+            // Switch if 20ms RR quantum expired
+            uint64_t elapsed_ticks = current_ticks - rr_slice_start_tick;
+            if (elapsed_ticks >= quantum_ticks) {
+                needs_switch = true;
+                threads[currentThread_idx].currentState = STATE_READY; // Time slice over
+            }
+        }
+
+        if (needs_switch) {
+            int startingThread_idx = currentThread_idx < 0 ? (numThreads - 1) : currentThread_idx;
+            int next_idx = startingThread_idx;
+            do {
+                next_idx++;
+                if (next_idx >= numThreads) next_idx = 0;
+                if (threads[next_idx].currentState == STATE_READY) {
+                    currentThread_idx = next_idx;
+                    threads[currentThread_idx].currentState = STATE_RUN;
+                    rr_slice_start_tick = current_ticks; // Reset quantum clock
+                    return threads[currentThread_idx].cpustate_ptr;
+                }
+            } while (next_idx != startingThread_idx);
+            
+            // If no other thread is READY, let the current thread keep running
+            if (currentThread_idx >= 0 && threads[currentThread_idx].currentState == STATE_READY) {
                 threads[currentThread_idx].currentState = STATE_RUN;
+                rr_slice_start_tick = current_ticks;
                 return threads[currentThread_idx].cpustate_ptr;
             }
-        } while (currentThread_idx != startingThread_idx);
+        }
     } 
     else if (currentSchedAlgo == SCHED_PRIORITY) {
         int best_thread = -1;
         int highest_pri = 999999; 
+        
+        // Scan both RUN and READY threads to find the absolute highest priority
         for (int i = 0; i < numThreads; i++) {
-            if (threads[i].currentState == STATE_READY && threads[i].priority < highest_pri) {
+            if ((threads[i].currentState == STATE_READY || threads[i].currentState == STATE_RUN) && threads[i].priority < highest_pri) {
                 highest_pri = threads[i].priority;
                 best_thread = i;
             }
         }
+        
         if (best_thread != -1) {
-            currentThread_idx = best_thread;
-            threads[currentThread_idx].currentState = STATE_RUN;
+            if (best_thread != currentThread_idx) {
+                // Safely preempt the current thread if it was running
+                if (currentThread_idx >= 0 && threads[currentThread_idx].currentState == STATE_RUN) {
+                    threads[currentThread_idx].currentState = STATE_READY;
+                }
+                currentThread_idx = best_thread;
+                threads[currentThread_idx].currentState = STATE_RUN;
+            }
             return threads[currentThread_idx].cpustate_ptr;
         }
     }
     else if (currentSchedAlgo == SCHED_EDF) {
         int best_thread = -1;
         uint64_t earliest_deadline = 0xFFFFFFFFFFFFFFFFULL;
+        
         for (int i = 0; i < numThreads; i++) {
-            if (threads[i].currentState == STATE_READY) {
+            if (threads[i].currentState == STATE_READY || threads[i].currentState == STATE_RUN) {
                 if (best_thread == -1 || threads[i].absoluteDeadlineTick < earliest_deadline) {
                     earliest_deadline = threads[i].absoluteDeadlineTick;
                     best_thread = i;
                 }
             }
         }
+        
         if (best_thread != -1) {
-            currentThread_idx = best_thread;
-            threads[currentThread_idx].currentState = STATE_RUN;
+            if (best_thread != currentThread_idx) {
+                // Safely preempt the current thread if it was running
+                if (currentThread_idx >= 0 && threads[currentThread_idx].currentState == STATE_RUN) {
+                    threads[currentThread_idx].currentState = STATE_READY;
+                }
+                currentThread_idx = best_thread;
+                threads[currentThread_idx].currentState = STATE_RUN;
+            }
             return threads[currentThread_idx].cpustate_ptr;
         }
     }

@@ -5,6 +5,7 @@
 #include "SYS_CTR.h"
 #include "IOMUX.h"
 #include "LPUART.h"
+#include "include/timer.h"
 #include "include/multitasking.h"
 #include "include/cli.h" 
 #include "include/gic.h"
@@ -13,7 +14,6 @@
 #include "include/esp8266.h"
 #include "include/datetime.h"
 
-extern void os_timer_init(void); // defined in src/timer.c
 extern void os_start(void); // defined in vector.S, this starts the scheduler and never returns
 
 /** @brief Initialize hardware components (keeping it universal to avoid conflicts) */
@@ -73,7 +73,7 @@ int main() {
     esp_init();
 
     print_dbg("[Boot] Registering Timer IRQ...\n");
-    os_timer_init(); 
+    os_timer_init(1);
 
     print_dbg("[Boot] Creating System RTC Daemon...\n");
     int rtc_thread_id = os_create_thread("RTC_Daemon", datetime_ticker_thread, NULL);

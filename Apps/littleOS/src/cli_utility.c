@@ -125,13 +125,13 @@ void clear_terminal(void) {
 
 void print_help(void){
     print_dbg("[CLI-Thread] Available Commands:\n");
-    print_dbg("[CLI-Thread]  killall (or Ctrl+C)  - Stop all active threads immediately\n");
-    print_dbg("[CLI-Thread]  clear                - Clear the terminal screen\n");
-    print_dbg("[CLI-Thread]  reboot/restart/reset - Hardware reboot\n");
-    print_dbg("[CLI-Thread]  shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
-    print_dbg("[CLI-Thread]  sched [rr|pri|edf]   - Change RTOS scheduler algorithm\n");
-    print_dbg("[CLI-Thread]  datetime             - System RTC time management\n");
-    print_dbg("[CLI-Thread] \n");
+    print_dbg("[CLI-Thread]   killall (or Ctrl+C)  - Stop all active threads immediately\n");
+    print_dbg("[CLI-Thread]   clear                - Clear the terminal screen\n");
+    print_dbg("[CLI-Thread]   reboot/restart/reset - Hardware reboot\n");
+    print_dbg("[CLI-Thread]   shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
+    print_dbg("[CLI-Thread]   sched [rr|pri|edf]   - Change RTOS scheduler algorithm\n");
+    print_dbg("[CLI-Thread]   datetime             - System RTC time management\n");
+    print_dbg("[CLI-Thread]\n");
     print_dbg("[CLI-Thread] Dynamic Tasks (Auto-Loaded from tasks/):\n");
     for (int i = 0; i < numAutotasks; i++) {
         print_dbg("[CLI-Thread]    %-16s - %s\n", autotasks[i].cmd_string, autotasks[i].display_name);

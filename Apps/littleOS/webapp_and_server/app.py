@@ -59,7 +59,7 @@ def parse_compact_status(raw_data):
     if threads:
         html += "<h3>[Active Threads]</h3>"
         html += "<table border='1' cellpadding='8' style='border-collapse: collapse; width: 100%; text-align: center; font-family: monospace; background-color: #111; color: #00ff00; border-color: #00ff00;'>"
-        html += "<tr style='background-color: #222;'><th>ID</th><th>Name</th><th>State</th><th>Pri</th><th>Dead</th><th>Per</th><th>Targ</th><th>Done</th><th>TAT (ms)</th></tr>"
+        html += "<tr style='background-color: #222;'><th>ID</th><th>Name</th><th>State</th><th>Pri</th><th>Dead</th><th>Per(ms)</th><th>Targ</th><th>Done</th><th>TAT(ms)</th></tr>"
         for t in threads:
             state_color = "#00ff00" if t[3] == "RUN" else "orange" if t[3] == "READY" else "red" if t[3] == "TERM" else "#0088ff"
             html += f"<tr><td>{t[1]}</td><td>{t[2]}</td><td style='color: {state_color}; font-weight: bold;'>{t[3]}</td><td>{t[4]}</td><td>{t[5]}</td><td>{t[6]}</td><td>{t[7]}</td><td>{t[8]}</td><td>{t[9]}</td></tr>"

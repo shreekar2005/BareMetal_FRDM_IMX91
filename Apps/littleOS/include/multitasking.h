@@ -75,6 +75,12 @@ extern bool isSchedulingEnabled; /**< global flag to control preemptive switchin
 extern enum SchedAlgo currentSchedAlgo; /**< current active scheduling algorithm */
 
 /**
+ * @brief Initializes the hardware timer to generate periodic interrupts.
+ * @param period_ms The interrupt frequency in milliseconds.
+ */
+void os_timer_init(int period_ms);
+
+/**
  * @brief zeros out the thread array and resets scheduler state
  */
 void os_init_scheduler(void);

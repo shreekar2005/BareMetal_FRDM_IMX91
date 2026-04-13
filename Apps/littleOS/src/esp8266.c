@@ -286,6 +286,9 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     send_to_esp("AT+CIPSTART=4,\"TCP\",\"%s\",%d\r\n", ip, port);
     if (wait_for_esp_ok(5) == false) {
         print_dbg("[ESP-Driver] Failed to connect to remote server.\n");
+        // Close Socket #4
+        send_to_esp("AT+CIPCLOSE=4\r\n"); 
+        wait_for_esp_ok(3);
         return;
     }
 
