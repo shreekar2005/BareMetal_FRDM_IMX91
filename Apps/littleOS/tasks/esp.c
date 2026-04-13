@@ -101,6 +101,4 @@ void esp_thread(void* arg) {
         print_dbg("  echo       <message>                    (Sends text to TCP clients)\r\n");
         print_dbg("  status                                  (Shows current mode, IP, MAC)\r\n");
     }
-    
-    print_dbg("\n> ");
 }

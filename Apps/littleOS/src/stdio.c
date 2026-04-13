@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include "SYS_CTR.h"
 #include "include/stdio.h"
+#include "include/multitasking.h"
 
 static void printCharStr(LPUART_TypeDef *uart, const char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
@@ -480,11 +481,13 @@ int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args) {
 }
 
 int print_dbg(const char *format, ...) {
+    os_stop_scheduling();
     va_list args;
     va_start(args, format);
     // Print to your USB-C debug port (LPUART1)
     int chars_written = vprint_uart(LPUART1, format, args); 
     va_end(args);
+    os_start_scheduling();
     return chars_written;
 }
 

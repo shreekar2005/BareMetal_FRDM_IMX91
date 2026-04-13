@@ -12,7 +12,6 @@
 #include "../tasks/esp.c"
 #include "../tasks/aprint100A.c"
 #include "../tasks/sonar.c"
-#include "../tasks/datetime.c"
 
 int print100o_thread_id = -1;
 int race_thread_id = -1;
@@ -23,9 +22,8 @@ int print100X_thread_id = -1;
 int esp_thread_id = -1;
 int aprint100A_thread_id = -1;
 int sonar_thread_id = -1;
-int datetime_thread_id = -1;
 
-TaskRegistry autotasks[10] = {
+TaskRegistry autotasks[9] = {
     {"print100o", "Print o's", print100o_thread, &print100o_thread_id},
     {"race", "Race Condition", race_thread, &race_thread_id},
     {"echo", "DBG ECHO", echo_thread, &echo_thread_id},
@@ -35,9 +33,8 @@ TaskRegistry autotasks[10] = {
     {"esp", "ESP Commands", esp_thread, &esp_thread_id},
     {"aprint100A", "AtomicPrint A's", aprint100A_thread, &aprint100A_thread_id},
     {"sonar", "sonar", sonar_thread, &sonar_thread_id},
-    {"datetime", "datetime", datetime_thread, &datetime_thread_id},
 };
-const int numAutotasks = 10;
+const int numAutotasks = 9;
 
 void init_all_tasks(void) {
     print100o_thread_id = os_create_thread("Print o's", print100o_thread, NULL);
@@ -49,5 +46,4 @@ void init_all_tasks(void) {
     esp_thread_id = os_create_thread("ESP Commands", esp_thread, NULL);
     aprint100A_thread_id = os_create_thread("AtomicPrint A's", aprint100A_thread, NULL);
     sonar_thread_id = os_create_thread("sonar", sonar_thread, NULL);
-    datetime_thread_id = os_create_thread("datetime", datetime_thread, NULL);
 }

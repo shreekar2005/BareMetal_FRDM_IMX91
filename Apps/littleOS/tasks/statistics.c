@@ -35,20 +35,6 @@ static void append_int(char* buf, int val) {
     buf[len] = '\0';
 }
 
-/* Safely slices large strings into 64-byte chunks to prevent vsprintf buffer overflows */
-static void safe_chunked_print(const char* str) {
-    char chunk[64];
-    int i = 0;
-    while(str[i] != '\0') {
-        int j = 0;
-        while(j < 63 && str[i] != '\0') {
-            chunk[j++] = str[i++];
-        }
-        chunk[j] = '\0';
-        print_dbg("%s", chunk);
-    }
-}
-
 void getTasksInfo(threadStatParams allThreads[]);
 void getEspInfo(espStatParams* espInstance);
 bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
@@ -66,10 +52,9 @@ void statistics_thread(void* arg)
     action[i] = '\0';
 
     if (action[0] == '\0' || strcmp(action, "help") == 0 || strcmp(action, "?") == 0 || strcmp(action, "--help") == 0) {
-        print_dbg("\r\n[statistics] Usage:\r\n");
-        print_dbg("  statistics show                                  (prints statistics to debug console)\r\n");
-        print_dbg("  statistics sendto <target_ip> <target_port>      (Sends to custom IP and Port)\r\n");
-        print_dbg(">");
+        print_dbg("\n[statistics] Usage:\n");
+        print_dbg("[statistics]   statistics show                                  (prints statistics to debug console)\n");
+        print_dbg("[statistics]   statistics sendto <target_ip> <target_port>      (Sends to custom IP and Port)\n");
         return; 
     }
 
@@ -90,14 +75,14 @@ void statistics_thread(void* arg)
                 if(arg_ip[j] == '.') has_dot = true;
             }
             if (!has_dot && strcmp(arg_ip, "localhost") != 0) {
-                print_dbg("\r\n[statistics] Invalid IP argument: %s\r\n", arg_ip);
-                print_dbg("Type 'statistics help' for usage.\r\n\n> ");
+                print_dbg("\n[statistics] Invalid IP argument: %s\n", arg_ip);
+                print_dbg("[statistics] Type 'statistics help' for usage.");
                 return;
             }
         }
     } else if (strcmp(action, "show") != 0) {
-        print_dbg("\r\n[statistics] Unknown command: %s\r\n", action);
-        print_dbg("Type 'statistics help' for usage.\r\n\n> ");
+        print_dbg("\n[statistics] Unknown command: %s\n", action);
+        print_dbg("[statistics] Type 'statistics help' for usage.");
         return;
     }
 
@@ -139,18 +124,18 @@ void statistics_thread(void* arg)
 
     if (strcmp(action, "show") == 0) {
         /* DIRECT TERMINAL PRINTING (TABLE FORMAT) */
-        print_dbg("\n\n[statistics]\n");
-        print_dbg("--- UPTIME ---\n");
-        print_dbg("%d hrs : %d min : %d sec\n\n", hr, min, sec);
-        print_dbg("--- SCHEDULER ---\nAlgo: %s\n\n", schedAlgo);
-
-        print_dbg("--- THREADS ---\n");
-        print_dbg("%-3s | %-16s | %-5s | %-4s | %-5s | %-5s | %-4s | %-5s | %-7s\n", 
+        print_dbg("\n");
+        print_dbg("[statistics] --- UPTIME ---\n");
+        print_dbg("[statistics] %d hrs : %d min : %d sec\n", hr, min, sec);
+        print_dbg("[statistics] --- SCHEDULER ---\nAlgo: %s\n", schedAlgo);
+        print_dbg("[statistics]\n");
+        print_dbg("[statistics] --- THREADS ---\n");
+        print_dbg("[statistics] %-3s | %-16s | %-5s | %-4s | %-5s | %-5s | %-4s | %-5s | %-7s\n", 
                   "ID", "Name", "State", "Pri", "Dead", "Per", "Targ", "Done", "TAT(ms)");
-        print_dbg("--------------------------------------------------------------------------------\n");
+        print_dbg("[statistics] --------------------------------------------------------------------------------\n");
         
         for (int j = 0; j < numThreads; j++) {
-            print_dbg("%-3d | %-16s | %-5s | %-4d | %-5d | %-5d | %-4d | %-5d | %-7d\n",
+            print_dbg("[statistics] %-3d | %-16s | %-5s | %-4d | %-5d | %-5d | %-4d | %-5d | %-7d\n",
                       j + 1, 
                       allThreads[j].name, 
                       allThreads[j].current_state,
@@ -162,14 +147,14 @@ void statistics_thread(void* arg)
                       (int)allThreads[j].lastTAT);
         }
 
-        print_dbg("\n--- ESP STATUS ---\n");
-        print_dbg("Reachable: %s\n", espInstance.reachable ? "true" : "false");
-        print_dbg("Op Mode: %d\n", espInstance.op_mode);
-        print_dbg("Router SSID: %s\n", espInstance.router_ssid[0] != '\0' ? espInstance.router_ssid : "N/A");
-        print_dbg("Router MAC: %s\n", espInstance.router_mac[0] != '\0' ? espInstance.router_mac : "N/A");
-        print_dbg("ESP IP: %s\n", espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A");
-        print_dbg("ESP MAC: %s\n", espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A");
-        print_dbg("\n> ");
+        print_dbg("[statistics]\n");
+        print_dbg("[statistics] --- ESP STATUS ---\n");
+        print_dbg("[statistics] Reachable: %s\n", espInstance.reachable ? "true" : "false");
+        print_dbg("[statistics] Op Mode: %d\n", espInstance.op_mode);
+        print_dbg("[statistics] Router SSID: %s\n", espInstance.router_ssid[0] != '\0' ? espInstance.router_ssid : "N/A");
+        print_dbg("[statistics] Router MAC: %s\n", espInstance.router_mac[0] != '\0' ? espInstance.router_mac : "N/A");
+        print_dbg("[statistics] ESP IP: %s\n", espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A");
+        print_dbg("[statistics] ESP MAC: %s\n", espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A");
     }
     else if (strcmp(action, "sendto") == 0) {
         /* COMPACT CSV PAYLOAD FOR WEB APP */

@@ -8,5 +8,4 @@ void print100X_thread(void* arg) {
         print_dbg("X");
         thread_sleep(50);
     }
-    print_dbg("\n> ");
 }

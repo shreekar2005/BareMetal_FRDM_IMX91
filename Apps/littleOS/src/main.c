@@ -11,6 +11,7 @@
 #include "include/stdio.h"
 #include "include/autotasks.h"
 #include "include/esp8266.h"
+#include "include/datetime.h"
 
 extern void os_timer_init(void); // defined in src/timer.c
 extern void os_start(void); // defined in vector.S, this starts the scheduler and never returns
@@ -74,6 +75,11 @@ int main() {
     print_dbg("[Boot] Registering Timer IRQ...\r\n");
     os_timer_init(); 
 
+    print_dbg("[Boot] Creating System RTC Daemon...\r\n");
+    int rtc_thread_id = os_create_thread("RTC_Daemon", datetime_ticker_thread, NULL);
+    os_set_thread_rtos(rtc_thread_id, 128, -1, 0, -1); // Infinite execution
+    os_thread_start(rtc_thread_id);
+
     print_dbg("[Boot] Creating WiFi Listener Thread...\r\n");
     int wifi_listener_thread_id = os_create_thread("WiFiListener", espTCPServerListener_thread, NULL);
     os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
@@ -82,7 +88,7 @@ int main() {
     print_dbg("[Boot] Creating CLI Thread...\r\n");
     int cli_thread_id = os_create_thread("CLI", input_thread, NULL);
     os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
-    os_thread_start(cli_thread_id); 
+    os_thread_start(cli_thread_id);
     
     print_dbg("[Boot] Setup complete! Starting Threads...\r\n");
     os_start();      

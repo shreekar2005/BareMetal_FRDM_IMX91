@@ -17,7 +17,7 @@ void input_thread(void* arg) {
     char cmd[128];
     int cmd_idx = 0;
     
-    print_dbg("\n> ");
+    print_dbg("\n[CLI] > ");
 
     while(1) {
         char c;
@@ -31,7 +31,7 @@ void input_thread(void* arg) {
             for (int i = 0; i < numAutotasks; i++) {
                 os_kill_thread(*(autotasks[i].id_ptr));
             }
-            print_dbg("^C\n[System] All active background tasks forcefully killed.\n> ");
+            print_dbg("^C\n[CLI] All active background tasks forcefully killed.");
             cmd_idx = 0;
             continue;
         }
@@ -48,9 +48,10 @@ void input_thread(void* arg) {
             cmd[cmd_idx] = '\0'; 
             
             if (cmd_idx > 0) handleCommand(cmd);
+            thread_sleep(100); // 100ms delay to ensure command processing before next prompt
             
             cmd_idx = 0;
-            print_dbg("\n> ");
+            print_dbg("\n[CLI] > ");
         } 
         else if (c >= 32 && c <= 126) {
             if (cmd_idx < 127) {

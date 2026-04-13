@@ -347,8 +347,6 @@ void espTCPServerListener_thread(void *arg) {
     int idx = 0;       // Payload buffer index
     int h_idx = 0;     // Header buffer index
 
-    print_dbg("[Wi-Fi] Asynchronous Listener Thread Started.\r\n");
-
     while(1) {
         // Pop a byte from RAM (returns instantly, doesn't wait for hardware)
         char c = esp_ring_buffer_pop();
