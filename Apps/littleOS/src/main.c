@@ -45,55 +45,55 @@ int main() {
     hardware_init();
 
     print_dbg("\033[2J\033[H"); 
-    print_dbg("=================================\r\n");
-    print_dbg("     littleOS RTOS Core          \r\n");
-    print_dbg("=================================\r\n");
+    print_dbg("=================================\n");
+    print_dbg("     littleOS RTOS Core          \n");
+    print_dbg("=================================\n");
 
     // WI-FI INITIALIZATION is done via "espinit" command in the CLI.
     // init_esp_as_access_point("littleOS_Network", "password123");
     // init_esp_as_station("shree_A52", "aspirine");
     // start_esp_tcp_server(8080); // Start listening on port 8080
 
-    print_dbg("[Boot] Initializing Scheduler...\r\n");
+    print_dbg("[Boot] Initializing Scheduler...\n");
     os_init_scheduler();
 
-    print_dbg("[Boot] Initializing Task Registry...\r\n");
+    print_dbg("[Boot] Initializing Task Registry...\n");
     init_all_tasks(); 
 
     // int status_thread_id = 5;
     // os_set_thread_rtos(status_thread_id, 127, -1, 5000, -1);
 
-    print_dbg("[Boot] Initializing GIC...\r\n");
+    print_dbg("[Boot] Initializing GIC...\n");
     gic_init();
 
-    print_dbg("[Boot] Giving CPU vector_table address...\r\n");
+    print_dbg("[Boot] Giving CPU vector_table address...\n");
     cpu_exceptions_init();
 
-    print_dbg("[Boot] Registering ESP8266 IRQ...\r\n");
+    print_dbg("[Boot] Registering ESP8266 IRQ...\n");
     esp_init();
 
-    print_dbg("[Boot] Registering Timer IRQ...\r\n");
+    print_dbg("[Boot] Registering Timer IRQ...\n");
     os_timer_init(); 
 
-    print_dbg("[Boot] Creating System RTC Daemon...\r\n");
+    print_dbg("[Boot] Creating System RTC Daemon...\n");
     int rtc_thread_id = os_create_thread("RTC_Daemon", datetime_ticker_thread, NULL);
     os_set_thread_rtos(rtc_thread_id, 128, -1, 0, -1); // Infinite execution
     os_thread_start(rtc_thread_id);
 
-    print_dbg("[Boot] Creating WiFi Listener Thread...\r\n");
+    print_dbg("[Boot] Creating WiFi Listener Thread...\n");
     int wifi_listener_thread_id = os_create_thread("WiFiListener", espTCPServerListener_thread, NULL);
     os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
     os_thread_start(wifi_listener_thread_id);
 
-    print_dbg("[Boot] Creating CLI Thread...\r\n");
+    print_dbg("[Boot] Creating CLI Thread...\n");
     int cli_thread_id = os_create_thread("CLI", input_thread, NULL);
     os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
     os_thread_start(cli_thread_id);
     
-    print_dbg("[Boot] Setup complete! Starting Threads...\r\n");
+    print_dbg("[Boot] Setup complete! Starting Threads...\n");
     os_start();      
 
-    print_dbg("\r\n[Kernel] System safely halted.\r\n");
+    print_dbg("\n[Kernel] System safely halted.\n");
     while(1) { __asm__ volatile("wfi"); }
     
     return 0;

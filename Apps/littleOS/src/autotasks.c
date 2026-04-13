@@ -32,7 +32,7 @@ TaskRegistry autotasks[9] = {
     {"print100X", "Print X's", print100X_thread, &print100X_thread_id},
     {"esp", "ESP Commands", esp_thread, &esp_thread_id},
     {"aprint100A", "AtomicPrint A's", aprint100A_thread, &aprint100A_thread_id},
-    {"sonar", "sonar", sonar_thread, &sonar_thread_id},
+    {"sonar", "Sonar Proximity", sonar_thread, &sonar_thread_id},
 };
 const int numAutotasks = 9;
 
@@ -45,5 +45,5 @@ void init_all_tasks(void) {
     print100X_thread_id = os_create_thread("Print X's", print100X_thread, NULL);
     esp_thread_id = os_create_thread("ESP Commands", esp_thread, NULL);
     aprint100A_thread_id = os_create_thread("AtomicPrint A's", aprint100A_thread, NULL);
-    sonar_thread_id = os_create_thread("sonar", sonar_thread, NULL);
+    sonar_thread_id = os_create_thread("Sonar Proximity", sonar_thread, NULL);
 }

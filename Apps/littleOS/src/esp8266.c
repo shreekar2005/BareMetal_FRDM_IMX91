@@ -75,7 +75,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
     bool timed_out = true;
     
     uint64_t targetClockTick = sysctrGetTicks() + timeout_sec * sysctrGetFreq(); 
-    print_dbg("[ESP8266] ");
+    print_dbg("[ESP8266-response] ");
     
     while (sysctrGetTicks() < targetClockTick) {
         /* clear Overrun errors just in case */
@@ -128,11 +128,11 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
     }
     
     if (timed_out) {
-        print_dbg("\r\n[Warning] %d sec timeout!\r\n", timeout_sec);
+        print_dbg("\n[ESP8266-response-Warning] %d sec timeout!\n", timeout_sec);
         return false;
     } 
 
-    print_dbg("\r\n");
+    print_dbg("\n");
     return success;
 }
 
@@ -140,55 +140,55 @@ void print_esp_status(void) {
     /* Basic Hardware Ping */
     send_to_esp("AT\r\n");
     if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP8266] Failed to communicate. Is the module powered on?\r\n");
+        print_dbg("[ESP-Driver] Failed to communicate. Is the module powered on?\n");
         return;
     }
 
     /* Check Current Mode */
-    print_dbg("\r\n[1] Operating Mode:\r\n");
-    print_dbg("    (1 = Station/Client, 2 = Access Point, 3 = Both)\r\n");
+    print_dbg("\n[ESP-Driver] Operating Mode:\n");
+    print_dbg("[ESP-Driver] (1 = Station/Client, 2 = Access Point, 3 = Both)\n");
     send_to_esp("AT+CWMODE?\r\n");
     if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP8266] Failed to fetch mode.\r\n");
+        print_dbg("[ESP-Driver] Failed to fetch mode.\n");
     }
 
     /* Check Connection to Router (Station Mode) */
-    print_dbg("\r\n[2] Connected Router (If in Station Mode):\r\n");
+    print_dbg("\n[ESP-Driver] Connected Router (If in Station Mode):\n");
     send_to_esp("AT+CWJAP?\r\n");
     if (wait_for_esp_ok(5) == false) {
-        print_dbg("[ESP8266] Failed to fetch router info.\r\n");
+        print_dbg("[ESP-Driver] Failed to fetch router info.\n");
     }
 
     /* Check Hosted Network (Access Point Mode) */
-    print_dbg("\r\n[3] Hosted Network (If in Access Point Mode):\r\n");
+    print_dbg("\n[ESP-Driver] Hosted Network (If in Access Point Mode):\n");
     send_to_esp("AT+CWSAP?\r\n");
     if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP8266] Failed to fetch AP info.\r\n");
+        print_dbg("[ESP-Driver] Failed to fetch AP info.\n");
     }
 
     /* IP & MAC Addresses */
-    print_dbg("\r\n[4] Network Addresses:\r\n");
-    print_dbg("    (STAIP = Your IP on the router, APIP = Hosted IP)\r\n");
+    print_dbg("\n[ESP-Driver] Network Addresses:\n");
+    print_dbg("[ESP-Driver] (STAIP = Your IP on the router, APIP = Hosted IP)\n");
     send_to_esp("AT+CIFSR\r\n");
     if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP8266] Failed to fetch IP addresses.\r\n");
+        print_dbg("[ESP-Driver] Failed to fetch IP addresses.\n");
     }
 }
 
 void init_esp_as_access_point(const char* ssid, const char* password) {
-    print_dbg("\r\n[Wi-Fi] Initializing ESP8266 in Access Point (AP) Mode...\r\n");
+    print_dbg("\n[ESP-Driver] Initializing ESP8266 in Access Point (AP) Mode...\n");
 
     /* Test communication */
     send_to_esp("AT\r\n");
     if (wait_for_esp_ok(5)==false) {
-        print_dbg("[Wi-Fi] Failed to communicate with ESP8266. Check wiring and try again.\r\n");
+        print_dbg("[ESP-Driver] Failed to communicate with ESP8266. Check wiring and try again.\n");
         return;
     }
 
     /* Set Wi-Fi Mode to 2 (SoftAP) */
     send_to_esp("AT+CWMODE=2\r\n");
     if (wait_for_esp_ok(5)==false) {
-        print_dbg("[Wi-Fi] Failed to set Wi-Fi mode.\r\n");
+        print_dbg("[ESP-Driver] Failed to set Wi-Fi mode.\n");
         return;
     }
 
@@ -196,48 +196,48 @@ void init_esp_as_access_point(const char* ssid, const char* password) {
      * Encryption 3 = WPA2_PSK */
     send_to_esp("AT+CWSAP=\"%s\",\"%s\",6,3\r\n", ssid, password);
     if (wait_for_esp_ok(10)==false) {
-        print_dbg("[Wi-Fi] Failed to configure Access Point.\r\n");
+        print_dbg("[ESP-Driver] Failed to configure Access Point.\n");
         return;
     }
     
-    print_dbg("[Wi-Fi] Access Point '%s' is now broadcasting.\r\n", ssid);
+    print_dbg("[ESP-Driver] Access Point '%s' is now broadcasting.\n", ssid);
 }
 
 
 void init_esp_as_station(const char* ssid, const char* password) {
-    print_dbg("\r\n[Wi-Fi] Initializing ESP8266 in Station Mode...\r\n");
+    print_dbg("\n[ESP-Driver] Initializing ESP8266 in Station Mode...\n");
 
     /* Test communication */
     send_to_esp("AT\r\n");
     if (wait_for_esp_ok(5)==false) {
-        print_dbg("[Wi-Fi] Failed to communicate with ESP8266. Check wiring and try again.\r\n");
+        print_dbg("[ESP-Driver] Failed to communicate with ESP8266. Check wiring and try again.\n");
         return;
     }
 
     /* Set Wi-Fi Mode to 1 (Station) */
     send_to_esp("AT+CWMODE=1\r\n");
     if (wait_for_esp_ok(5)==false) {
-        print_dbg("[Wi-Fi] Failed to set Wi-Fi mode.\r\n");
+        print_dbg("[ESP-Driver] Failed to set Wi-Fi mode.\n");
         return;
     }
 
     /* Connect to the Access Point: AT+CWJAP="ssid","pwd" */
-    print_dbg("[Wi-Fi] Attempting connection... (20 sec timeout)\r\n");
+    print_dbg("[ESP-Driver] Attempting connection... (20 sec timeout)\n");
     send_to_esp("AT+CWJAP=\"%s\",\"%s\"\r\n", ssid, password);
     if (wait_for_esp_ok(20)==false) {
-        print_dbg("[Wi-Fi] Failed to connect to Access Point.\r\n");
+        print_dbg("[ESP-Driver] Failed to connect to Access Point.\n");
         return;
     }
-    print_dbg("[Wi-Fi] Station connection sequence complete.\r\n");
+    print_dbg("[ESP-Driver] Station connection sequence complete.\n");
 }
 
 void start_esp_tcp_server(int port) {
-    print_dbg("\r\n[Wi-Fi] Starting TCP Server on port %d...\r\n", port);
+    print_dbg("\n[ESP-Driver] Starting TCP Server on port %d...\n", port);
 
     /* Enable Multiple Connections */
     send_to_esp("AT+CIPMUX=1\r\n");
     if (wait_for_esp_ok(5)==false) {
-        print_dbg("[Wi-Fi] Failed to enable multiple connections.\r\n");
+        print_dbg("[ESP-Driver] Failed to enable multiple connections.\n");
         return;
     }
 
@@ -248,19 +248,19 @@ void start_esp_tcp_server(int port) {
     /* Start the Server */
     send_to_esp("AT+CIPSERVER=1,%d\r\n", port);
     if (wait_for_esp_ok(5)==false) {
-        print_dbg("[Wi-Fi] Failed to start TCP server.\r\n");
+        print_dbg("[ESP-Driver] Failed to start TCP server.\n");
         return;
     }
     
     send_to_esp("AT+CIFSR\r\n");
     wait_for_esp_ok(5);
 
-    print_dbg("[Wi-Fi] TCP Server is running and listening!\r\n");
+    print_dbg("[ESP-Driver] TCP Server is running and listening!\n");
 }
 
 
 void esp_tcp_client_send(const char* ip, int port, const char* payload) {
-    print_dbg("\r\n[Wi-Fi] Sending trigger to %s:%d...\r\n", ip, port);
+    print_dbg("\n[ESP-Driver] Sending trigger to %s:%d...\n", ip, port);
 
     // Ensure the ESP8266 is in Multiple Connection Mode
     send_to_esp("AT+CIPMUX=1\r\n");
@@ -269,7 +269,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     // Open Socket #4 as a TCP Client
     send_to_esp("AT+CIPSTART=4,\"TCP\",\"%s\",%d\r\n", ip, port);
     if (wait_for_esp_ok(5) == false) {
-        print_dbg("[Wi-Fi] Failed to connect to remote server.\r\n");
+        print_dbg("[ESP-Driver] Failed to connect to remote server.\n");
         return;
     }
 
@@ -334,7 +334,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
         __asm__ volatile("nop");
     }
     
-    print_dbg("[Wi-Fi] Trigger sent successfully.\r\n");
+    print_dbg("[ESP-Driver] Trigger sent successfully.\n");
 }
 
 void espTCPServerListener_thread(void *arg) {
@@ -398,7 +398,7 @@ void espTCPServerListener_thread(void *arg) {
                     remote_ip[ip_ptr] = '\0';
                     /* ------------------------------------ */
 
-                    print_dbg("[ESP8266-remote-%s] %s\r\n", remote_ip, buffer);
+                    print_dbg("[ESP8266-remote-%s] %s\n", remote_ip, buffer);
                     
                     if (strncmp(buffer, "exec ", 5) == 0) {
                         handleCommand(buffer + 5); 

@@ -171,16 +171,16 @@ void print_help(void){
 
 /** @brief used to print fatal errors */
 void os_fatal_error(uint64_t esr, uint64_t elr, uint64_t far, uint64_t type) {
-    print_dbg("\r\n\r\n=================================\r\n");
-    print_dbg("!!! FATAL CPU EXCEPTION !!!\r\n");
-    if (type == 0) print_dbg("Type: Synchronous Exception\r\n");
-    if (type == 1) print_dbg("Type: Unhandled IRQ Trap\r\n");
-    if (type == 2) print_dbg("Type: FIQ\r\n");
-    if (type == 3) print_dbg("Type: SError (System Bus Fault)\r\n");
+    print_dbg("\n\n=================================\n");
+    print_dbg("!!! FATAL CPU EXCEPTION !!!\n");
+    if (type == 0) print_dbg("Type: Synchronous Exception\n");
+    if (type == 1) print_dbg("Type: Unhandled IRQ Trap\n");
+    if (type == 2) print_dbg("Type: FIQ\n");
+    if (type == 3) print_dbg("Type: SError (System Bus Fault)\n");
 
-    print_dbg("ESR_EL2 (Reason) : 0x%016llX\r\n", esr);
-    print_dbg("ELR_EL2 (Address) : 0x%016llX\r\n", elr);
-    print_dbg("FAR_EL2 (Memory) : 0x%016llX\r\n", far);
-    print_dbg("System Halted.\r\n=================================\r\n");
+    print_dbg("ESR_EL2 (Reason) : 0x%016llX\n", esr);
+    print_dbg("ELR_EL2 (Address) : 0x%016llX\n", elr);
+    print_dbg("FAR_EL2 (Memory) : 0x%016llX\n", far);
+    print_dbg("System Halted.\n=================================\n");
     while(1) { __asm__ volatile("wfi"); }
 }

@@ -1,4 +1,4 @@
-// Task_Name : sonar
+// Task_Name : Sonar Proximity
 #include <stdint.h>
 #include "SYS_CTR.h"
 #include "GPIO.h"
@@ -100,7 +100,7 @@ static uint32_t sonar_read_filtered_mm(void) {
  * @brief Main RTOS Thread Entrypoint for Sonar Task
  */
 void sonar_thread(void* arg) {
-    print_dbg("\r\n[Sonar] Initializing HC-SR04 Radar...\r\n");
+    print_dbg("\n[SONAR-Thread] Initializing HC-SR04 Radar...\n");
 
     uint8_t led_state = 0; 
 
@@ -110,14 +110,14 @@ void sonar_thread(void* arg) {
 
         /* If out of bounds or timed out */
         if (distance_mm == 0xFFFFFFFF || distance_mm > MAX_DISTANCE_MM) {
-            print_dbg("[Sonar] Distance: > 400.0 cm\r\n");
+            print_dbg("[SONAR-Thread] Distance: > 400.0 cm\n");
             gpioWrite(GPIO2, RED_LED, LOW); 
             led_state = 0;
         } else {
             /* Print decimal formatted output directly using print_dbg */
             uint32_t cm_whole = distance_mm / 10;
             uint32_t cm_frac = distance_mm % 10;
-            print_dbg("[Sonar] Distance: %d.%d cm\r\n", cm_whole, cm_frac);
+            print_dbg("[SONAR-Thread] Distance: %d.%d cm\n", cm_whole, cm_frac);
 
             /* Proximity Blink Logic (< 10 cm) */
             if (distance_mm < ALARM_THRESHOLD_MM) {

@@ -155,7 +155,7 @@ void os_join_thread(int thread_id) {
     if (thread_id < 0 || thread_id >= numThreads) return;
     if (thread_id == currentThread_idx) return; 
     if (!isSchedulingEnabled) {
-        print_dbg("\n[FATAL] os_join_thread called inside atomic block! Deadlock avoided.\n");
+        print_dbg("\n[MULTASKING-Driver] os_join_thread called inside atomic block! Deadlock avoided.\n");
         return;
     }
     while (threads[thread_id].currentState != STATE_TERMINATE && threads[thread_id].currentState != STATE_NEW) {

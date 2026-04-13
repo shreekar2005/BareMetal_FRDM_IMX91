@@ -50,7 +50,7 @@ void esp_thread(void* arg) {
         while(pass[pass_len] != '\0') pass_len++;
         
         if (pass_len < 8) {
-            print_dbg("[ESP] Error: WPA2 passwords MUST be at least 8 characters long!\r\n");
+            print_dbg("[ESP-Thread] Error: WPA2 passwords MUST be at least 8 characters long!\n");
         } else {
             os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
             init_esp_as_access_point(ssid, pass);
@@ -60,7 +60,7 @@ void esp_thread(void* arg) {
 
     else if (strcmp(cmd, "sta-mode") == 0) {
         if (arg1[0] == '\0' || arg2[0] == '\0') {
-            print_dbg("[ESP] Error: 'sta-mode' requires both <ssid_name> and <ssid_password>.\r\n");
+            print_dbg("[ESP-Thread] Error: 'sta-mode' requires both <ssid_name> and <ssid_password>.\n");
         } else {
             os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
             init_esp_as_station(arg1, arg2);
@@ -80,9 +80,9 @@ void esp_thread(void* arg) {
             os_stop_scheduling(); // Lock scheduling
             print_esp("%s\n", (const char*)&print_buffer[remainder_ptr]);
             os_start_scheduling(); // Resume scheduling
-            print_dbg("[ESP] Echo sent: %s\r\n", &print_buffer[remainder_ptr]);
+            print_dbg("[ESP-Thread] Echo sent: %s\n", &print_buffer[remainder_ptr]);
         } else {
-            print_dbg("[ESP] Error: Nothing to echo. Usage: esp echo <message>\r\n");
+            print_dbg("[ESP-Thread] Error: Nothing to echo. Usage: esp echo <message>\n");
         }
     }
     else if (strcmp(cmd, "status") == 0) {
@@ -93,12 +93,12 @@ void esp_thread(void* arg) {
 
     else {
         // Print updated help menu
-        print_dbg("[ESP] Invalid argument.\r\n");
-        print_dbg("Usage:\r\n");
-        print_dbg("  sta-mode   <ssid_name> <ssid_password>  (Both required)\r\n");
-        print_dbg("  ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\r\n");
-        print_dbg("  tcp-server [port_number]                (Default: 8080)\r\n");
-        print_dbg("  echo       <message>                    (Sends text to TCP clients)\r\n");
-        print_dbg("  status                                  (Shows current mode, IP, MAC)\r\n");
+        print_dbg("[ESP-Thread] Invalid argument.\n");
+        print_dbg("[ESP-Thread] Usage:\n");
+        print_dbg("[ESP-Thread]   sta-mode   <ssid_name> <ssid_password>  (Both required)\n");
+        print_dbg("[ESP-Thread]   ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\n");
+        print_dbg("[ESP-Thread]   tcp-server [port_number]                (Default: 8080)\n");
+        print_dbg("[ESP-Thread]   echo       <message>                    (Sends text to TCP clients)\n");
+        print_dbg("[ESP-Thread]   status                                  (Shows current mode, IP, MAC)\n");
     }
 }

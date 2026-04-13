@@ -47,15 +47,15 @@ void gic_end_of_interrupt(uint32_t iar) {
 
 
 void cpu_exceptions_init(void) {
-    // 1. Tell CPU where the Exception Vector Table is
+    // Tell CPU where the Exception Vector Table is
     __asm__ volatile("msr vbar_el2, %0" : : "r" (&vector_table));
 
-    // 2. Route physical IRQs to Exception Level 2 (Hypervisor/OS Level)
+    // Route physical IRQs to Exception Level 2 (Hypervisor/OS Level)
     uint64_t hcr;
     __asm__ volatile("mrs %0, hcr_el2" : "=r" (hcr));
     hcr |= (1 << 4) | (1 << 3); 
     __asm__ volatile("msr hcr_el2, %0" : : "r" (hcr));
 
-    // 3. Unmask the CPU Master IRQ Pin (DAIF clear)
+    // Unmask the CPU Master IRQ Pin (DAIF clear)
     __asm__ volatile("msr daifclr, #2");
 }

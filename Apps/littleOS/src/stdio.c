@@ -514,7 +514,6 @@ int print_esp(const char *format, ...) {
     // calculate the exact wire length.
     int wire_len = 0;
     for (int i = 0; i < len; i++) {
-        // if (buffer[i] == '\n') wire_len++; // NO LONGER account for lpuartPutChar injecting \r
         wire_len++;
     }
 
