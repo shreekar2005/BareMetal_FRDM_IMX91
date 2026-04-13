@@ -37,10 +37,19 @@ void handleCommand(const char* cmd) {
     else if (strcmp(cmd, "shutdown") == 0 || strcmp(cmd, "poweroff") == 0) {
         system_poweroff(); 
     }
-    else if (strncmp(cmd, "sched ", 6) == 0) {
-        if (strcmp(cmd, "sched rr") == 0) os_set_scheduling_algo(SCHED_RR);
-        else if (strcmp(cmd, "sched pri") == 0) os_set_scheduling_algo(SCHED_PRIORITY);
-        else if (strcmp(cmd, "sched edf") == 0) os_set_scheduling_algo(SCHED_EDF);
+    else if (strncmp(cmd, "sched", 5) == 0) {
+        if (strcmp(cmd, "sched rr") == 0) {
+            os_set_scheduling_algo(SCHED_RR);
+            print_dbg("[CLI-Thread] Scheduler set to Round Robin.\n");
+        }
+        else if (strcmp(cmd, "sched pri") == 0) {
+            os_set_scheduling_algo(SCHED_PRIORITY);
+            print_dbg("[CLI-Thread] Scheduler set to Priority.\n");
+        }
+        else if (strcmp(cmd, "sched edf") == 0) {
+            os_set_scheduling_algo(SCHED_EDF);
+            print_dbg("[CLI-Thread] Scheduler set to EDF.\n");
+        }
         else {
             print_dbg("[CLI-Thread] Invalid scheduler. Usage: sched [rr|pri|edf]\n");
             return;
