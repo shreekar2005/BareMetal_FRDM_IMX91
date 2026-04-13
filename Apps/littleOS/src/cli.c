@@ -54,7 +54,7 @@ void input_thread(void* arg) {
             
             print_dbg("\n");
             if (cmd_buffer_idx > 0) handleCommand(cmd_buffer);
-            thread_sleep(100); // 100ms delay to ensure command processing before next prompt
+            os_yield(); // Yield to allow any background tasks to print their output before we print the next prompt
             
             if(cmd_buffer_idx>0) print_dbg("\n[CLI-Thread] > ");
             else print_dbg("[CLI-Thread] > ");
