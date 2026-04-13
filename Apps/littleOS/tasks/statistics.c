@@ -256,8 +256,8 @@ void getEspInfo(espStatParams* espInstance)
             }   
         }
         
-        send_to_esp("AT+CIFSR\r\n"); 
-        if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 3))
+        send_to_esp("AT+CIFSR\r\n");
+        if(get_raw_esp_response(raw_esp_response_buffer, sizeof(raw_esp_response_buffer), 5))
         {
             const char* ip_ptr = strstr(raw_esp_response_buffer, "+CIFSR:STAIP,\"");
             if (!ip_ptr)

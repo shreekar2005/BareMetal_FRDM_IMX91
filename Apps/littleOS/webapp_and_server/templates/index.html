@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>littleOS Command Center</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body { background-color: #121212; color: #00ff00; font-family: monospace; margin: 0; padding: 20px; }
         h1 { border-bottom: 1px solid #00ff00; padding-bottom: 10px; }
@@ -40,6 +41,15 @@
     </div>
 
     <script>
+        // Connect to the WebSocket server
+        const socket = io();
+
+        // Listen for realtime 'status_update' broadcasts from Python
+        socket.on('status_update', function(data) {
+            document.getElementById('status-display').innerHTML = data.status;
+        });
+
+        // The HTTP POST command fetch remains unchanged
         function sendCommand() {
             const input = document.getElementById('cmdInput');
             const cmd = input.value;
@@ -64,14 +74,6 @@
         }
 
         function handleEnter(e) { if(e.key === 'Enter') sendCommand(); }
-
-        setInterval(() => {
-            fetch('/api/status')
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('status-display').innerHTML = data.status;
-            });
-        }, 2000);
     </script>
 </body>
 </html>

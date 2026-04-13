@@ -1,4 +1,5 @@
 APP = littleOS
+PYTHON_SERVER_AND_WEBAPP_DIR = webapp_and_server
 
 all: pre_build
 	$(MAKE) -C ../.. APP=$(APP)
@@ -22,13 +23,18 @@ usb_serial_install: pre_build
 usb_ums_install: pre_build
 	$(MAKE) -C ../.. APP=$(APP) usb_ums_install
 
-.venv:
-	python3 -m venv python_server_and_webapp/.venv
+setup_venv:
+	@if [ ! -d "$(PYTHON_SERVER_AND_WEBAPP_DIR)/.venv" ]; then \
+		echo "Creating virtual environment..."; \
+		python3 -m venv $(PYTHON_SERVER_AND_WEBAPP_DIR)/.venv; \
+	else \
+		echo "Virtual environment already exists. Skipping."; \
+	fi
 
-initpy: .venv
-	python_server_and_webapp/.venv/bin/pip install -r python_server_and_webapp/requirements.txt
+initpy: setup_venv
+	$(PYTHON_SERVER_AND_WEBAPP_DIR)/.venv/bin/pip install -r $(PYTHON_SERVER_AND_WEBAPP_DIR)/requirements.txt
 
-runpy: initpy
-	python_server_and_webapp/.venv/bin/python python_server_and_webapp/app.py 
+runpy:
+	$(PYTHON_SERVER_AND_WEBAPP_DIR)/.venv/bin/python $(PYTHON_SERVER_AND_WEBAPP_DIR)/app.py 
 
-.PHONY: all pre_build clear clean usb_pendrive_install usb_serial_install usb_ums_install initpy runpy
+.PHONY: all pre_build clear clean usb_pendrive_install usb_serial_install usb_ums_install setup_venv initpy runpy

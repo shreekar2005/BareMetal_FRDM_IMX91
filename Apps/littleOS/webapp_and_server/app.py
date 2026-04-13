@@ -3,8 +3,11 @@ import threading
 import datetime
 import time
 from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO
 
 app = Flask(__name__)
+# Initialize SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 LAPTOP_TCP_PORT = 5555
 NXP_PORT = 8080
@@ -21,7 +24,6 @@ def parse_compact_status(raw_data):
     
     threads = []
     
-    # Reverted to splitting by '\n' to verify your UART fix
     for line in raw_data.strip().split('\n'):
         try:
             parts = line.split(',')
@@ -31,15 +33,22 @@ def parse_compact_status(raw_data):
                 sched_str = f"<p><b>Scheduler:</b> {parts[1]}</p>"
             elif parts[0] == 'T' and len(parts) >= 10:
                 threads.append(parts)
-            elif parts[0] == 'E' and len(parts) >= 7:
-                reachable = "[ONLINE]" if parts[1] == "1" else "[OFFLINE]"
-                status_color = "#00ff00" if parts[1] == "1" else "red"
+            elif parts[0] == 'E':
+                reachable = "[ONLINE]" if len(parts) > 1 and parts[1] == "1" else "[OFFLINE]"
+                status_color = "#00ff00" if len(parts) > 1 and parts[1] == "1" else "red"
+                op_mode = parts[2] if len(parts) > 2 else "N/A"
+                ssid = parts[3] if len(parts) > 3 else "N/A"
+                router_mac = parts[4] if len(parts) > 4 else "N/A"
+                ip_addr = parts[5] if len(parts) > 5 else "N/A"
+                esp_mac = parts[6] if len(parts) > 6 else "N/A"
+
                 esp_str += f"<li style='margin-bottom: 5px;'><b>Status:</b> <span style='color: {status_color}; font-weight: bold;'>{reachable}</span></li>"
-                esp_str += f"<li style='margin-bottom: 5px;'><b>Op Mode:</b> {parts[2]}</li>"
-                esp_str += f"<li style='margin-bottom: 5px;'><b>SSID:</b> {parts[3]}</li>"
-                esp_str += f"<li style='margin-bottom: 5px;'><b>Router MAC:</b> {parts[4]}</li>"
-                esp_str += f"<li style='margin-bottom: 5px;'><b>IP Address:</b> {parts[5]}</li>"
-                esp_str += f"<li style='margin-bottom: 5px;'><b>ESP MAC:</b> {parts[6]}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>Op Mode:</b> {op_mode}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>SSID:</b> {ssid}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>Router MAC:</b> {router_mac}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>IP Address:</b> {ip_addr}</li>"
+                esp_str += f"<li style='margin-bottom: 5px;'><b>ESP MAC:</b> {esp_mac}</li>"
+                
         except Exception:
             pass 
             
@@ -62,10 +71,6 @@ def parse_compact_status(raw_data):
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/api/status', methods=['GET'])
-def get_status():
-    return jsonify({"status": LATEST_NXP_STATUS})
 
 @app.route('/api/command', methods=['POST'])
 def send_command():
@@ -134,10 +139,14 @@ def raw_tcp_server_thread():
                 LATEST_NXP_STATUS = parse_compact_status(data[status_idx + 8:])
                 print(f"[+] Received compact system status update from {LATEST_NXP_IP} ({len(data)} bytes)")
                 
+                # Push the update directly to the frontend via WebSockets
+                socketio.emit('status_update', {'status': LATEST_NXP_STATUS})
+                
         except Exception as global_e:
             print(f"[!] FATAL ERROR IN TCP BACKGROUND THREAD: {global_e}")
 
 if __name__ == "__main__":
     threading.Thread(target=raw_tcp_server_thread, daemon=True).start()
     print("[*] IoT Hub: Web Interface starting on port 5000...")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # Use socketio.run instead of app.run
+    socketio.run(app, host="0.0.0.0", port=5000, debug=False)
