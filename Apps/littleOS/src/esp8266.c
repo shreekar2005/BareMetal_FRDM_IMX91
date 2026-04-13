@@ -88,8 +88,8 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
         if (c != '\0') {
             
             if(c != '\r' && c != '\n') print_dbg("%c", c);
-            if(c == '\n') print_dbg("\\r");
             if(c == '\r') print_dbg("\\r");
+            if(c == '\n') print_dbg("\\n");
 
             // "OK"?
             if (prev == 'O' && c == 'K') {
@@ -97,6 +97,9 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
                     char flush_c = esp_ring_buffer_pop();
+                    if(flush_c != '\r' && flush_c != '\n') print_dbg("%c", flush_c);
+                    if(flush_c == '\r') print_dbg("\\r");
+                    if(flush_c == '\n') print_dbg("\\n");
                     if (flush_c == '\n') break;
                 }
                 success = true;
@@ -106,6 +109,15 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
             
             // ERR"OR"? 
             if (prev == 'O' && c == 'R') {
+                // Read the final '\r' and '\n' to clear the pipe before exiting
+                uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
+                while (sysctrGetTicks() < flush_target) {
+                    char flush_c = esp_ring_buffer_pop();
+                    if(flush_c != '\r' && flush_c != '\n') print_dbg("%c", flush_c);
+                    if(flush_c == '\r') print_dbg("\\r");
+                    if(flush_c == '\n') print_dbg("\\n");
+                    if (flush_c == '\n') break;
+                }
                 success = false;
                 timed_out = false;
                 break;
@@ -113,9 +125,14 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
 
             // FA"IL"? (AT+CWJAP outputs FAIL instead of ERROR when it can't connect)
             if (prev == 'I' && c == 'L') {
+                // Read the final '\r' and '\n' to clear the pipe before exiting
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
-                    if (esp_ring_buffer_pop() == '\n') break;
+                    char flush_c = esp_ring_buffer_pop();
+                    if(flush_c != '\r' && flush_c != '\n') print_dbg("%c", flush_c);
+                    if(flush_c == '\r') print_dbg("\\r");
+                    if(flush_c == '\n') print_dbg("\\n");
+                    if (flush_c == '\n') break;
                 }
                 success = false;
                 timed_out = false;
@@ -128,10 +145,9 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
     }
     
     if (timed_out) {
-        print_dbg("\n[ESP8266-response-Warning] %d sec timeout!\n", timeout_sec);
+        print_dbg("[ESP8266-response-Warning] %d sec timeout!\n", timeout_sec);
         return false;
     } 
-
     print_dbg("\n");
     return success;
 }
@@ -145,7 +161,7 @@ void print_esp_status(void) {
     }
 
     /* Check Current Mode */
-    print_dbg("\n[ESP-Driver] Operating Mode:\n");
+    print_dbg("[ESP-Driver] Operating Mode:\n");
     print_dbg("[ESP-Driver] (1 = Station/Client, 2 = Access Point, 3 = Both)\n");
     send_to_esp("AT+CWMODE?\r\n");
     if (wait_for_esp_ok(3) == false) {
@@ -153,21 +169,21 @@ void print_esp_status(void) {
     }
 
     /* Check Connection to Router (Station Mode) */
-    print_dbg("\n[ESP-Driver] Connected Router (If in Station Mode):\n");
+    print_dbg("[ESP-Driver] Connected Router (If in Station Mode):\n");
     send_to_esp("AT+CWJAP?\r\n");
     if (wait_for_esp_ok(5) == false) {
         print_dbg("[ESP-Driver] Failed to fetch router info.\n");
     }
 
     /* Check Hosted Network (Access Point Mode) */
-    print_dbg("\n[ESP-Driver] Hosted Network (If in Access Point Mode):\n");
+    print_dbg("[ESP-Driver] Hosted Network (If in Access Point Mode):\n");
     send_to_esp("AT+CWSAP?\r\n");
     if (wait_for_esp_ok(3) == false) {
         print_dbg("[ESP-Driver] Failed to fetch AP info.\n");
     }
 
     /* IP & MAC Addresses */
-    print_dbg("\n[ESP-Driver] Network Addresses:\n");
+    print_dbg("[ESP-Driver] Network Addresses:\n");
     print_dbg("[ESP-Driver] (STAIP = Your IP on the router, APIP = Hosted IP)\n");
     send_to_esp("AT+CIFSR\r\n");
     if (wait_for_esp_ok(3) == false) {
@@ -176,7 +192,7 @@ void print_esp_status(void) {
 }
 
 void init_esp_as_access_point(const char* ssid, const char* password) {
-    print_dbg("\n[ESP-Driver] Initializing ESP8266 in Access Point (AP) Mode...\n");
+    print_dbg("[ESP-Driver] Initializing ESP8266 in Access Point (AP) Mode...\n");
 
     /* Test communication */
     send_to_esp("AT\r\n");
@@ -205,7 +221,7 @@ void init_esp_as_access_point(const char* ssid, const char* password) {
 
 
 void init_esp_as_station(const char* ssid, const char* password) {
-    print_dbg("\n[ESP-Driver] Initializing ESP8266 in Station Mode...\n");
+    print_dbg("[ESP-Driver] Initializing ESP8266 in Station Mode...\n");
 
     /* Test communication */
     send_to_esp("AT\r\n");
@@ -232,7 +248,7 @@ void init_esp_as_station(const char* ssid, const char* password) {
 }
 
 void start_esp_tcp_server(int port) {
-    print_dbg("\n[ESP-Driver] Starting TCP Server on port %d...\n", port);
+    print_dbg("[ESP-Driver] Starting TCP Server on port %d...\n", port);
 
     /* Enable Multiple Connections */
     send_to_esp("AT+CIPMUX=1\r\n");
@@ -260,7 +276,7 @@ void start_esp_tcp_server(int port) {
 
 
 void esp_tcp_client_send(const char* ip, int port, const char* payload) {
-    print_dbg("\n[ESP-Driver] Sending trigger to %s:%d...\n", ip, port);
+    print_dbg("[ESP-Driver] Sending TCP data to %s:%d...\n", ip, port);
 
     // Ensure the ESP8266 is in Multiple Connection Mode
     send_to_esp("AT+CIPMUX=1\r\n");
@@ -277,6 +293,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     int len = strlen(payload);
     send_to_esp("AT+CIPSEND=4,%d\r\n", len);
     
+    print_dbg("[ESP8266-response] ");
     // Wait for the '>' prompt indicating ESP is ready for raw data
     uint64_t targetClockTick = sysctrGetTicks() + (2 * sysctrGetFreq());
     while (sysctrGetTicks() < targetClockTick) {
@@ -292,16 +309,14 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
             if(c == '\r') print_dbg("\\r");
             
             // Break exactly when the ESP gives the green light
-            if (c == '>') {
-                print_dbg(">"); 
-                break;
-            }
+            if (c == '>') break;
         }
         __asm__ volatile("nop"); 
     }
+    print_dbg("\n");
 
-    /* ULTRA-GENTLE CHUNKING --- */
-    // Blast the payload safely to avoid ESP8266 "busy s..." UART overflows
+
+    // Blast the payload chunk by chunk to avoid ESP8266 "busy s..." UART overflows
     int i = 0;
     char chunk[1024]; // Reduced to 1KB per chunk at a time
     while (payload[i] != '\0') {
@@ -316,25 +331,25 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
         // Give the ESP8266 300 milliseconds to process the 1024 bytes
         sysctrDelay_ms(300); 
     }
-    /* -------------------------------------- */
     
     // Wait for "SEND OK"
     wait_for_esp_ok(3);
 
     // Close Socket #4
     send_to_esp("AT+CIPCLOSE=4\r\n"); 
-    
+    wait_for_esp_ok(3);
+
     // 100ms Blind Flush
-    uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
-    while (sysctrGetTicks() < flush_target) {
-        if (LPUART4->STAT & (0xF << 16)) {
-            LPUART4->STAT |= (0xF << 16); 
-        }
-        esp_ring_buffer_pop(); 
-        __asm__ volatile("nop");
-    }
+    // uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
+    // while (sysctrGetTicks() < flush_target) {
+    //     if (LPUART4->STAT & (0xF << 16)) {
+    //         LPUART4->STAT |= (0xF << 16); 
+    //     }
+    //     esp_ring_buffer_pop(); 
+    //     __asm__ volatile("nop");
+    // }
     
-    print_dbg("[ESP-Driver] Trigger sent successfully.\n");
+    print_dbg("[ESP-Driver] TCP data sent successfully.\n");
 }
 
 void espTCPServerListener_thread(void *arg) {
@@ -380,7 +395,7 @@ void espTCPServerListener_thread(void *arg) {
                 if (c == '\n' || c == '\r') {
                     buffer[idx] = '\0';
                     
-                    /* --- Parse the IP from the header --- */
+                    // Parse the IP from the header
                     int comma_count = 0;
                     int ip_ptr = 0;
                     remote_ip[0] = 'U'; remote_ip[1] = 'n'; remote_ip[2] = 'k'; remote_ip[3] = '\0'; 
@@ -396,9 +411,8 @@ void espTCPServerListener_thread(void *arg) {
                         if (comma_count == 4) break; 
                     }
                     remote_ip[ip_ptr] = '\0';
-                    /* ------------------------------------ */
 
-                    print_dbg("[ESP8266-remote-%s] %s\n", remote_ip, buffer);
+                    print_dbg("\n[ESP8266-Remote-%s] %s\n", remote_ip, buffer);
                     
                     if (strncmp(buffer, "exec ", 5) == 0) {
                         handleCommand(buffer + 5); 

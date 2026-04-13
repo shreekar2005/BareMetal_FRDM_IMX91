@@ -28,7 +28,7 @@ TaskRegistry autotasks[9] = {
     {"race", "Race Condition", race_thread, &race_thread_id},
     {"echo", "DBG ECHO", echo_thread, &echo_thread_id},
     {"ledblink", "LED Blink", ledblink_thread, &ledblink_thread_id},
-    {"statistics", "Show/Send Stati", statistics_thread, &statistics_thread_id},
+    {"statistics", "Show/Send Stats", statistics_thread, &statistics_thread_id},
     {"print100X", "Print X's", print100X_thread, &print100X_thread_id},
     {"esp", "ESP Commands", esp_thread, &esp_thread_id},
     {"aprint100A", "AtomicPrint A's", aprint100A_thread, &aprint100A_thread_id},
@@ -41,7 +41,7 @@ void init_all_tasks(void) {
     race_thread_id = os_create_thread("Race Condition", race_thread, NULL);
     echo_thread_id = os_create_thread("DBG ECHO", echo_thread, NULL);
     ledblink_thread_id = os_create_thread("LED Blink", ledblink_thread, NULL);
-    statistics_thread_id = os_create_thread("Show/Send Stati", statistics_thread, NULL);
+    statistics_thread_id = os_create_thread("Show/Send Stats", statistics_thread, NULL);
     print100X_thread_id = os_create_thread("Print X's", print100X_thread, NULL);
     esp_thread_id = os_create_thread("ESP Commands", esp_thread, NULL);
     aprint100A_thread_id = os_create_thread("AtomicPrint A's", aprint100A_thread, NULL);

@@ -14,10 +14,10 @@
 volatile char print_buffer[128];
 
 void input_thread(void* arg) {
-    char cmd[128];
-    int cmd_idx = 0;
+    char cmd_buffer[128];
+    int cmd_buffer_idx = 0;
     
-    print_dbg("\n[CLI] > ");
+    print_dbg("\n[CLI-Thread] > ");
 
     while(1) {
         char c;
@@ -31,31 +31,34 @@ void input_thread(void* arg) {
             for (int i = 0; i < numAutotasks; i++) {
                 os_kill_thread(*(autotasks[i].id_ptr));
             }
-            print_dbg("^C\n[CLI] All active background tasks forcefully killed.");
-            cmd_idx = 0;
+            print_dbg("^C\n[CLI-Thread] All active background tasks forcefully killed.\n");
+            print_dbg("\n[CLI-Thread] > ");
+            cmd_buffer_idx = 0;
             continue;
         }
         
         if (c == ASCII_BACKSPACE || c == ASCII_DEL) {
-            if (cmd_idx > 0) {
-                cmd_idx--;
+            if (cmd_buffer_idx > 0) {
+                cmd_buffer_idx--;
                 print_dbg("\b \b");
             }
             continue;
         }
 
         if (c == '\r' || c == '\n') {
-            cmd[cmd_idx] = '\0'; 
+            cmd_buffer[cmd_buffer_idx] = '\0';
             
-            if (cmd_idx > 0) handleCommand(cmd);
+            print_dbg("\n");
+            if (cmd_buffer_idx > 0) handleCommand(cmd_buffer);
             thread_sleep(100); // 100ms delay to ensure command processing before next prompt
             
-            cmd_idx = 0;
-            print_dbg("\n[CLI] > ");
+            if(cmd_buffer_idx>0) print_dbg("\n[CLI-Thread] > ");
+            else print_dbg("[CLI-Thread] > ");
+            cmd_buffer_idx = 0;
         } 
         else if (c >= 32 && c <= 126) {
-            if (cmd_idx < 127) {
-                cmd[cmd_idx++] = c;
+            if (cmd_buffer_idx < 127) {
+                cmd_buffer[cmd_buffer_idx++] = c;
                 print_dbg("%c", c);
             }
         }

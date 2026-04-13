@@ -1,4 +1,4 @@
-// Task_Name : Show/Send Statistics
+// Task_Name : Show/Send Stats
 
 #include "include/multitasking.h"
 #include "tasks_include/statistics.h"
@@ -52,7 +52,7 @@ void statistics_thread(void* arg)
     action[i] = '\0';
 
     if (action[0] == '\0' || strcmp(action, "help") == 0 || strcmp(action, "?") == 0 || strcmp(action, "--help") == 0) {
-        print_dbg("\n[STATISTICS-Thread] Usage:\n");
+        print_dbg("[STATISTICS-Thread] Usage:\n");
         print_dbg("[STATISTICS-Thread]   statistics show                                  (prints statistics to debug console)\n");
         print_dbg("[STATISTICS-Thread]   statistics sendto <target_ip> <target_port>      (Sends to custom IP and Port)\n");
         return; 
@@ -75,13 +75,13 @@ void statistics_thread(void* arg)
                 if(arg_ip[j] == '.') has_dot = true;
             }
             if (!has_dot && strcmp(arg_ip, "localhost") != 0) {
-                print_dbg("\n[STATISTICS-Thread] Invalid IP argument: %s\n", arg_ip);
+                print_dbg("[STATISTICS-Thread] Invalid IP argument: %s\n", arg_ip);
                 print_dbg("[STATISTICS-Thread] Type 'statistics help' for usage.");
                 return;
             }
         }
     } else if (strcmp(action, "show") != 0) {
-        print_dbg("\n[STATISTICS-Thread] Unknown command: %s\n", action);
+        print_dbg("[STATISTICS-Thread] Unknown command: %s\n", action);
         print_dbg("[STATISTICS-Thread] Type 'statistics help' for usage.");
         return;
     }
@@ -124,10 +124,10 @@ void statistics_thread(void* arg)
 
     if (strcmp(action, "show") == 0) {
         /* DIRECT TERMINAL PRINTING (TABLE FORMAT) */
-        print_dbg("\n");
         print_dbg("[STATISTICS-Thread] --- UPTIME ---\n");
         print_dbg("[STATISTICS-Thread] %d hrs : %d min : %d sec\n", hr, min, sec);
-        print_dbg("[STATISTICS-Thread] --- SCHEDULER ---\nAlgo: %s\n", schedAlgo);
+        print_dbg("[STATISTICS-Thread] --- SCHEDULER ---\n");
+        print_dbg("[STATISTICS-Thread] Algorithm: %s\n", schedAlgo);
         print_dbg("[STATISTICS-Thread]\n");
         print_dbg("[STATISTICS-Thread] --- THREADS ---\n");
         print_dbg("[STATISTICS-Thread] %-3s | %-16s | %-5s | %-4s | %-5s | %-5s | %-4s | %-5s | %-7s\n", 

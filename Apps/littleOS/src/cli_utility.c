@@ -26,7 +26,7 @@ void handleCommand(const char* cmd) {
         for (int i = 0; i < numAutotasks; i++) {
             os_kill_thread(*(autotasks[i].id_ptr));
         }
-        print_dbg("\n[CLI] All active background tasks forcefully killed.");
+        print_dbg("[CLI-Thread] All active background tasks forcefully killed.\n");
     }
     else if (strcmp(cmd, "clear") == 0) {
         clear_terminal();
@@ -41,45 +41,15 @@ void handleCommand(const char* cmd) {
         if (strcmp(cmd, "sched rr") == 0) os_set_scheduling_algo(SCHED_RR);
         else if (strcmp(cmd, "sched pri") == 0) os_set_scheduling_algo(SCHED_PRIORITY);
         else if (strcmp(cmd, "sched edf") == 0) os_set_scheduling_algo(SCHED_EDF);
-        print_dbg("\n[CLI] Scheduler algorithm changed.");
-    }
-    // --- CORE SYSTEM INTERCEPT: DATETIME ---
-    else if (strncmp(cmd, "datetime", 8) == 0) {
-        char subcmd[16] = {0};
-        char arg1[32] = {0};
-        char arg2[32] = {0};
-        
-        int i = 8; 
-        while (cmd[i] == ' ') i++;
-        
-        int j = 0;
-        while (cmd[i] != ' ' && cmd[i] != '\0' && j < 15) subcmd[j++] = cmd[i++];
-        subcmd[j] = '\0';
-        
-        while (cmd[i] == ' ') i++;
-        j = 0;
-        while (cmd[i] != ' ' && cmd[i] != '\0' && j < 31) arg1[j++] = cmd[i++];
-        arg1[j] = '\0';
-
-        while (cmd[i] == ' ') i++;
-        j = 0;
-        while (cmd[i] != ' ' && cmd[i] != '\0' && j < 31) arg2[j++] = cmd[i++];
-        arg2[j] = '\0';
-
-        if (strcmp(subcmd, "show") == 0) {
-            datetime_show();
-        } else if (strcmp(subcmd, "set") == 0) {
-            datetime_set(arg1, arg2);
-        } else if (strcmp(subcmd, "sync") == 0) {
-            datetime_sync(arg1, arg2);
-        } else {
-            print_dbg("\n[CLI] Invalid argument. Usage:\n");
-            print_dbg("[CLI]   datetime show                                  (Prints current time)\n");
-            print_dbg("[CLI]   datetime sync <server_ip> <port>               (Fetches real time via TCP)\n");
-            print_dbg("[CLI]   datetime set  <hh:mm:ss> <dd:mm:yyyy>          (Manually update RTC)\n> ");
+        else {
+            print_dbg("[CLI-Thread] Invalid scheduler. Usage: sched [rr|pri|edf]\n");
+            return;
         }
     }
-    // ---------------------------------------
+    else if (strncmp(cmd, "datetime", 8) == 0) {
+        // PASS THE RAW CMD POINTER DIRECTLY INSTEAD OF RELYING ON print_buffer
+        datetime_handlecmd(cmd);
+    }
     else {
         int targetID = -1;
         int i = 0;
@@ -120,13 +90,13 @@ void handleCommand(const char* cmd) {
             os_thread_start(targetID); 
             
         } else {
-            print_dbg("\n[CLI] Unknown command. Type 'help' for options.");
+            print_dbg("[CLI-Thread] Unknown command. Type 'help' for options.\n");
         }
     }
 }
 
 void system_reboot(void) {
-    print_dbg("\n[CLI] TRIGGERING HARDWARE WATCHDOG RESET...\n");
+    print_dbg("[CLI-Thread] TRIGGERING HARDWARE WATCHDOG RESET...\n\n");
     __asm__ volatile("msr daifset, #2");
 
     volatile uint32_t* wdog_cs    = (volatile uint32_t*)(0x442D0000 + 0x00);
@@ -142,7 +112,7 @@ void system_reboot(void) {
 
 // NOT SHUTTING DOWN ACTUAL HARDWARE, JUST SIMULATING POWER-OFF BY HALTING THE CLI AND LETTING THE USER KNOW
 void system_poweroff(void) {
-    print_dbg("\n[CLI] SENDING POWER-DOWN SIGNAL TO PMIC...\n");
+    print_dbg("[CLI-Thread] SENDING POWER-DOWN SIGNAL TO PMIC...\n");
     __asm__ volatile("msr daifset, #2"); 
     volatile uint32_t* snvs_lpcr = (volatile uint32_t*)(0x44470000 + 0x38);
     *snvs_lpcr |= (1 << 5) | (1 << 6);
@@ -154,19 +124,20 @@ void clear_terminal(void) {
 }
 
 void print_help(void){
-    print_dbg("\n[CLI] Available Commands:\n");
-    print_dbg("[CLI]  killall (or Ctrl+C)  - Stop all active threads immediately\n");
-    print_dbg("[CLI]  clear                - Clear the terminal screen\n");
-    print_dbg("[CLI]  reboot/restart/reset - Hardware reboot\n");
-    print_dbg("[CLI]  shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
-    print_dbg("[CLI]  sched [rr|pri|edf]   - Change RTOS scheduler algorithm\n");
-    print_dbg("[CLI]  datetime             - System RTC time management\n");
-    print_dbg("\n[CLI] Dynamic Tasks (Auto-Loaded from tasks/):\n");
+    print_dbg("[CLI-Thread] Available Commands:\n");
+    print_dbg("[CLI-Thread]  killall (or Ctrl+C)  - Stop all active threads immediately\n");
+    print_dbg("[CLI-Thread]  clear                - Clear the terminal screen\n");
+    print_dbg("[CLI-Thread]  reboot/restart/reset - Hardware reboot\n");
+    print_dbg("[CLI-Thread]  shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
+    print_dbg("[CLI-Thread]  sched [rr|pri|edf]   - Change RTOS scheduler algorithm\n");
+    print_dbg("[CLI-Thread]  datetime             - System RTC time management\n");
+    print_dbg("[CLI-Thread] \n");
+    print_dbg("[CLI-Thread] Dynamic Tasks (Auto-Loaded from tasks/):\n");
     for (int i = 0; i < numAutotasks; i++) {
-        print_dbg("[CLI]    %-16s - %s\n", autotasks[i].cmd_string, autotasks[i].display_name);
+        print_dbg("[CLI-Thread]    %-16s - %s\n", autotasks[i].cmd_string, autotasks[i].display_name);
     }
-    print_dbg("[CLI]  Defaults: -n 1, -per 0, -pri 128, -d -1\n");
-    print_dbg("[CLI]  Syntax: <taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadline_ms>");
+    print_dbg("[CLI-Thread]  Defaults: -n 1, -per 0, -pri 128, -d -1\n");
+    print_dbg("[CLI-Thread]  Syntax: <taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadline_ms>\n");
 }
 
 /** @brief used to print fatal errors */

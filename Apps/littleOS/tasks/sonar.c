@@ -100,8 +100,6 @@ static uint32_t sonar_read_filtered_mm(void) {
  * @brief Main RTOS Thread Entrypoint for Sonar Task
  */
 void sonar_thread(void* arg) {
-    print_dbg("\n[SONAR-Thread] Initializing HC-SR04 Radar...\n");
-
     uint8_t led_state = 0; 
 
     /* The OS handles Ctrl+C automatically, so we just use an infinite loop */

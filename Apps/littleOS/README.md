@@ -122,7 +122,7 @@ Example:
 #include "include/stdio.h"
 
 void hello_task_thread(void* arg) {
-    print_dbg("\nHello from RTOS thread!");
+    print_dbg("Hello from RTOS thread!\n");
     thread_sleep(1000); // Yield CPU for 1 second
 }
 ```

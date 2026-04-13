@@ -113,8 +113,6 @@ def raw_tcp_server_thread():
                     data += chunk
             except socket.timeout:
                 pass 
-            
-            client.close()
 
             if "GET_TIME" in data:
                 print(f"[*] Time sync requested by NXP ({LATEST_NXP_IP})")

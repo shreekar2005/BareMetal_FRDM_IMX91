@@ -3,16 +3,6 @@
 #include "include/stdio.h"
 #include "include/multitasking.h"
 
-static void printCharStr(LPUART_TypeDef *uart, const char *str) {
-    for (int i = 0; str[i] != '\0'; i++) {
-        /* ONLY inject carriage return for the local debug console (LPUART1) */
-        if (uart == LPUART1 && str[i] == '\n') {
-            lpuartPutChar(uart, '\r');
-        }
-        lpuartPutChar(uart, str[i]);
-    }
-}
-
 static void reverse(char *str, int length) {
     int start = 0;
     int end = length - 1;
@@ -88,21 +78,8 @@ static void doubleToString(double d, char *buffer, int precision) {
     *ptr = '\0';
 }
 
-static void printHex(LPUART_TypeDef *uart, uintptr_t n, int digits) {
-    char buffer[32];
-    ullToString(n, buffer, 16, 0, 1);
-    
-    int len = 0;
-    while (buffer[len] != '\0') len++;
-    
-    for (int i = 0; i < digits - len; i++) {
-        printCharStr(uart, "0");
-    }
-    printCharStr(uart, buffer);
-}
-
-/* Formats strings into a RAM buffer with full flag/padding support for ESP8266 */
-int vprint_esp8266(char *buf, const char *format, va_list args) {
+/* Core central formatter: Processes all arguments directly into a RAM buffer */
+int vsprintf(char *buf, const char *format, va_list args) {
     char *ptr = buf;
     char temp_buf[128]; // Local staging for numbers/floats
 
@@ -285,243 +262,66 @@ int vprint_esp8266(char *buf, const char *format, va_list args) {
     return (int)(ptr - buf);
 }
 
-int vprint_uart(LPUART_TypeDef *uart, const char *format, va_list args) {
-    int chars_written = 0;
-    char buffer[128];
-    char char_str[2] = {0, 0};
-
-    for (int i = 0; format[i] != '\0'; i++) {
-        if (format[i] == '%') {
-            i++;
-            int use_alternative_form = 0;
-            int zero_pad = 0;
-            int left_align = 0;
-            int width = 0;
-            int precision = -1;
-            
-            while(1) {
-                if (format[i] == '-') { left_align = 1; i++; }
-                else if (format[i] == '#') { use_alternative_form = 1; i++; }
-                else if (format[i] == '0') { zero_pad = 1; i++; }
-                else break;
-            }
-            
-            if (left_align) zero_pad = 0;
-
-            while (format[i] >= '0' && format[i] <= '9') {
-                width = width * 10 + (format[i] - '0');
-                i++;
-            }
-            
-            if (format[i] == '.') {
-                i++; 
-                precision = 0;
-                while (format[i] >= '0' && format[i] <= '9') {
-                    precision = precision * 10 + (format[i] - '0');
-                    i++;
-                }
-            }
-
-            int is_long = 0, is_long_long = 0, is_short = 0, is_char = 0;
-            
-            if (format[i] == 'l') { 
-                is_long = 1; i++; 
-                if (format[i] == 'l') { is_long_long = 1; is_long = 0; i++; }
-            } else if (format[i] == 'h') { 
-                is_short = 1; i++; 
-                if (format[i] == 'h') { is_char = 1; is_short = 0; i++; }
-            }
-
-            switch (format[i]) {
-                case 'c': {
-                    char_str[0] = (char)va_arg(args, int);
-                    printCharStr(uart, char_str);
-                    chars_written++;
-                    break;
-                }
-                case 's': {
-                    const char *str = va_arg(args, char *);
-                    if (!str) str = "(null)";
-                    int len = 0; while (str[len]) len++;
-                    int padding = (width > len) ? (width - len) : 0;
-                    chars_written += len + padding;
-
-                    if (left_align) {
-                        printCharStr(uart, str);
-                        for(int k=0; k<padding; k++) printCharStr(uart, " ");
-                    } else {
-                        for(int k=0; k<padding; k++) printCharStr(uart, " ");
-                        printCharStr(uart, str);
-                    }
-                    break;
-                }
-                case 'f': {
-                    doubleToString(va_arg(args, double), buffer, precision);
-                    int len = 0; while(buffer[len]) len++;
-                    int padding = (width > len) ? (width - len) : 0;
-                    chars_written += len + padding;
-
-                    if (left_align) {
-                        printCharStr(uart, buffer);
-                        for(int k=0; k<padding; k++) printCharStr(uart, " ");
-                    } else {
-                        char padChar = (zero_pad && precision == -1) ? '0' : ' ';
-                        for(int k=0; k<padding; k++) {
-                            char p[2] = {padChar, 0};
-                            printCharStr(uart, p);
-                        }
-                        printCharStr(uart, buffer);
-                    }
-                    break;
-                }
-                case 'd': case 'i': case 'u': case 'x': case 'X': case 'b': case 'o': {
-                    unsigned long long val;
-                    int base = 10;
-                    int uppercase = 0;
-                    char sign_char = 0;
-
-                    if (format[i] == 'd' || format[i] == 'i') {
-                        long long signed_val;
-                        if (is_long_long) signed_val = va_arg(args, long long);
-                        else if (is_long) signed_val = va_arg(args, long);
-                        else if (is_char) signed_val = (signed char)va_arg(args, int);
-                        else if (is_short) signed_val = (short)va_arg(args, int);
-                        else signed_val = va_arg(args, int);
-                        
-                        if (signed_val < 0) { sign_char = '-'; val = -signed_val; } 
-                        else { val = signed_val; }
-                    } else {
-                        if (is_long_long) val = va_arg(args, unsigned long long);
-                        else if (is_long) val = va_arg(args, unsigned long);
-                        else if (is_char) val = (unsigned char)va_arg(args, unsigned int);
-                        else if (is_short) val = (unsigned short)va_arg(args, unsigned int);
-                        else val = va_arg(args, unsigned int);
-                    }
-
-                    switch(format[i]) {
-                        case 'x': base = 16; break;
-                        case 'X': base = 16; uppercase = 1; break;
-                        case 'b': base = 2; break;
-                        case 'o': base = 8; break;
-                    }
-                    
-                    ullToString(val, buffer, base, 0, uppercase);
-
-                    const char* prefix = "";
-                    if (use_alternative_form && val != 0) {
-                        switch(format[i]) {
-                            case 'x': prefix = "0x"; break;
-                            case 'X': prefix = "0X"; break;
-                            case 'b': prefix = "0b"; break;
-                            case 'o': prefix = "0"; break;
-                        }
-                    }
-                    
-                    int num_len = 0; while(buffer[num_len]) num_len++;
-                    int prefix_len = 0; while(prefix[prefix_len]) prefix_len++;
-                    
-                    int precision_pads = (precision > num_len) ? (precision - num_len) : 0;
-                    int total_len = num_len + (sign_char ? 1 : 0) + prefix_len + precision_pads;
-                    int width_pads = (width > total_len) ? (width - total_len) : 0;
-                    
-                    chars_written += width_pads + total_len;
-
-                    if (left_align) {
-                        if (sign_char) { char_str[0] = sign_char; printCharStr(uart, char_str); }
-                        if (prefix_len > 0) printCharStr(uart, prefix);
-                        if (precision_pads > 0) {
-                            for (int j = 0; j < precision_pads; j++) printCharStr(uart, "0");
-                        }
-                        printCharStr(uart, buffer);
-                        for (int j = 0; j < width_pads; j++) printCharStr(uart, " ");
-                    } else {
-                        if (!zero_pad) {
-                            for (int j = 0; j < width_pads; j++) printCharStr(uart, " ");
-                        }
-                        if (sign_char) { char_str[0] = sign_char; printCharStr(uart, char_str); }
-                        if (prefix_len > 0) printCharStr(uart, prefix);
-                        if (zero_pad) {
-                            for (int j = 0; j < width_pads; j++) printCharStr(uart, "0");
-                        }
-                        if (precision_pads > 0) {
-                            for (int j = 0; j < precision_pads; j++) printCharStr(uart, "0");
-                        }
-                        printCharStr(uart, buffer);
-                    }
-                    break;
-                }
-                case 'p': {
-                    printCharStr(uart, "0x");
-                    int hex_digits = sizeof(uintptr_t) * 2;
-                    printHex(uart, (uintptr_t)va_arg(args, void *), hex_digits);
-                    chars_written += 2 + hex_digits;
-                    break;
-                }
-                case '%': {
-                    printCharStr(uart, "%"); 
-                    chars_written++; 
-                    break;
-                }
-                default: {
-                    printCharStr(uart, "%"); 
-                    char_str[0] = format[i]; 
-                    printCharStr(uart, char_str); 
-                    chars_written += 2; 
-                    break;
-                }
-            }
-        } else {
-            char_str[0] = format[i]; 
-            printCharStr(uart, char_str); 
-            chars_written++;
-        }
-    }
-    
-    return chars_written;
+int sprintf(char *buf, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    int len = vsprintf(buf, format, args);
+    va_end(args);
+    return len;
 }
 
 int print_dbg(const char *format, ...) {
-    os_stop_scheduling();
-    va_list args;
-    va_start(args, format);
-    // Print to your USB-C debug port (LPUART1)
-    int chars_written = vprint_uart(LPUART1, format, args); 
-    va_end(args);
-    os_start_scheduling();
-    return chars_written;
-}
+    bool wasSchedulingEnabled = isSchedulingEnabled;
+    if(wasSchedulingEnabled) os_stop_scheduling(); // Ensure atomic print without preemption
 
-int send_to_esp(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    // Print to your Wi-Fi module (LPUART4)
-    int chars_written = vprint_uart(LPUART4, format, args); 
-    va_end(args);
-    return chars_written;
-}
-
-int print_esp(const char *format, ...) {
-    char buffer[256];
+    char buffer[512];
     va_list args;
     va_start(args, format);
     
-    // format the string into our local staging buffer using the stdio helper
-    int len = vprint_esp8266(buffer, format, args);
+    int len = vsprintf(buffer, format, args);
+    va_end(args);
+    
+    // Stream directly to debug console, injecting '\r' dynamically
+    for (int i = 0; i < len; i++) {
+        if (buffer[i] == '\n') {
+            lpuartPutChar(LPUART1, '\r');
+        }
+        lpuartPutChar(LPUART1, buffer[i]);
+    }
+    
+    if(wasSchedulingEnabled) os_start_scheduling();
+    return len;
+}
+
+int send_to_esp(const char *format, ...) {
+    char buffer[512];
+    va_list args;
+    va_start(args, format);
+    
+    int len = vsprintf(buffer, format, args);
+    va_end(args);
+    
+    // Stream raw payload to ESP Wi-Fi module
+    for (int i = 0; i < len; i++) {
+        lpuartPutChar(LPUART4, buffer[i]);
+    }
+    return len;
+}
+
+int print_esp(const char *format, ...) {
+    char buffer[512]; 
+    va_list args;
+    va_start(args, format);
+    
+    int len = vsprintf(buffer, format, args);
     va_end(args);
     
     if (len <= 0) return 0;
 
-    // calculate the exact wire length.
-    int wire_len = 0;
-    for (int i = 0; i < len; i++) {
-        wire_len++;
-    }
+    // Send the CIPSEND command to prepare ESP8266
+    send_to_esp("AT+CIPSEND=0,%d\r\n", len);
 
-    // send the CIPSEND command
-    send_to_esp("AT+CIPSEND=0,%d\r\n", wire_len);
-
-    // waiting for the ESP8266 to output the '>' prompt indicating it is ready
-    // 2-second hardware timeout
+    // Wait for the ESP8266 to output the '>' prompt indicating it is ready
     uint64_t targetClockTick = sysctrGetTicks() + (2 * sysctrGetFreq());
     while (sysctrGetTicks() < targetClockTick) {
         if (lpuartGetCharNonBlocking(LPUART4) == '>') {
@@ -529,6 +329,9 @@ int print_esp(const char *format, ...) {
         }
     }
     
-    send_to_esp("%s", buffer);
+    // Push the raw payload buffer to the ESP8266
+    for (int i = 0; i < len; i++) {
+        lpuartPutChar(LPUART4, buffer[i]);
+    }
     return len;
 }
