@@ -52,9 +52,7 @@ void esp_thread(void* arg) {
         if (pass_len < 8) {
             print_dbg("[ESP-Thread] Error: WPA2 passwords MUST be at least 8 characters long!\n");
         } else {
-            os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
             init_esp_as_access_point(ssid, pass);
-            os_start_scheduling(); // Resume normal OS multitasking
         }
     }
 
@@ -62,38 +60,28 @@ void esp_thread(void* arg) {
         if (arg1[0] == '\0' || arg2[0] == '\0') {
             print_dbg("[ESP-Thread] Error: 'sta-mode' requires both <ssid_name> and <ssid_password>.\n");
         } else {
-            os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
             init_esp_as_station(arg1, arg2);
-            os_start_scheduling(); // Resume normal OS multitasking
         }
     } 
     else if (strcmp(cmd, "tcp-server") == 0) {
         // Use default port 8080 if arg1 is empty
         int port = (arg1[0] != '\0') ? atoi(arg1) : 8080;
-        os_stop_scheduling(); // Ensure no other tasks interfere with Wi-Fi init
         start_esp_tcp_server(port);
-        os_start_scheduling(); // Resume normal OS multitasking
     } 
     else if (strcmp(cmd, "echo") == 0) {
         // Send everything typed after "echo " over Wi-Fi
         if (print_buffer[remainder_ptr] != '\0') {
-            os_stop_scheduling(); // Lock scheduling
             print_esp("%s\n", (const char*)&print_buffer[remainder_ptr]);
-            os_start_scheduling(); // Resume scheduling
             print_dbg("[ESP-Thread] Echo sent: %s\n", &print_buffer[remainder_ptr]);
         } else {
             print_dbg("[ESP-Thread] Error: Nothing to echo. Usage: esp echo <message>\n");
         }
     }
     else if (strcmp(cmd, "status") == 0) {
-        os_stop_scheduling(); // Lock scheduling
         print_esp_status();     // Call hardware driver to query module
-        os_start_scheduling(); // Resume scheduling
     }
     else if (strcmp(cmd, "reboot") == 0) {
-        os_stop_scheduling(); // Lock scheduling
         esp_reboot();         // Reboot the ESP8266 module
-        os_start_scheduling(); // Resume scheduling (in case reboot fails)
     }
 
     else {

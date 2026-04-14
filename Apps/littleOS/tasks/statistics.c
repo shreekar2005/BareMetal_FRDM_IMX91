@@ -112,9 +112,7 @@ void statistics_thread(void* arg)
     espInstance.reachable=false;
     espInstance.op_mode=-1;
 
-    os_stop_scheduling();
     getEspInfo(&espInstance);
-    os_start_scheduling();
 
     uint64_t ticks = sysctrGetTicks();
     uint64_t freq = sysctrGetFreq();
@@ -191,9 +189,7 @@ void statistics_thread(void* arg)
         strcat(payload_buffer, espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A"); strcat(payload_buffer, ",");
         strcat(payload_buffer, espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A"); strcat(payload_buffer, "\n");
 
-        os_stop_scheduling();
-        esp_tcp_client_send(target_ip, target_port, payload_buffer); 
-        os_start_scheduling();
+        esp_tcp_client_send(target_ip, target_port, payload_buffer);
     }
 }
 

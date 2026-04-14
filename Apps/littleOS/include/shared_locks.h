@@ -20,6 +20,7 @@ extern os_mutex_t print_dbg_mutex;
 extern os_mutex_t esp_send_mutex;
 extern os_mutex_t esp_print_mutex;
 extern os_mutex_t race_mutex;
+extern os_mutex_t esp_transaction_mutex;
 
 /**
  * @brief Initializes a mutex to the unlocked state (value = 1)

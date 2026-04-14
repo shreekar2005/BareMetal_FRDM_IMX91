@@ -7,10 +7,11 @@
 #include "include/multitasking.h"
 #include "include/gic.h"
 #include "include/irq.h"
+#include "include/shared_locks.h" // Need this for the transaction mutex!
+
+os_mutex_t esp_transaction_mutex; // Define it here
 
 // ----------------------------------- RING BUFFER ARCHITECTURE and ISR START-----------------------------------
-
-// BUFFER ARCHITECTURE
 
 RingBuffer esp_rx_buffer = { .head = 0, .tail = 0 };
 
@@ -23,51 +24,32 @@ char esp_ring_buffer_pop(void) {
     return c;
 }
 
-// ISR
-/**
- * @brief Hardware IRQ Handler for LPUART4. 
- * This executes instantly when the ESP8266 sends a byte.
- */
 CPUState* lpuart4_rx_isr(CPUState* current_state) {
     uint32_t stat = LPUART4->STAT;
 
-    /* Clear Hardware Overrun Flags */
     if (stat & (0xF << 16)) {
         LPUART4->STAT |= (0xF << 16); 
     }
 
-    /* Check if Receive Data Register is Full (RDRF is bit 21 in NXP LPUART) */
     if (stat & (1 << 21)) {
-        char c = (char)(LPUART4->DATA & 0xFF); // Read hardware FIFO
-        
-        // Calculate next head position
+        char c = (char)(LPUART4->DATA & 0xFF); 
         int next_head = (esp_rx_buffer.head + 1) % ESP_RX_BUFFER_SIZE;
-        
-        // If buffer isn't full, save the byte. (If full, it drops the byte)
         if (next_head != esp_rx_buffer.tail) {
             esp_rx_buffer.data[esp_rx_buffer.head] = c;
             esp_rx_buffer.head = next_head;
         }
     }
-
-    return current_state; // Return without forcing a context switch
+    return current_state; 
 }
 
 // -----------------------------------RING BUFFER ARCHITECTURE and ISR END-----------------------------------
 
 void esp_init(void) {
-
-    /* Register the ISR with your OS Dispatcher */
     register_irq(IMX91_LPUART4_IRQ_ID, lpuart4_rx_isr);
-    
-    /* Enable the Interrupt in the ARM GIC */
     gic_enable_interrupt(IMX91_LPUART4_IRQ_ID);
-    
-    /* Enable Receiver Interrupts in the LPUART Hardware itself */
     LPUART4->CTRL |= (1 << 21);
 }
 
-/* Actively listens to the ESP8266 until it sees "OK" or "ERROR", or times out */
 static bool wait_for_esp_ok(uint32_t timeout_sec) {
     char c;
     char prev = 0;
@@ -78,7 +60,6 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
     print_dbg("[ESP8266-response] ");
     
     while (sysctrGetTicks() < targetClockTick) {
-        /* clear Overrun errors just in case */
         if (LPUART4->STAT & (0xF << 16)) {
             LPUART4->STAT |= (0xF << 16); 
         }
@@ -86,14 +67,11 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
         c = esp_ring_buffer_pop();
         
         if (c != '\0') {
-            
             if(c != '\r' && c != '\n') print_dbg("%c", c);
             if(c == '\r') print_dbg("\\r");
             if(c == '\n') print_dbg("\\n");
 
-            // "OK"?
             if (prev == 'O' && c == 'K') {
-                // Read the final '\r' and '\n' to clear the pipe before exiting
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
                     char flush_c = esp_ring_buffer_pop();
@@ -107,9 +85,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
                 break;
             }
             
-            // ERR"OR"? 
             if (prev == 'O' && c == 'R') {
-                // Read the final '\r' and '\n' to clear the pipe before exiting
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
                     char flush_c = esp_ring_buffer_pop();
@@ -123,9 +99,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
                 break;
             }
 
-            // FA"IL"? (AT+CWJAP outputs FAIL instead of ERROR when it can't connect)
             if (prev == 'I' && c == 'L') {
-                // Read the final '\r' and '\n' to clear the pipe before exiting
                 uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 100); 
                 while (sysctrGetTicks() < flush_target) {
                     char flush_c = esp_ring_buffer_pop();
@@ -138,7 +112,6 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
                 timed_out = false;
                 break;
             }
-
             prev = c;
         }
         __asm__ volatile("nop"); 
@@ -153,202 +126,157 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
 }
 
 void esp_reboot(void) {
+    os_mutex_lock(&esp_transaction_mutex); // LOCK
+
     print_dbg("[ESP-Driver] Sending software reset command to ESP8266...\n");
-    
-    // Send the reset command
     send_to_esp("AT+RST\r\n");
-
-    // The ESP usually says "OK" right before the silicon resets
     wait_for_esp_ok(2);
-
     print_dbg("[ESP-Driver] Waiting for ESP8266 silicon to reboot (3 seconds)...\n");
 
-    // MASSIVE BLIND FLUSH
     uint64_t flush_target = sysctrGetTicks() + (3 * sysctrGetFreq()); 
     while (sysctrGetTicks() < flush_target) {
-        
-        /* Violently clear UART hardware overrun/framing flags caused by the baud mismatch */
-        if (LPUART4->STAT & (0xF << 16)) {
-            LPUART4->STAT |= (0xF << 16); 
-        }
-        
-        /* Pop and destroy the garbage bytes */
+        if (LPUART4->STAT & (0xF << 16)) LPUART4->STAT |= (0xF << 16); 
         esp_ring_buffer_pop(); 
-        
         __asm__ volatile("nop");
     }
-
     print_dbg("[ESP-Driver] ESP8266 reboot complete.\n");
+
+    os_mutex_unlock(&esp_transaction_mutex); // UNLOCK
 }
 
 void print_esp_status(void) {
-    /* Basic Hardware Ping */
+    os_mutex_lock(&esp_transaction_mutex); // LOCK
+
     send_to_esp("AT\r\n");
     if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP-Driver] Failed to communicate. Is the module powered on?\n");
+        print_dbg("[ESP-Driver] Failed to communicate.\n");
+        os_mutex_unlock(&esp_transaction_mutex);
         return;
     }
 
-    /* Check Current Mode */
     print_dbg("[ESP-Driver] Operating Mode:\n");
-    print_dbg("[ESP-Driver] (1 = Station/Client, 2 = Access Point, 3 = Both)\n");
     send_to_esp("AT+CWMODE?\r\n");
-    if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP-Driver] Failed to fetch mode.\n");
-    }
+    wait_for_esp_ok(3);
 
-    /* Check Connection to Router (Station Mode) */
     print_dbg("[ESP-Driver] Connected Router (If in Station Mode):\n");
     send_to_esp("AT+CWJAP?\r\n");
-    if (wait_for_esp_ok(5) == false) {
-        print_dbg("[ESP-Driver] Failed to fetch router info.\n");
-    }
+    wait_for_esp_ok(5);
 
-    /* Check Hosted Network (Access Point Mode) */
     print_dbg("[ESP-Driver] Hosted Network (If in Access Point Mode):\n");
     send_to_esp("AT+CWSAP?\r\n");
-    if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP-Driver] Failed to fetch AP info.\n");
-    }
+    wait_for_esp_ok(3);
 
-    /* IP & MAC Addresses */
     print_dbg("[ESP-Driver] Network Addresses:\n");
-    print_dbg("[ESP-Driver] (STAIP = Your IP on the router, APIP = Hosted IP)\n");
     send_to_esp("AT+CIFSR\r\n");
-    if (wait_for_esp_ok(3) == false) {
-        print_dbg("[ESP-Driver] Failed to fetch IP addresses.\n");
-    }
+    wait_for_esp_ok(3);
+
+    os_mutex_unlock(&esp_transaction_mutex); // UNLOCK
 }
 
 void init_esp_as_access_point(const char* ssid, const char* password) {
-    print_dbg("[ESP-Driver] Initializing ESP8266 in Access Point (AP) Mode...\n");
+    os_mutex_lock(&esp_transaction_mutex); // LOCK
 
-    /* Test communication */
+    print_dbg("[ESP-Driver] Initializing ESP8266 in Access Point Mode...\n");
     send_to_esp("AT\r\n");
-    if (wait_for_esp_ok(5)==false) {
-        print_dbg("[ESP-Driver] Failed to communicate with ESP8266. Check wiring and try again.\n");
-        return;
-    }
+    if (wait_for_esp_ok(5)==false) goto ap_error;
 
-    /* Set Wi-Fi Mode to 2 (SoftAP) */
     send_to_esp("AT+CWMODE=2\r\n");
-    if (wait_for_esp_ok(5)==false) {
-        print_dbg("[ESP-Driver] Failed to set Wi-Fi mode.\n");
-        return;
-    }
+    if (wait_for_esp_ok(5)==false) goto ap_error;
 
-    /* Configure the AP: AT+CWSAP="ssid","pwd",channel,encryption 
-     * Encryption 3 = WPA2_PSK */
     send_to_esp("AT+CWSAP=\"%s\",\"%s\",6,3\r\n", ssid, password);
-    if (wait_for_esp_ok(10)==false) {
-        print_dbg("[ESP-Driver] Failed to configure Access Point.\n");
-        return;
-    }
+    if (wait_for_esp_ok(10)==false) goto ap_error;
     
     print_dbg("[ESP-Driver] Access Point '%s' is now broadcasting.\n", ssid);
+    os_mutex_unlock(&esp_transaction_mutex);
+    return;
+
+ap_error:
+    print_dbg("[ESP-Driver] Access Point configuration failed.\n");
+    os_mutex_unlock(&esp_transaction_mutex);
 }
 
-
 void init_esp_as_station(const char* ssid, const char* password) {
+    os_mutex_lock(&esp_transaction_mutex); // LOCK
+
     print_dbg("[ESP-Driver] Initializing ESP8266 in Station Mode...\n");
-
-    /* Test communication */
     send_to_esp("AT\r\n");
-    if (wait_for_esp_ok(5)==false) {
-        print_dbg("[ESP-Driver] Failed to communicate with ESP8266. Check wiring and try again.\n");
-        return;
-    }
+    if (wait_for_esp_ok(5)==false) goto sta_error;
 
-    /* Set Wi-Fi Mode to 1 (Station) */
     send_to_esp("AT+CWMODE=1\r\n");
-    if (wait_for_esp_ok(5)==false) {
-        print_dbg("[ESP-Driver] Failed to set Wi-Fi mode.\n");
-        return;
-    }
+    if (wait_for_esp_ok(5)==false) goto sta_error;
 
-    /* Connect to the Access Point: AT+CWJAP="ssid","pwd" */
     print_dbg("[ESP-Driver] Attempting connection... (20 sec timeout)\n");
     send_to_esp("AT+CWJAP=\"%s\",\"%s\"\r\n", ssid, password);
-    if (wait_for_esp_ok(20)==false) {
-        print_dbg("[ESP-Driver] Failed to connect to Access Point.\n");
-        return;
-    }
+    if (wait_for_esp_ok(20)==false) goto sta_error;
+    
     print_dbg("[ESP-Driver] Station connection sequence complete.\n");
+    os_mutex_unlock(&esp_transaction_mutex);
+    return;
+
+sta_error:
+    print_dbg("[ESP-Driver] Station configuration failed.\n");
+    os_mutex_unlock(&esp_transaction_mutex);
 }
 
 void start_esp_tcp_server(int port) {
+    os_mutex_lock(&esp_transaction_mutex); // LOCK
+
     print_dbg("[ESP-Driver] Starting TCP Server on port %d...\n", port);
-
-    /* Enable Multiple Connections */
     send_to_esp("AT+CIPMUX=1\r\n");
-    if (wait_for_esp_ok(5)==false) {
-        print_dbg("[ESP-Driver] Failed to enable multiple connections.\n");
-        return;
-    }
+    if (wait_for_esp_ok(5)==false) goto tcp_error;
 
-    /* This forces the ESP to include the sender's IP address in the +IPD string */
     send_to_esp("AT+CIPDINFO=1\r\n");
     wait_for_esp_ok(3);
 
-    /* Start the Server */
     send_to_esp("AT+CIPSERVER=1,%d\r\n", port);
-    if (wait_for_esp_ok(5)==false) {
-        print_dbg("[ESP-Driver] Failed to start TCP server.\n");
-        return;
-    }
+    if (wait_for_esp_ok(5)==false) goto tcp_error;
     
     send_to_esp("AT+CIFSR\r\n");
     wait_for_esp_ok(5);
 
     print_dbg("[ESP-Driver] TCP Server is running and listening!\n");
+    os_mutex_unlock(&esp_transaction_mutex);
+    return;
+
+tcp_error:
+    print_dbg("[ESP-Driver] Failed to start TCP server.\n");
+    os_mutex_unlock(&esp_transaction_mutex);
 }
 
-
 void esp_tcp_client_send(const char* ip, int port, const char* payload) {
-    print_dbg("[ESP-Driver] Sending TCP data to %s:%d...\n", ip, port);
+    os_mutex_lock(&esp_transaction_mutex); // LOCK
 
-    // Ensure the ESP8266 is in Multiple Connection Mode
+    print_dbg("[ESP-Driver] Sending TCP data to %s:%d...\n", ip, port);
     send_to_esp("AT+CIPMUX=1\r\n");
     wait_for_esp_ok(2);
 
-    // Open Socket #4 as a TCP Client
     send_to_esp("AT+CIPSTART=4,\"TCP\",\"%s\",%d\r\n", ip, port);
     if (wait_for_esp_ok(5) == false) {
         print_dbg("[ESP-Driver] Failed to connect to remote server.\n");
-        // Close Socket #4
         send_to_esp("AT+CIPCLOSE=4\r\n"); 
         wait_for_esp_ok(3);
+        os_mutex_unlock(&esp_transaction_mutex); // Safe Error Release
         return;
     }
 
-    // Calculate length and send the CIPSEND command
     int len = strlen(payload);
     send_to_esp("AT+CIPSEND=4,%d\r\n", len);
     
     print_dbg("[ESP8266-response] ");
-    // Wait for the '>' prompt indicating ESP is ready for raw data
     uint64_t targetClockTick = sysctrGetTicks() + (2 * sysctrGetFreq());
     while (sysctrGetTicks() < targetClockTick) {
-        /* Clear Overrun errors just in case */
-        if (LPUART4->STAT & (0xF << 16)) {
-            LPUART4->STAT |= (0xF << 16); 
-        }
-
+        if (LPUART4->STAT & (0xF << 16)) LPUART4->STAT |= (0xF << 16); 
         char c = esp_ring_buffer_pop();
         if (c != '\0') {
             if(c != '\r' && c != '\n') print_dbg("%c", c);
             if(c == '\n') print_dbg("\\n");
             if(c == '\r') print_dbg("\\r");
-            
-            // Break exactly when the ESP gives the green light
             if (c == '>') break;
         }
         __asm__ volatile("nop"); 
     }
     print_dbg("\n");
 
-
-    // Blast the payload chunk by chunk to avoid ESP8266 "busy s..." UART overflows
     int i = 0;
     char chunk[1024];
     while (payload[i] != '\0') {
@@ -357,21 +285,13 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
             chunk[j++] = payload[i++];
         }
         chunk[j] = '\0';
-        
         send_to_esp("%s", chunk);
-        
-        // Give the ESP8266 1 milliseconds to process the 512 bytes
-        // sysctrDelay_ms(1); 
     }
     
-    // Wait for "SEND OK"
     wait_for_esp_ok(3);
-
-    // Close Socket #4
     send_to_esp("AT+CIPCLOSE=4\r\n"); 
     wait_for_esp_ok(3);
 
-    // 100ms Blind Flush (IDK WHY I AM KEEPING THIS AFTER wait_for_esp_ok(3))
     uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
     while (sysctrGetTicks() < flush_target) {
         if (LPUART4->STAT & (0xF << 16)) LPUART4->STAT |= (0xF << 16); 
@@ -380,6 +300,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     }
     
     print_dbg("[ESP-Driver] TCP data sent successfully.\n");
+    os_mutex_unlock(&esp_transaction_mutex); // UNLOCK
 }
 
 void espTCPServerListener_thread(void *arg) {
@@ -387,24 +308,28 @@ void espTCPServerListener_thread(void *arg) {
     char header[64]; 
     char remote_ip[24]; 
     
-    // PERSISTENT STATE MACHINE VARIABLES
-    int state = 0;     // 0 = Wait for '+', 1 = Read Header, 2 = Read Payload
-    int idx = 0;       // Payload buffer index
-    int h_idx = 0;     // Header buffer index
+    int state = 0;     
+    int idx = 0;       
+    int h_idx = 0;     
 
     while(1) {
-        // Pop a byte from RAM (returns instantly, doesn't wait for hardware)
+        // If another thread (like statistics) is busy sending an AT command,
+        // the listener thread will back off and yield the CPU so it doesn't
+        // steal the "OK" bytes from the ring buffer!
+        if (esp_transaction_mutex.value == 0) { 
+            thread_sleep(5); 
+            continue; 
+        }
+
         char c = esp_ring_buffer_pop();
         
-        // If the buffer is empty, yield the CPU to let ledblink/print100 run!
         if (c == '\0') {
-            thread_sleep(5); // Yield CPU for 5ms (or thread_yield() if implemented)
+            thread_sleep(5); 
             continue;
         }
         
-        // Process the character through the State Machine
         switch (state) {
-            case 0: // Waiting for +IPD
+            case 0:
                 if (c == '+') {
                     state = 1;
                     h_idx = 0;
@@ -412,7 +337,7 @@ void espTCPServerListener_thread(void *arg) {
                 }
                 break;
 
-            case 1: // Reading Header metadata until ':'
+            case 1: 
                 if (c == ':') {
                     header[h_idx] = '\0'; 
                     state = 2; 
@@ -421,18 +346,16 @@ void espTCPServerListener_thread(void *arg) {
                 }
                 break;
 
-            case 2: // Reading Payload until Newline
+            case 2: 
                 if (c == '\n' || c == '\r') {
                     buffer[idx] = '\0';
                     
-                    // Parse the IP from the header
                     int comma_count = 0;
                     int ip_ptr = 0;
                     remote_ip[0] = 'U'; remote_ip[1] = 'n'; remote_ip[2] = 'k'; remote_ip[3] = '\0'; 
                     
                     for (int i = 0; header[i] != '\0'; i++) {
                         if (header[i] == ',') { comma_count++; continue; }
-                        
                         if (comma_count == 3) {
                             if (header[i] != '"' && ip_ptr < 23) {
                                 remote_ip[ip_ptr++] = header[i];
@@ -447,8 +370,6 @@ void espTCPServerListener_thread(void *arg) {
                     if (strncmp(buffer, "exec ", 5) == 0) {
                         handleCommand(buffer + 5); 
                     }
-                    
-                    // Reset back to waiting for the next packet
                     state = 0; 
                 } else {
                     if (idx < 127) buffer[idx++] = c;

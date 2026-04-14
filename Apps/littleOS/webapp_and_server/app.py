@@ -13,15 +13,18 @@ LAPTOP_TCP_PORT = 5555
 NXP_PORT = 8080
 
 # SHARED STATE
-LATEST_NXP_STATUS = "Awaiting status push from NXP..."
 LATEST_NXP_IP = None  
+# Store as dictionary now so frontend can place chunks in distinct boxes
+LATEST_NXP_STATUS = {
+    "uptime": "Awaiting status push from NXP...",
+    "esp_status": "Awaiting status push from NXP...",
+    "threads": "Awaiting status push from NXP..."
+}
 
 def parse_compact_status(raw_data):
-    html = "<h2>[NXP LittleOS Dashboard]</h2>"
-    uptime_str = ""
+    uptime_str = "<p>No uptime data yet...</p>"
     sched_str = ""
-    esp_str = "<h3>[Wi-Fi Bridge - ESP8266]</h3><ul style='list-style-type: none; padding-left: 0;'>"
-    
+    esp_str = "<ul style='list-style-type: none; padding-left: 0; margin: 0;'>"
     threads = []
     
     for line in raw_data.strip().split('\n'):
@@ -54,19 +57,22 @@ def parse_compact_status(raw_data):
             
     esp_str += "</ul>"
     
-    html += uptime_str + sched_str
-    
+    html_table = ""
     if threads:
-        html += "<h3>[Active Threads]</h3>"
-        html += "<table border='1' cellpadding='8' style='border-collapse: collapse; width: 100%; text-align: center; font-family: monospace; background-color: #111; color: #00ff00; border-color: #00ff00;'>"
-        html += "<tr style='background-color: #222;'><th>ID</th><th>Name</th><th>State</th><th>Pri</th><th>Dead</th><th>Per(ms)</th><th>Targ</th><th>Done</th><th>TAT(ms)</th></tr>"
+        html_table += "<table border='1' cellpadding='8' style='border-collapse: collapse; width: 100%; text-align: center; font-family: monospace; background-color: #111; color: #00ff00; border-color: #00ff00; font-size: 13px;'>"
+        html_table += "<tr style='background-color: #222;'><th>ID</th><th>Name</th><th>State</th><th>Pri</th><th>Dead</th><th>Per(ms)</th><th>Targ</th><th>Done</th><th>TAT(ms)</th></tr>"
         for t in threads:
             state_color = "#00ff00" if t[3] == "RUN" else "orange" if t[3] == "READY" else "red" if t[3] == "TERM" else "#0088ff"
-            html += f"<tr><td>{t[1]}</td><td>{t[2]}</td><td style='color: {state_color}; font-weight: bold;'>{t[3]}</td><td>{t[4]}</td><td>{t[5]}</td><td>{t[6]}</td><td>{t[7]}</td><td>{t[8]}</td><td>{t[9]}</td></tr>"
-        html += "</table><br>"
+            html_table += f"<tr><td>{t[1]}</td><td>{t[2]}</td><td style='color: {state_color}; font-weight: bold;'>{t[3]}</td><td>{t[4]}</td><td>{t[5]}</td><td>{t[6]}</td><td>{t[7]}</td><td>{t[8]}</td><td>{t[9]}</td></tr>"
+        html_table += "</table>"
+    else:
+        html_table = "<p>No active threads...</p>"
         
-    html += esp_str
-    return html
+    return {
+        "uptime": uptime_str + sched_str,
+        "esp_status": esp_str,
+        "threads": html_table
+    }
 
 @app.route('/')
 def index():
@@ -136,10 +142,12 @@ def raw_tcp_server_thread():
                     
             elif "STATUS:\n" in data:
                 status_idx = data.find("STATUS:\n")
+                # parse_compact_status now returns a DICT
                 LATEST_NXP_STATUS = parse_compact_status(data[status_idx + 8:])
                 print(f"[+] Received compact system status update from {LATEST_NXP_IP} ({len(data)} bytes)")
                 
-                socketio.emit('status_update', {'status': LATEST_NXP_STATUS})
+                # Emit the dictionary so the JS can unpack it to different divs
+                socketio.emit('status_update', LATEST_NXP_STATUS)
                 
         except Exception as global_e:
             print(f"[!] FATAL ERROR IN TCP BACKGROUND THREAD: {global_e}")
@@ -152,5 +160,4 @@ def raw_tcp_server_thread():
 if __name__ == "__main__":
     threading.Thread(target=raw_tcp_server_thread, daemon=True).start()
     print("[*] IoT Hub: Web Interface starting on port 5000...")
-    # Use socketio.run instead of app.run
     socketio.run(app, host="0.0.0.0", port=5000, debug=False)

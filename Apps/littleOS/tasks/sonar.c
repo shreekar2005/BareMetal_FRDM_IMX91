@@ -20,16 +20,13 @@
  * @brief Measures distance and returns millimeters for higher precision
  */
 static uint32_t sonar_read_mm(void) {
-    /* ENTER CRITICAL SECTION: 
-       Lock the OS so a 20ms context switch doesn't interrupt our microsecond math! */
-    os_stop_scheduling();
-
-    /* 1. Send mandatory 10-microsecond HIGH pulse using HAL */
+    os_stop_scheduling(); /* Enter critical section: Sonar timing is very sensitive to context switches! */
+    /* 10-microsecond HIGH pulse*/
     gpioWrite(GPIO2, TRIG_PIN, HIGH);
     sysctrDelay_us(10);
     gpioWrite(GPIO2, TRIG_PIN, LOW);
 
-    /* 2. Wait for Echo pin to go HIGH */
+    /* Wait for Echo pin to go HIGH */
     uint64_t timeout_start = sysctrGetTicks();
     uint64_t timeout_limit = (sysctrGetFreq() / 1000) * 24; // 24ms max range
     
@@ -40,10 +37,10 @@ static uint32_t sonar_read_mm(void) {
         }
     }
 
-    /* 3. Record start time */
+    /* Record start time */
     uint64_t start_time = sysctrGetTicks();
 
-    /* 4. Wait for Echo pin to go LOW */
+    /* Wait for Echo pin to go LOW */
     while (gpioRead(GPIO2, ECHO_PIN) == HIGH) {
         if ((sysctrGetTicks() - start_time) > timeout_limit) {
             os_start_scheduling(); // Always unlock before returning!
@@ -51,11 +48,10 @@ static uint32_t sonar_read_mm(void) {
         }
     }
 
-    /* 5. Calculate precise distance */
+    /* Calculate precise distance */
     uint64_t end_time = sysctrGetTicks();
     
-    /* EXIT CRITICAL SECTION: Safe to context switch again */
-    os_start_scheduling();
+    os_start_scheduling(); // Exit critical section as timing is done
 
     uint64_t total_ticks = end_time - start_time;
     uint32_t duration_us = (total_ticks * 1000000ULL) / sysctrGetFreq();

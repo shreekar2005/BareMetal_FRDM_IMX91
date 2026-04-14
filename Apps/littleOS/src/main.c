@@ -31,6 +31,7 @@ void mutex_locks_init(void){
     os_mutex_init(&esp_send_mutex);
     os_mutex_init(&esp_print_mutex);
     os_mutex_init(&race_mutex);
+    os_mutex_init(&esp_transaction_mutex);
 }
 
 /** @brief Initialize hardware components (keeping it universal to avoid conflicts) */
