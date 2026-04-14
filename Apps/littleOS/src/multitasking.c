@@ -9,7 +9,7 @@ uint64_t quantum_ticks;
 Thread threads[MAX_THREADS];
 int numThreads = 0;
 int currentThread_idx = -1;
-bool isSchedulingEnabled = true; 
+bool isSchedulingEnabled = false;
 enum SchedAlgo currentSchedAlgo = SCHED_RR; 
 
 // Tracks how long the current thread has been running in its RR slice
@@ -80,7 +80,7 @@ void os_init_scheduler(void) {
     
     numThreads = 0;
     currentThread_idx = -1;
-    isSchedulingEnabled = true;
+    isSchedulingEnabled = false;
     currentSchedAlgo = SCHED_RR;
     rr_slice_start_tick = 0;
     
@@ -101,6 +101,31 @@ void os_init_scheduler(void) {
 void os_set_scheduling_algo(enum SchedAlgo algo) { currentSchedAlgo = algo; }
 void os_stop_scheduling(void) { isSchedulingEnabled = false; }
 void os_start_scheduling(void) { isSchedulingEnabled = true; }
+
+int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
+    if (numThreads >= MAX_THREADS) return -1;
+
+    Thread* t = &threads[numThreads];
+    strcpy(t->name, name);
+    t->entrypoint = entrypoint;
+    t->arg = arg;
+    t->currentState = STATE_NEW;
+    t->priority = 128;
+    t->deadlineOffset_ms = -1;
+    t->period_ms = 0;
+    t->executionsTarget = 0;
+    t->executionsDone = 0;
+    t->lastStartTick = 0;
+    t->lastTurnaroundTime_ms = 0;
+    t->wakeupTick = 0;
+
+    os_thread_start(numThreads);
+    t->executionsDone = 0; 
+    t->currentState = STATE_NEW;
+
+    numThreads++;
+    return numThreads - 1; 
+}
 
 void os_suspend_thread(int thread_id) {
     if (thread_id >= 0 && thread_id < numThreads) {
@@ -174,31 +199,6 @@ void os_join_thread(int thread_id) {
     while (threads[thread_id].currentState != STATE_TERMINATE && threads[thread_id].currentState != STATE_NEW) {
         thread_sleep(1);
     }
-}
-
-int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
-    if (numThreads >= MAX_THREADS) return -1;
-
-    Thread* t = &threads[numThreads];
-    strcpy(t->name, name);
-    t->entrypoint = entrypoint;
-    t->arg = arg;
-    t->currentState = STATE_NEW;
-    t->priority = 128;
-    t->deadlineOffset_ms = -1;
-    t->period_ms = 0;
-    t->executionsTarget = 0;
-    t->executionsDone = 0;
-    t->lastStartTick = 0;
-    t->lastTurnaroundTime_ms = 0;
-    t->wakeupTick = 0;
-
-    os_thread_start(numThreads);
-    t->executionsDone = 0; 
-    t->currentState = STATE_NEW;
-
-    numThreads++;
-    return numThreads - 1; 
 }
 
 CPUState* os_schedule(CPUState* current_cpustate_ptr) {

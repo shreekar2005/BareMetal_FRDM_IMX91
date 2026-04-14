@@ -7,6 +7,7 @@
 #include "LPUART.h"
 #include "include/timer.h"
 #include "include/multitasking.h"
+#include "include/shared_locks.h"
 #include "include/cli.h" 
 #include "include/gic.h"
 #include "include/stdio.h"
@@ -14,7 +15,23 @@
 #include "include/esp8266.h"
 #include "include/datetime.h"
 
-extern void os_start(void); // defined in vector.S, this starts the scheduler and never returns
+extern void __os_start_asm(void); // defined in vector.S
+
+/**
+ * @brief Booting done... Now threads will takeover. This function should never return.
+ */
+void os_start(void) {
+    isSchedulingEnabled = true; 
+    __os_start_asm(); 
+}
+
+/** @brief Initialize mutex locks for all mutexes defined in shared_locks.h */
+void mutex_locks_init(void){
+    os_mutex_init(&print_dbg_mutex);
+    os_mutex_init(&esp_send_mutex);
+    os_mutex_init(&esp_print_mutex);
+    os_mutex_init(&race_mutex);
+}
 
 /** @brief Initialize hardware components (keeping it universal to avoid conflicts) */
 void hardware_init(void) {
@@ -40,8 +57,9 @@ void hardware_init(void) {
 
 }
 
-/** @brief Main function, entrypoint after start.S */
+/** @brief Main function : Entry point for littleOS */
 int main() {
+    mutex_locks_init();
     hardware_init();
 
     print_dbg("\033[2J\033[H"); 
@@ -49,19 +67,11 @@ int main() {
     print_dbg("     littleOS RTOS Core          \n");
     print_dbg("=================================\n");
 
-    // WI-FI INITIALIZATION is done via "espinit" command in the CLI.
-    // init_esp_as_access_point("littleOS_Network", "password123");
-    // init_esp_as_station("shree_A52", "aspirine");
-    // start_esp_tcp_server(8080); // Start listening on port 8080
-
     print_dbg("[Boot] Initializing Scheduler...\n");
-    os_init_scheduler();
+    os_init_scheduler(); // Note: isSchedulingEnabled is set to false here. 
 
     print_dbg("[Boot] Initializing Task Registry...\n");
     init_all_tasks(); 
-
-    // int status_thread_id = 5;
-    // os_set_thread_rtos(status_thread_id, 127, -1, 5000, -1);
 
     print_dbg("[Boot] Initializing GIC...\n");
     gic_init();
@@ -72,16 +82,13 @@ int main() {
     print_dbg("[Boot] Registering ESP8266 IRQ...\n");
     esp_init();
 
-    print_dbg("[Boot] Registering Timer IRQ...\n");
-    os_timer_init(1);
-
     print_dbg("[Boot] Creating System RTC Daemon...\n");
     int rtc_thread_id = os_create_thread("RTC_Daemon", datetime_ticker_thread, NULL);
-    os_set_thread_rtos(rtc_thread_id, 128, -1, 0, -1); // Infinite execution
+    os_set_thread_rtos(rtc_thread_id, 128, -1, 0, -1);
     os_thread_start(rtc_thread_id);
 
     print_dbg("[Boot] Creating WiFi Listener Thread...\n");
-    int wifi_listener_thread_id = os_create_thread("WiFiListener", espTCPServerListener_thread, NULL);
+    int wifi_listener_thread_id = os_create_thread("ESPWiFiListener", espTCPServerListener_thread, NULL);
     os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
     os_thread_start(wifi_listener_thread_id);
 
@@ -91,7 +98,9 @@ int main() {
     os_thread_start(cli_thread_id);
     
     print_dbg("[Boot] Setup complete! Starting Threads...\n");
-    os_start();      
+    
+    os_timer_init(1); 
+    os_start();  
 
     print_dbg("\n[Kernel] System safely halted.\n");
     while(1) { __asm__ volatile("wfi"); }

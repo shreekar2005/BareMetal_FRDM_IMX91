@@ -350,18 +350,18 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
 
     // Blast the payload chunk by chunk to avoid ESP8266 "busy s..." UART overflows
     int i = 0;
-    char chunk[1024]; // Reduced to 1KB per chunk at a time
+    char chunk[1024];
     while (payload[i] != '\0') {
         int j = 0;
-        while (j < 1023 && payload[i] != '\0') {
+        while (j < 1024 && payload[i] != '\0') {
             chunk[j++] = payload[i++];
         }
         chunk[j] = '\0';
         
         send_to_esp("%s", chunk);
         
-        // Give the ESP8266 300 milliseconds to process the 1024 bytes
-        sysctrDelay_ms(300); 
+        // Give the ESP8266 1 milliseconds to process the 512 bytes
+        // sysctrDelay_ms(1); 
     }
     
     // Wait for "SEND OK"
@@ -374,9 +374,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     // 100ms Blind Flush (IDK WHY I AM KEEPING THIS AFTER wait_for_esp_ok(3))
     uint64_t flush_target = sysctrGetTicks() + (sysctrGetFreq() / 10); 
     while (sysctrGetTicks() < flush_target) {
-        if (LPUART4->STAT & (0xF << 16)) {
-            LPUART4->STAT |= (0xF << 16); 
-        }
+        if (LPUART4->STAT & (0xF << 16)) LPUART4->STAT |= (0xF << 16); 
         esp_ring_buffer_pop(); 
         __asm__ volatile("nop");
     }

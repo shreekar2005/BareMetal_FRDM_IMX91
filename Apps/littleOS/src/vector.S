@@ -1,5 +1,6 @@
 .global vector_table
-.global os_start
+.global __os_start_asm
+
 .extern irq_dispatcher
 .extern os_fatal_error
 .extern os_schedule
@@ -138,7 +139,7 @@ restore_context:
     add sp, sp, #272
     eret
 
-os_start:
+__os_start_asm:
     mov x0, #0
     bl os_schedule
     mov sp, x0 

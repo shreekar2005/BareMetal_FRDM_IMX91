@@ -2,6 +2,11 @@
 #include "SYS_CTR.h"
 #include "include/stdio.h"
 #include "include/multitasking.h"
+#include "include/shared_locks.h"
+
+os_mutex_t print_dbg_mutex;
+os_mutex_t esp_send_mutex;
+os_mutex_t esp_print_mutex;
 
 static void reverse(char *str, int length) {
     int start = 0;
@@ -271,49 +276,58 @@ int sprintf(char *buf, const char *format, ...) {
 }
 
 int print_dbg(const char *format, ...) {
-    bool wasSchedulingEnabled = isSchedulingEnabled;
-    if(wasSchedulingEnabled) os_stop_scheduling(); // Ensure atomic print without preemption
 
-    char buffer[512];
+    os_mutex_lock(&print_dbg_mutex); // Ensure only one thread can print to debug console at a time
+
+    static char print_dbg_buffer[1024];
     va_list args;
     va_start(args, format);
     
-    int len = vsprintf(buffer, format, args);
+    int len = vsprintf(print_dbg_buffer, format, args);
     va_end(args);
     
     // Stream directly to debug console, injecting '\r' dynamically
     for (int i = 0; i < len; i++) {
-        if (buffer[i] == '\n') {
+        if (print_dbg_buffer[i] == '\n') {
             lpuartPutChar(LPUART1, '\r');
         }
-        lpuartPutChar(LPUART1, buffer[i]);
+        lpuartPutChar(LPUART1, print_dbg_buffer[i]);
     }
     
-    if(wasSchedulingEnabled) os_start_scheduling();
+    os_mutex_unlock(&print_dbg_mutex);
+
     return len;
 }
 
 int send_to_esp(const char *format, ...) {
-    char buffer[512];
+
+    os_mutex_lock(&esp_send_mutex); // Ensure only one thread can send data to ESP8266 at a time
+
+    static char send_to_esp_buffer[1024];
     va_list args;
     va_start(args, format);
     
-    int len = vsprintf(buffer, format, args);
+    int len = vsprintf(send_to_esp_buffer, format, args);
     va_end(args);
     
-    // Stream raw payload to ESP Wi-Fi module
     for (int i = 0; i < len; i++) {
-        lpuartPutChar(LPUART4, buffer[i]);
+        lpuartPutChar(LPUART4, send_to_esp_buffer[i]);
     }
+
+    os_mutex_unlock(&esp_send_mutex);
+
     return len;
 }
 
 int print_esp(const char *format, ...) {
-    char buffer[512]; 
+
+    os_mutex_lock(&esp_print_mutex); // Ensure only one thread can print ESP responses at a time
+
+    static char print_esp_buffer[1024];
     va_list args;
     va_start(args, format);
     
-    int len = vsprintf(buffer, format, args);
+    int len = vsprintf(print_esp_buffer, format, args);
     va_end(args);
     
     if (len <= 0) return 0;
@@ -328,10 +342,11 @@ int print_esp(const char *format, ...) {
             break;
         }
     }
-    
-    // Push the raw payload buffer to the ESP8266
     for (int i = 0; i < len; i++) {
-        lpuartPutChar(LPUART4, buffer[i]);
+        lpuartPutChar(LPUART4, print_esp_buffer[i]);
     }
+
+    os_mutex_unlock(&esp_print_mutex);
+
     return len;
 }

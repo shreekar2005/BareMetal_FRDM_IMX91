@@ -9,8 +9,8 @@
 extern volatile char print_buffer[128];
 
 /* STACK OVERFLOW PREVENTION : Moving massive arrays from the 4KB RTOS Thread Stack to static BSS memory. */
-static char payload_buffer[2048]; 
-static char raw_esp_response_buffer[512]; 
+static char payload_buffer[2048]={0}; 
+static char raw_esp_response_buffer[512]={0}; 
 static threadStatParams allThreads[MAX_THREADS];
 
 

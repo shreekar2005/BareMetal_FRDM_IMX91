@@ -17,7 +17,7 @@ BUILD_DIR = $(APP_DIR)/build
 TARGET = $(BUILD_DIR)/$(APP).bin
 ELF = $(BUILD_DIR)/$(APP).elf
 
-CFLAGS = -g -c -nostdlib -ffreestanding -O0 -Iinclude -I$(APP_DIR)/include -I$(APP_DIR)
+CFLAGS = -g -c -nostdlib -ffreestanding -O0 -mno-outline-atomics -Iinclude -I$(APP_DIR)/include -I$(APP_DIR)
 LDFLAGS = -T $(APP_DIR)/linker.ld
 
 APP_SRCS = $(wildcard $(APP_DIR)/src/*.c)
