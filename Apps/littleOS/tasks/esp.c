@@ -1,13 +1,14 @@
 // Task_Name : ESP Commands
 
+#include <stddef.h>
 #include "include/multitasking.h"
 #include "include/stdio.h"
 #include "include/esp8266.h"
 #include "include/string.h"
 
-extern volatile char print_buffer[128]; /**< buffer defined in cli.c */
-
 void esp_thread(void* arg) {
+    char* cmd_string = (char*)arg;
+    if (cmd_string == NULL) return;
 
     // Buffers to hold our parsed words
     char cmd[16] = {0};
@@ -16,29 +17,29 @@ void esp_thread(void* arg) {
     int ptr = 0;
     int i = 0;
 
-    // main command (ap-mode, sta-mode, tcp-server, echo, stat)
-    while (print_buffer[ptr] == ' ') ptr++;
-    while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 15) {
-        cmd[i++] = print_buffer[ptr++];
+    // main command (ap-mode, sta-mode, tcp-server, echo, status, reboot)
+    while (cmd_string[ptr] == ' ') ptr++;
+    while (cmd_string[ptr] != ' ' && cmd_string[ptr] != '\0' && i < 15) {
+        cmd[i++] = cmd_string[ptr++];
     }
     cmd[i] = '\0';
 
     int remainder_ptr = ptr;
-    while (print_buffer[remainder_ptr] == ' ') remainder_ptr++; 
+    while (cmd_string[remainder_ptr] == ' ') remainder_ptr++; 
 
     // arg1 (SSID or Port)
     i = 0;
-    while (print_buffer[ptr] == ' ') ptr++;
-    while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 31) {
-        arg1[i++] = print_buffer[ptr++];
+    while (cmd_string[ptr] == ' ') ptr++;
+    while (cmd_string[ptr] != ' ' && cmd_string[ptr] != '\0' && i < 31) {
+        arg1[i++] = cmd_string[ptr++];
     }
     arg1[i] = '\0';
 
     // arg2 (Password)
     i = 0;
-    while (print_buffer[ptr] == ' ') ptr++;
-    while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 31) {
-        arg2[i++] = print_buffer[ptr++];
+    while (cmd_string[ptr] == ' ') ptr++;
+    while (cmd_string[ptr] != ' ' && cmd_string[ptr] != '\0' && i < 31) {
+        arg2[i++] = cmd_string[ptr++];
     }
     arg2[i] = '\0';
 
@@ -70,9 +71,9 @@ void esp_thread(void* arg) {
     } 
     else if (strcmp(cmd, "echo") == 0) {
         // Send everything typed after "echo " over Wi-Fi
-        if (print_buffer[remainder_ptr] != '\0') {
-            print_esp("%s\n", (const char*)&print_buffer[remainder_ptr]);
-            print_dbg("[ESP-Thread] Echo sent: %s\n", &print_buffer[remainder_ptr]);
+        if (cmd_string[remainder_ptr] != '\0') {
+            print_esp("%s\n", (const char*)&cmd_string[remainder_ptr]);
+            print_dbg("[ESP-Thread] Echo sent: %s\n", &cmd_string[remainder_ptr]);
         } else {
             print_dbg("[ESP-Thread] Error: Nothing to echo. Usage: esp echo <message>\n");
         }

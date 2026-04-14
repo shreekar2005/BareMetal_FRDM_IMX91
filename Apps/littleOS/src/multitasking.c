@@ -94,6 +94,7 @@ void os_init_scheduler(void) {
         threads[i].lastStartTick = 0;
         threads[i].lastTurnaroundTime_ms = 0;
         threads[i].wakeupTick = 0;
+        threads[i].is_silent = false;
         strcpy(threads[i].name, "EMPTY");
     }
 }
@@ -102,6 +103,12 @@ void os_set_scheduling_algo(enum SchedAlgo algo) { currentSchedAlgo = algo; }
 void os_stop_scheduling(void) { isSchedulingEnabled = false; }
 void os_start_scheduling(void) { isSchedulingEnabled = true; }
 
+void os_set_thread_arg(int thread_id, void* arg) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].arg = arg;
+    }
+}
+
 int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
     if (numThreads >= MAX_THREADS) return -1;
 
@@ -109,7 +116,8 @@ int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
     strcpy(t->name, name);
     t->entrypoint = entrypoint;
     t->arg = arg;
-    t->currentState = STATE_NEW;
+    
+    // Default thread parameters
     t->priority = 128;
     t->deadlineOffset_ms = -1;
     t->period_ms = 0;
@@ -118,10 +126,8 @@ int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
     t->lastStartTick = 0;
     t->lastTurnaroundTime_ms = 0;
     t->wakeupTick = 0;
-
-    os_thread_start(numThreads);
-    t->executionsDone = 0; 
-    t->currentState = STATE_NEW;
+    t->is_silent = false;
+    t->currentState = STATE_NEW; 
 
     numThreads++;
     return numThreads - 1; 
@@ -186,6 +192,19 @@ void os_thread_start(int thread_id) {
             t->executionsDone++;
         }
         t->currentState = STATE_READY;
+    }
+}
+
+bool is_current_thread_silent(void) {
+    if (currentThread_idx >= 0 && currentThread_idx < MAX_THREADS) {
+        return threads[currentThread_idx].is_silent;
+    }
+    return false;
+}
+
+void os_set_thread_silent(int thread_id, bool silent) {
+    if (thread_id >= 0 && thread_id < MAX_THREADS) {
+        threads[thread_id].is_silent = silent;
     }
 }
 

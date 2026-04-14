@@ -3,23 +3,55 @@
 #include "include/esp8266.h"
 #include "include/stdio.h"
 #include "include/cli_utility.h"
+#include "include/cli.h"
 #include "include/string.h"
 #include "include/multitasking.h"
 #include "include/gic.h"
 #include "include/irq.h"
-#include "include/shared_locks.h" // Need this for the transaction mutex!
+#include "include/shared_locks.h"
 
-os_mutex_t esp_transaction_mutex; // Define it here
+os_mutex_t esp_transaction_mutex;
 
 // ----------------------------------- RING BUFFER ARCHITECTURE and ISR START-----------------------------------
 
 RingBuffer esp_rx_buffer = { .head = 0, .tail = 0 };
+
+// Add this helper function for this kind of thing:
+// [ESP8266-response]  0,CONNECT\r\n\r\n+IPD,0,14,192.168.0.100,48984:exec ledblink
+// exec ledblink printed by [response] but due to exec we should run ledblink
+static void intercept_exec_command(char c) {
+    static int state = 0;
+    static char cmd_buf[MAX_CMD_BUFFER_SIZE] = {0};
+    static int cmd_idx = 0;
+
+    if (state == 0 && c == 'e') state = 1;
+    else if (state == 1 && c == 'x') state = 2;
+    else if (state == 2 && c == 'e') state = 3;
+    else if (state == 3 && c == 'c') state = 4;
+    else if (state == 4 && c == ' ') { state = 5; cmd_idx = 0; }
+    else if (state == 5) {
+        if (c == '\n' || c == '\r') {
+            cmd_buf[cmd_idx] = '\0';
+            if (cmd_idx > 0) {
+                handleCommand(cmd_buf);
+            }
+            state = 0;
+        } else {
+            if (cmd_idx < 127) cmd_buf[cmd_idx++] = c;
+        }
+    } else {
+        state = (c == 'e') ? 1 : 0; // Reset gracefully
+    }
+}
 
 char esp_ring_buffer_pop(void) {
     char c = '\0';
     if (esp_rx_buffer.head != esp_rx_buffer.tail) {
         c = esp_rx_buffer.data[esp_rx_buffer.tail];
         esp_rx_buffer.tail = (esp_rx_buffer.tail + 1) % ESP_RX_BUFFER_SIZE;
+        
+        // Watches every single byte leaving the queue, no matter which thread called pop!
+        intercept_exec_command(c); 
     }
     return c;
 }

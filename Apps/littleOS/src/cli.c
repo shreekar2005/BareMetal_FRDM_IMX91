@@ -11,10 +11,8 @@
 #define ASCII_BACKSPACE 0x08
 #define ASCII_DEL 0x7F
 
-volatile char print_buffer[128];
-
 void input_thread(void* arg) {
-    char cmd_buffer[128];
+    char cmd_buffer[MAX_CMD_BUFFER_SIZE];
     int cmd_buffer_idx = 0;
     
     print_dbg("\n[CLI-Thread] > ");
@@ -54,14 +52,14 @@ void input_thread(void* arg) {
             
             print_dbg("\n");
             if (cmd_buffer_idx > 0) handleCommand(cmd_buffer);
-            os_yield(); // Yield to allow any background tasks to print their output before we print the next prompt
+            thread_sleep(1);
             
             if(cmd_buffer_idx>0) print_dbg("\n[CLI-Thread] > ");
             else print_dbg("[CLI-Thread] > ");
             cmd_buffer_idx = 0;
         } 
         else if (c >= 32 && c <= 126) {
-            if (cmd_buffer_idx < 127) {
+            if (cmd_buffer_idx < MAX_CMD_BUFFER_SIZE - 1) {
                 cmd_buffer[cmd_buffer_idx++] = c;
                 print_dbg("%c", c);
             }

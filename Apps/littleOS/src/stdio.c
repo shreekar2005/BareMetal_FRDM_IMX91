@@ -276,6 +276,8 @@ int sprintf(char *buf, const char *format, ...) {
 }
 
 int print_dbg(const char *format, ...) {
+    
+    if (is_current_thread_silent()) return 0;
 
     os_mutex_lock(&print_dbg_mutex); // Ensure only one thread can print to debug console at a time
 

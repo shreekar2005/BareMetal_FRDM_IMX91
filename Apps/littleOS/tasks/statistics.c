@@ -1,12 +1,11 @@
 // Task_Name : Show/Send Stats
 
+#include <stddef.h>
 #include "include/multitasking.h"
 #include "tasks_include/statistics.h"
 #include "include/string.h"
 #include "include/stdio.h"
 #include "include/esp8266.h"
-
-extern volatile char print_buffer[128];
 
 /* STACK OVERFLOW PREVENTION : Moving massive arrays from the 4KB RTOS Thread Stack to static BSS memory. */
 static char payload_buffer[2048]={0}; 
@@ -43,14 +42,18 @@ void build_stats_string(char* buffer, threadStatParams allThreads[], espStatPara
 
 void statistics_thread(void* arg)
 {
+    char* cmd_string = (char*)arg;
+
     char action[16] = {0};
     char arg_ip[32] = {0};
     char arg_port[32] = {0};
     int ptr = 0, i = 0;
 
-    while (print_buffer[ptr] == ' ') ptr++;
-    while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 15) action[i++] = print_buffer[ptr++];
-    action[i] = '\0';
+    if (cmd_string != NULL) {
+        while (cmd_string[ptr] == ' ') ptr++;
+        while (cmd_string[ptr] != ' ' && cmd_string[ptr] != '\0' && i < 15) action[i++] = cmd_string[ptr++];
+        action[i] = '\0';
+    }
 
     if (action[0] == '\0' || strcmp(action, "help") == 0 || strcmp(action, "?") == 0 || strcmp(action, "--help") == 0) {
         print_dbg("[STATISTICS-Thread] Usage:\n");
@@ -61,13 +64,13 @@ void statistics_thread(void* arg)
 
     if (strcmp(action, "sendto") == 0) {
         i = 0;
-        while (print_buffer[ptr] == ' ') ptr++;
-        while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 31) arg_ip[i++] = print_buffer[ptr++];
+        while (cmd_string[ptr] == ' ') ptr++;
+        while (cmd_string[ptr] != ' ' && cmd_string[ptr] != '\0' && i < 31) arg_ip[i++] = cmd_string[ptr++];
         arg_ip[i] = '\0';
 
         i = 0;
-        while (print_buffer[ptr] == ' ') ptr++;
-        while (print_buffer[ptr] != ' ' && print_buffer[ptr] != '\0' && i < 31) arg_port[i++] = print_buffer[ptr++];
+        while (cmd_string[ptr] == ' ') ptr++;
+        while (cmd_string[ptr] != ' ' && cmd_string[ptr] != '\0' && i < 31) arg_port[i++] = cmd_string[ptr++];
         arg_port[i] = '\0';
 
         if (arg_ip[0] != '\0') {

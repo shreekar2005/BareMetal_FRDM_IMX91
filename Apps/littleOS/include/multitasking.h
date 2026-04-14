@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAX_THREADS 16 /**< total max threads allowed in system */
+#define MAX_THREADS 16 // total max threads allowed in system
 
 /**
  * @brief process states based on the process state diagram
@@ -23,56 +23,60 @@ enum ThreadState {
  * @brief available scheduling algorithms for the rtos
  */
 enum SchedAlgo {
-    SCHED_RR,       /**< round robin (default time slicing) */
-    SCHED_PRIORITY, /**< fixed priority preemptive scheduling */
-    SCHED_EDF       /**< earliest deadline first dynamic scheduling */
+    SCHED_RR,       // round robin (default time slicing) 
+    SCHED_PRIORITY, // fixed priority preemptive scheduling 
+    SCHED_EDF       // earliest deadline first dynamic scheduling 
 };
 
 typedef struct {
-    uint64_t x[30]; /**< general purpose registers */
-    uint64_t lr;    /**< link register */
-    uint64_t pc;    /**< program counter */
-    uint64_t cpsr;  /**< current program status */
-    uint64_t sp;    /**< stack pointer */
+    uint64_t x[30]; // general purpose registers 
+    uint64_t lr;    // link register 
+    uint64_t pc;    // program counter 
+    uint64_t cpsr;  // current program status 
+    uint64_t sp;    // stack pointer 
 } CPUState;
 
 typedef struct {
-    __attribute__((aligned(16))) uint8_t stack[4096]; /**< physical stack memory for thread */
-    CPUState* cpustate_ptr; /**< fake cpu state stored at top of stack */
-    void (*entrypoint)(void*); /**< function pointer for thread logic */
-    void* arg; /**< arguments for function */
+    __attribute__((aligned(16))) uint8_t stack[4096]; // physical stack memory for thread 
+    CPUState* cpustate_ptr; // fake cpu state stored at top of stack 
+    void (*entrypoint)(void*); // function pointer for thread logic 
+    void* arg; // arguments for function 
     
-    char name[16]; /**< human readable name for stat command */
+    char name[16]; // human readable name for stat command 
     
     // state tracking
-    enum ThreadState currentState; /**< maps to process state diagram */
+    enum ThreadState currentState; // maps to process state diagram 
 
     // rtos parameters
-    int priority; /**< 0 is highest priority, 255 is lowest */
-    int deadlineOffset_ms; /**< relative time to finish job in milliseconds (-1 for infinite) */
-    uint64_t absoluteDeadlineTick; /**< exact hardware tick when job must be done */
+    int priority; // 0 is highest priority, 255 is lowest 
+    int deadlineOffset_ms; // relative time to finish job in milliseconds (-1 for infinite) 
+    uint64_t absoluteDeadlineTick; // exact hardware tick when job must be done 
     
     // periodic parameters
-    uint32_t period_ms; /**< if > 0, task will auto revive after this many ms */
-    uint64_t nextPeriodTick; /**< hardware tick when dead task should wake up */
+    uint32_t period_ms; // if > 0, task will auto revive after this many ms 
+    uint64_t nextPeriodTick; // hardware tick when dead task should wake up 
     
     // execution tracking
-    int executionsTarget; /**< how many times to run (-1 for infinite) */
-    int executionsDone;   /**< how many times it has finished reviving */
+    int executionsTarget; // how many times to run (-1 for infinite) 
+    int executionsDone;   // how many times it has finished reviving 
     
     // profiling
-    uint64_t lastStartTick; /**< the hardware tick when the thread was last dispatched */
-    uint32_t lastTurnaroundTime_ms; /**< turnaround time of the last completed execution */
+    uint64_t lastStartTick; // the hardware tick when the thread was last dispatched 
+    uint32_t lastTurnaroundTime_ms; // turnaround time of the last completed execution 
     
     // sleep tracking
-    uint64_t wakeupTick; /**< exact hardware tick when sleeping thread should resume */
+    uint64_t wakeupTick; // exact hardware tick when sleeping thread should resume 
+
+    // extra
+    bool is_silent; // Mute button for print_dbg
+
 } Thread;
 
 extern Thread threads[MAX_THREADS];
 extern int currentThread_idx;
 extern int numThreads;
-extern bool isSchedulingEnabled; /**< global flag to control preemptive switching */
-extern enum SchedAlgo currentSchedAlgo; /**< current active scheduling algorithm */
+extern bool isSchedulingEnabled; // global flag to control preemptive switching 
+extern enum SchedAlgo currentSchedAlgo; // current active scheduling algorithm 
 
 /**
  * @brief Initializes the hardware timer to generate periodic interrupts.
@@ -105,6 +109,11 @@ int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg);
 void os_set_thread_rtos(int thread_id, int priority, int deadline_ms, uint32_t period_ms, int exec_target);
 
 /**
+ * @brief Updates the argument pointer for a specific thread.
+ */
+void os_set_thread_arg(int thread_id, void* arg);
+
+/**
  * @brief wakes up a thread, calculating its absolute deadline and resetting stack if dead
  * @param thread_id id to wake up
  */
@@ -133,6 +142,19 @@ void os_kill_thread(int thread_id);
  * @param ms time to sleep in milliseconds
  */
 void thread_sleep(uint32_t ms);
+
+/**
+ * @brief checks if the current thread is currently muted for print_dbg
+ * @return true if thread is silent, false otherwise
+ */
+bool is_current_thread_silent(void);
+
+/**
+ * @brief sets the silent status for a specific thread
+ * @param thread_id id of the thread to modify
+ * @param silent true to mute the thread, false to unmute
+ */
+void os_set_thread_silent(int thread_id, bool silent);
 
 /**
  * @brief gives up remaining time slice immediately

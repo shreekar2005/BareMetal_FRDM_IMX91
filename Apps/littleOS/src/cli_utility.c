@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <stddef.h>
+#include "include/cli.h"
 #include "include/cli_utility.h"
 #include "include/stdio.h"
 #include "include/multitasking.h"
@@ -6,7 +8,8 @@
 #include "include/string.h"
 #include "include/datetime.h"
 
-extern volatile char print_buffer[128]; /**< buffer defined in cli.c */
+// Every thread slot gets its own dedicated 128-byte argument buffer.
+char thread_arg_buffer[MAX_THREADS][MAX_CMD_BUFFER_SIZE];
 
 static int get_flag_int(const char* str, const char* flag, int default_val) {
     const char* pos = strstr(str, flag);
@@ -56,7 +59,6 @@ void handleCommand(const char* cmd) {
         }
     }
     else if (strncmp(cmd, "datetime", 8) == 0) {
-        // PASS THE RAW CMD POINTER DIRECTLY INSTEAD OF RELYING ON print_buffer
         datetime_handlecmd(cmd);
     }
     else {
@@ -77,25 +79,40 @@ void handleCommand(const char* cmd) {
         }
         
         if (targetID != -1) {
-            // GLOBAL STRING EXTRACTOR (works for any command!)
-            int print_buffer_idx = 0;
+            int buf_idx = 0;
             while(cmd[i] == ' ') i++; 
             if (cmd[i] == '"') {
                 i++; 
-                while(cmd[i] != '\0' && cmd[i] != '"' && print_buffer_idx < 127) print_buffer[print_buffer_idx++] = cmd[i++];
+                while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < MAX_CMD_BUFFER_SIZE - 1) {
+                    thread_arg_buffer[targetID][buf_idx++] = cmd[i++];
+                }
                 if (cmd[i] == '"') i++; 
             } else {
-                while(cmd[i] != '\0' && print_buffer_idx < 127) print_buffer[print_buffer_idx++] = cmd[i++];
+                while(cmd[i] != '\0' && buf_idx < MAX_CMD_BUFFER_SIZE - 1) {
+                    thread_arg_buffer[targetID][buf_idx++] = cmd[i++];
+                }
             }
-            print_buffer[print_buffer_idx] = '\0';
+            thread_arg_buffer[targetID][buf_idx] = '\0';
+            
+            // Link the thread to its new dedicated argument mailbox
+            os_set_thread_arg(targetID, (void*)thread_arg_buffer[targetID]);
             
             // PARSE FLAGS
             int n = get_flag_int(cmd, "-n ", 1);
             int per = get_flag_int(cmd, "-per ", 0);
             int pri = get_flag_int(cmd, "-pri ", 128);
             int d = get_flag_int(cmd, "-d ", -1);
+            bool silent_mode = false;
+            const char* s_match = strstr(cmd, " -s");
+            if (s_match != NULL) {
+                // Only trigger if "-s" is at the end of the line or followed by a space
+                if (s_match[3] == '\0' || s_match[3] == ' ') {
+                    silent_mode = true;
+                }
+            }
             
             os_set_thread_rtos(targetID, pri, d, per, n);
+            os_set_thread_silent(targetID, silent_mode);
             os_thread_start(targetID); 
             
         } else {
@@ -145,8 +162,12 @@ void print_help(void){
     for (int i = 0; i < numAutotasks; i++) {
         print_dbg("[CLI-Thread]    %-16s - %s\n", autotasks[i].cmd_string, autotasks[i].display_name);
     }
-    print_dbg("[CLI-Thread]  Defaults: -n 1, -per 0, -pri 128, -d -1\n");
-    print_dbg("[CLI-Thread]  Syntax: <taskname> -n <executions> -per <period_ms> -pri <priority> -d <deadline_ms>\n");
+    print_dbg("[CLI-Thread]  Syntax: <taskname> [-s] [-n <executions>] [-per <period_ms>] [-pri <priority>] [-d <deadline_ms>]\n");
+    print_dbg("[CLI-Thread]    -s   : Silent mode (default: false)\n");
+    print_dbg("[CLI-Thread]    -n   : Number of executions (default: 1, -1 for infinite)\n");
+    print_dbg("[CLI-Thread]    -per : Periodicity in ms (default: 0 for one-shot)\n");
+    print_dbg("[CLI-Thread]    -pri : Priority (default: 128, lower is higher priority)\n");
+    print_dbg("[CLI-Thread]    -d   : Relative deadline in ms (default: -1 for no deadline)\n");
 }
 
 /** @brief used to print fatal errors */

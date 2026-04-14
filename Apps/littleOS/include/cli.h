@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#define MAX_CMD_BUFFER_SIZE 128
+
 /**
  * @brief the main parser loop that handles user input from the lpuart terminal
  * @param arg thread arguments (unused)
