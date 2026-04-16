@@ -9,7 +9,7 @@
 #include "include/datetime.h"
 
 // Every thread slot gets its own dedicated 128-byte argument buffer.
-char thread_arg_buffer[MAX_THREADS][MAX_CMD_BUFFER_SIZE];
+char thread_arg_buffer[MAX_THREADS][CMD_BUFFER_SIZE];
 
 static int get_flag_int(const char* str, const char* flag, int default_val) {
     const char* pos = strstr(str, flag);
@@ -83,12 +83,12 @@ void handleCommand(const char* cmd) {
             while(cmd[i] == ' ') i++; 
             if (cmd[i] == '"') {
                 i++; 
-                while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < MAX_CMD_BUFFER_SIZE - 1) {
+                while(cmd[i] != '\0' && cmd[i] != '"' && buf_idx < CMD_BUFFER_SIZE - 1) {
                     thread_arg_buffer[targetID][buf_idx++] = cmd[i++];
                 }
                 if (cmd[i] == '"') i++; 
             } else {
-                while(cmd[i] != '\0' && buf_idx < MAX_CMD_BUFFER_SIZE - 1) {
+                while(cmd[i] != '\0' && buf_idx < CMD_BUFFER_SIZE - 1) {
                     thread_arg_buffer[targetID][buf_idx++] = cmd[i++];
                 }
             }

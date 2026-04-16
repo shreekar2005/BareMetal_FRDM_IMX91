@@ -3,10 +3,9 @@
 #include "LPUART.h"
 #include "SYS_CTR.h"
 
-/* --- Configuration --- */
 #define TRIG_PIN  2  /* GPIO2_02 */
 #define ECHO_PIN  3  /* GPIO2_03 */
-#define RED_LED   13 /* GPIO2_13 : THIS IS ACTIVE LOW PIN */ 
+#define RED_LED   13 /* GPIO2_13 */ 
 
 /* Using millimeters for 1-decimal precision */
 #define ALARM_THRESHOLD_MM 100  /* 10.0 cm */
@@ -34,35 +33,34 @@ void lpuart_print_dec(LPUART_TypeDef *lpuart, uint32_t val) {
  * @brief Measures distance and returns millimeters for higher precision
  */
 uint32_t sonar_read_mm(void) {
-    /* 1. Send mandatory 10-microsecond HIGH pulse */
+    /* 10-microsecond HIGH pulse */
     GPIO2->PSOR = (1 << TRIG_PIN);
     sysctrDelay_us(10);
     GPIO2->PCOR = (1 << TRIG_PIN);
 
-    /* 2. Wait for Echo pin to go HIGH */
+    /* Wait for Echo pin to go HIGH */
     uint64_t timeout_start = sysctrGetTicks();
     
-    /* 24ms timeout is perfectly calibrated for ~400cm max hardware range */
+    /* 24ms timeout */
     uint64_t timeout_limit = (sysctrGetFreq() / 1000) * 24; 
     
     while (!(GPIO2->PDIR & (1 << ECHO_PIN))) {
         if ((sysctrGetTicks() - timeout_start) > timeout_limit) return 0xFFFFFFFF; 
     }
 
-    /* 3. Record start time */
+    /*Record start time */
     uint64_t start_time = sysctrGetTicks();
 
-    /* 4. Wait for Echo pin to go LOW */
+    /* Wait for Echo pin to go LOW */
     while ((GPIO2->PDIR & (1 << ECHO_PIN))) {
         if ((sysctrGetTicks() - start_time) > timeout_limit) return 0xFFFFFFFF; 
     }
 
-    /* 5. Calculate precise distance */
+    /* Calculate precise distance */
     uint64_t end_time = sysctrGetTicks();
     uint64_t total_ticks = end_time - start_time;
     uint32_t duration_us = (total_ticks * 1000000ULL) / sysctrGetFreq();
 
-    /* duration_us / 58 = cm. Multiplying by 10 first gives us millimeters! */
     return (duration_us * 10) / 58;
 }
 
@@ -112,7 +110,7 @@ int main() {
     uint8_t led_state = 0; /* Keeps track of the blink cycle */
 
     while (1) {
-        /* --- Ctrl+C Intercept --- */
+        /* Ctrl+C Intercept */
         char c = lpuartGetCharNonBlocking(LPUART1);
         if (c == 0x03) { 
             lpuartPrintString(LPUART1, "\n[!] Ctrl+C caught! Shutting down Sonar...\n");
@@ -121,13 +119,12 @@ int main() {
             break; 
         }
 
-        /* --- Sonar Logic --- */
         uint32_t distance_mm = sonar_read_filtered_mm();
 
         /* If out of bounds or timed out */
         if (distance_mm == 0xFFFFFFFF || distance_mm > MAX_DISTANCE_MM) {
             lpuartPrintString(LPUART1, "Distance: > 400.0 cm\n");
-            GPIO2->PCOR = (1 << RED_LED); /* ACTIVE-HIGH: LED OFF */
+            GPIO2->PCOR = (1 << RED_LED); /*LED OFF */
             led_state = 0;
         } else {
             /* Print decimal formatted output (e.g. 15.3 cm) */
@@ -141,12 +138,12 @@ int main() {
             if (distance_mm < ALARM_THRESHOLD_MM) {
                 led_state = !led_state; /* Flip the bit */
                 if (led_state) {
-                    GPIO2->PSOR = (1 << RED_LED); /* ACTIVE-HIGH: LED ON */
+                    GPIO2->PSOR = (1 << RED_LED); /* LED ON */
                 } else {
-                    GPIO2->PCOR = (1 << RED_LED); /* ACTIVE-HIGH: LED OFF */
+                    GPIO2->PCOR = (1 << RED_LED); /*LED OFF */
                 }   
             } else {
-                GPIO2->PCOR = (1 << RED_LED); /* ACTIVE-HIGH: Force LED OFF if safe */
+                GPIO2->PCOR = (1 << RED_LED); /*Force LED OFF if safe */
                 led_state = 0;
             }
         }

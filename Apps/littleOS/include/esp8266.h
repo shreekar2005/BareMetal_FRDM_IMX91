@@ -3,9 +3,7 @@
 
 #include <stdint.h>
 #include "LPUART.h"
-
-#define IMX91_LPUART4_IRQ_ID  101  /* GIC IRQ ID = SPI Number + 32 and in manual SPI Number is 69 */
-#define ESP_RX_BUFFER_SIZE 2048
+#include "include/common_macros.h"
 
 typedef struct {
     volatile char data[ESP_RX_BUFFER_SIZE];

@@ -3,7 +3,6 @@
 #include "include/string.h"
 #include "include/stdio.h"
 
-#define RR_TIME_QUANTUM_MS 20
 uint64_t quantum_ticks;
 
 Thread threads[MAX_THREADS];

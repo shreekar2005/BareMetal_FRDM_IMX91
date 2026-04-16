@@ -21,7 +21,7 @@ RingBuffer esp_rx_buffer = { .head = 0, .tail = 0 };
 // exec ledblink printed by [response] but due to exec we should run ledblink
 static void intercept_exec_command(char c) {
     static int state = 0;
-    static char cmd_buf[MAX_CMD_BUFFER_SIZE] = {0};
+    static char cmd_buf[CMD_BUFFER_SIZE] = {0};
     static int cmd_idx = 0;
 
     if (state == 0 && c == 'e') state = 1;

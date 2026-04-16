@@ -1,11 +1,5 @@
 #include "include/gic.h"
-
-#define GICD_BASE 0x48000000ULL
-#define GICR_BASE 0x48040000ULL 
-#define GICR_SGI_BASE 0x48050000ULL
-
-#define GICD_CTLR        (*(volatile uint32_t*)(GICD_BASE + 0x0000))
-#define GICR_WAKER       (*(volatile uint32_t*)(GICR_BASE + 0x0014))
+#include "include/common_macros.h"
 
 extern void* vector_table; // Defined in your vector.S
 

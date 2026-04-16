@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-#define MAX_THREADS 16 // total max threads allowed in system
+#include "include/common_macros.h"
 
 /**
  * @brief process states based on the process state diagram

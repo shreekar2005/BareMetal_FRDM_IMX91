@@ -14,4 +14,4 @@ Note:
 2. Variable naming:
 	1. Macro and Constant name must be SCREAMING_SNAKE_CASE_NAME; e.g. #define LPUART_STAT_TDRE
 	2. Normal variable name must be camelCaseName; e.g. int strSize;
-	3. Ponter variable name must be snake_case_name; e.g. uintptr_t mux_reg_address;
+	3. Ponter or index or array variable name must be snake_case_name; e.g. uintptr_t mux_reg_address;
