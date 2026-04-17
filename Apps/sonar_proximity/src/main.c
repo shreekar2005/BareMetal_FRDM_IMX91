@@ -94,8 +94,8 @@ uint32_t sonar_read_filtered_mm(void) {
 }
 
 int main() {
-    lpuartPrintString(LPUART1, "\n--- HC-SR04 High-Precision Radar ---\n");
-    lpuartPrintString(LPUART1, "Press Ctrl+C to exit.\n\n");
+    lpuartPrintString(LPUART1, "\r\n--- HC-SR04 High-Precision Radar ---\r\n");
+    lpuartPrintString(LPUART1, "Press Ctrl+C to exit.\r\n\r\n");
 
     /* Hardware Init */
     GPIO2->PDDR |= (1 << RED_LED);
@@ -113,7 +113,7 @@ int main() {
         /* Ctrl+C Intercept */
         char c = lpuartGetCharNonBlocking(LPUART1);
         if (c == 0x03) { 
-            lpuartPrintString(LPUART1, "\n[!] Ctrl+C caught! Shutting down Sonar...\n");
+            lpuartPrintString(LPUART1, "\r\n[!] Ctrl+C caught! Shutting down Sonar...\r\n");
             GPIO2->PCOR = (1 << RED_LED); /* Ensure LED is off */
             GPIO2->PCOR = (1 << TRIG_PIN); 
             break; 
@@ -123,7 +123,7 @@ int main() {
 
         /* If out of bounds or timed out */
         if (distance_mm == 0xFFFFFFFF || distance_mm > MAX_DISTANCE_MM) {
-            lpuartPrintString(LPUART1, "Distance: > 400.0 cm\n");
+            lpuartPrintString(LPUART1, "Distance: > 400.0 cm\r\n");
             GPIO2->PCOR = (1 << RED_LED); /*LED OFF */
             led_state = 0;
         } else {
@@ -132,7 +132,7 @@ int main() {
             lpuart_print_dec(LPUART1, distance_mm / 10); /* The whole centimeters */
             lpuartPutChar(LPUART1, '.');
             lpuart_print_dec(LPUART1, distance_mm % 10); /* The millimeter remainder */
-            lpuartPrintString(LPUART1, " cm\n");
+            lpuartPrintString(LPUART1, " cm\r\n");
 
             /* Proximity Blink Logic (< 10 cm) */
             if (distance_mm < ALARM_THRESHOLD_MM) {

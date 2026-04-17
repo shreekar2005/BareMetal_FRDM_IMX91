@@ -25,6 +25,6 @@ void hardware_init(void) {
 int main() {
     /* Initialize your hardware here */
     hardware_init();
-    lpuartPrintString(LPUART1, "Hello from __APP_NAME__ bare-metal!\n");
+    lpuartPrintString(LPUART1, "\r\nHello from __APP_NAME__ bare-metal!\r\n");
     return 0;
 }

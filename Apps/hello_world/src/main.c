@@ -13,8 +13,8 @@ void delay(volatile uint32_t count) {
  */
 int main() {
     GPIO2->PDDR |= LED_PIN; /* Set Pin 4 as an Output using the new struct */
-    lpuartPrintString(LPUART1, "Hello from hello_world bare-metal!\n");
-    lpuartPrintString(LPUART1, " press 's' to start/stop blinking LED\n press 'q' to quit\n");
+    lpuartPrintString(LPUART1, "Hello from hello_world bare-metal!\r\n");
+    lpuartPrintString(LPUART1, " press 's' to start/stop blinking LED\r\n press 'q' to quit\r\n");
 
     char run=0;
     while(1) {
@@ -22,7 +22,7 @@ int main() {
         if (input != '\0') {
             lpuartPrintString(LPUART1, "Keyboard Input Detected: ");
             lpuartPutChar(LPUART1, input);
-            lpuartPutChar(LPUART1, '\n');
+            lpuartPrintString(LPUART1, "\r\n");
             if(input== 's') run=~run;
             if(input == 'q') return 0;
         }
