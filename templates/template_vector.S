@@ -44,7 +44,7 @@ vector_table:
     b trap_sync 
     
     .align 7 // Offset +0x480: Hardware IRQ
-    b irq_handler 
+    b trap_irq 
     
     .align 7 // Offset +0x500: FIQ
     b trap_fiq 
@@ -58,7 +58,7 @@ vector_table:
     b trap_sync 
     
     .align 7 
-    b irq_handler 
+    b trap_irq 
     
     .align 7 
     b trap_fiq 

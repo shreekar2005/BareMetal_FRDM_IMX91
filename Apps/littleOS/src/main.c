@@ -68,7 +68,7 @@ int main() {
     mutex_locks_init(); // Initialize mutex locks before starting threads that depend on them.
 
     print_dbg("\033[2J\033[H");
-    print_dbg("WELCOME TO littleOS RTOS Core :)\n");
+    print_dbg("[littleOS] Welcome TO littleOS RTOS :)\n");
 
     print_dbg("[Boot] Initializing Scheduler...\n");
     os_init_scheduler(); // Note: isSchedulingEnabled is set to false here. 
