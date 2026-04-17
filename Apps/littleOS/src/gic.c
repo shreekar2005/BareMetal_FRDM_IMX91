@@ -25,7 +25,7 @@ void gic_enable_interrupt(uint32_t intid) {
         volatile uint32_t* igroupr = (volatile uint32_t*)(GICD_BASE + 0x0080 + (reg * 4));
         volatile uint32_t* isenabler = (volatile uint32_t*)(GICD_BASE + 0x0100 + (reg * 4));
         *igroupr |= (1 << bit);
-        *isenabler = (1 << bit);
+        *isenabler = (1 << bit); // Note: This writes to the "Set-Enable" register, which sets the bit to 1 without affecting other bits.
     }
 }
 
@@ -44,7 +44,7 @@ void cpu_exceptions_init(void) {
     // Tell CPU where the Exception Vector Table is
     __asm__ volatile("msr vbar_el2, %0" : : "r" (&vector_table));
 
-    // Route physical IRQs to Exception Level 2 (Hypervisor/OS Level)
+    // Route physical IRQs to Exception Level 2 (Hypervisor level)
     uint64_t hcr;
     __asm__ volatile("mrs %0, hcr_el2" : "=r" (hcr));
     hcr |= (1 << 4) | (1 << 3); 
