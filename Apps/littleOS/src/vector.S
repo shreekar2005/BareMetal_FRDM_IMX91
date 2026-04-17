@@ -42,12 +42,9 @@ vector_table:
     .align 7
     b trap_serror 
     .align 7
-    
     b trap_sync 
     .align 7
-    
     b irq_handler 
-    
     .align 7
     b trap_fiq 
     .align 7
