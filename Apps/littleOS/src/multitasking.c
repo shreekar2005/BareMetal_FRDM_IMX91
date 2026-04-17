@@ -180,12 +180,18 @@ void os_thread_start(int thread_id) {
 
         if (t->currentState == STATE_NEW || t->currentState == STATE_TERMINATE) {
             t->cpustate_ptr = (CPUState*)(t->stack + sizeof(t->stack) - sizeof(CPUState));
+            
             for (int i = 0; i < 30; i++) t->cpustate_ptr->x[i] = 0;
             t->cpustate_ptr->x[0] = (uint64_t)t->arg;
             t->cpustate_ptr->lr = (uint64_t)&os_thread_exit;
             t->cpustate_ptr->pc = (uint64_t)t->entrypoint;
             t->cpustate_ptr->cpsr = 0x009; 
             t->cpustate_ptr->sp = (uint64_t)t->cpustate_ptr;
+            
+            // Explicitly zero out the floating point registers
+            t->cpustate_ptr->fpsr = 0;
+            t->cpustate_ptr->fpcr = 0;
+            for (int i = 0; i < 64; i++) t->cpustate_ptr->q[i] = 0;
             
             t->lastStartTick = current_ticks;
             t->executionsDone++;

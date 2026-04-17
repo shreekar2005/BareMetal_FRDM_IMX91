@@ -1,7 +1,8 @@
-.global _start
 .extern main
 .extern __bss_start
 .extern __bss_end
+
+.global _start
 
 .section .text.start
 

@@ -27,16 +27,20 @@ enum SchedAlgo {
     SCHED_EDF       // earliest deadline first dynamic scheduling 
 };
 
+// Represents exactly 800 bytes pushed onto the stack by STORE_CONTEXT
 typedef struct {
-    uint64_t x[30]; // general purpose registers 
-    uint64_t lr;    // link register 
-    uint64_t pc;    // program counter 
-    uint64_t cpsr;  // current program status 
-    uint64_t sp;    // stack pointer 
+    uint64_t x[30]; // 240 bytes: General purpose registers 0-29
+    uint64_t lr;    // 8 bytes: Link register (x30)
+    uint64_t pc;    // 8 bytes: Program counter (elr_el2)
+    uint64_t cpsr;  // 8 bytes: Current program status (spsr_el2)
+    uint64_t sp;    // 8 bytes: Original stack pointer
+    uint64_t fpsr;  // 8 bytes: Floating-Point Status Register
+    uint64_t fpcr;  // 8 bytes: Floating-Point Control Register
+    uint64_t q[64]; // 512 bytes: 32 x 128-bit NEON/FPU registers (q0-q31)
 } CPUState;
 
 typedef struct {
-    __attribute__((aligned(16))) uint8_t stack[4096]; // physical stack memory for thread 
+    __attribute__((aligned(16))) uint8_t stack[THREAD_STACK_SIZE]; // physical stack memory for thread 
     CPUState* cpustate_ptr; // fake cpu state stored at top of stack 
     void (*entrypoint)(void*); // function pointer for thread logic 
     void* arg; // arguments for function 
@@ -72,8 +76,8 @@ typedef struct {
 } Thread;
 
 extern Thread threads[MAX_THREADS];
-extern int currentThread_idx;
-extern int numThreads;
+extern int currentThread_idx; // index of currently running thread in threads array, -1 if no thread is running
+extern int numThreads; // total number of threads created so far (including dead ones)
 extern bool isSchedulingEnabled; // global flag to control preemptive switching 
 extern enum SchedAlgo currentSchedAlgo; // current active scheduling algorithm 
 

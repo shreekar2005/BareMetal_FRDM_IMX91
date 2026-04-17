@@ -21,6 +21,7 @@
 // irq's Macros
 
 // multitasking's Macros
+#define THREAD_STACK_SIZE   16*(1<<10) // 16 KB of stack per thread
 #define MAX_THREADS         16 // total max threads allowed in system
 #define RR_TIME_QUANTUM_MS  20 // Time quantum for Round Robin scheduling in milliseconds
 

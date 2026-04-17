@@ -2,6 +2,8 @@
 CC = aarch64-linux-gnu-gcc
 LD = aarch64-linux-gnu-ld
 OBJCOPY = aarch64-linux-gnu-objcopy
+CFLAGS = -g -c -nostdlib -ffreestanding -O0 -mno-outline-atomics -Iinclude -I$(APP_DIR)/include -I$(APP_DIR)
+LDFLAGS = -T $(APP_DIR)/linker.ld
 
 # Skip "APP check" for "make help"
 ifeq ($(filter help,$(MAKECMDGOALS)),)
@@ -16,9 +18,6 @@ APP_DIR = Apps/$(APP)
 BUILD_DIR = $(APP_DIR)/build
 TARGET = $(BUILD_DIR)/$(APP).bin
 ELF = $(BUILD_DIR)/$(APP).elf
-
-CFLAGS = -g -c -nostdlib -ffreestanding -O0 -mno-outline-atomics -Iinclude -I$(APP_DIR)/include -I$(APP_DIR)
-LDFLAGS = -T $(APP_DIR)/linker.ld
 
 APP_SRCS = $(wildcard $(APP_DIR)/src/*.c)
 APP_ASMS = $(wildcard $(APP_DIR)/src/*.S)
