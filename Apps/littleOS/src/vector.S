@@ -6,7 +6,24 @@
 .extern os_schedule
 
 .section .text
-.align 11 
+.align 11
+
+vector_table:
+    b trap_sync 
+    .align 7
+    b trap_irq 
+    .align 7
+    b trap_fiq 
+    .align 7
+    b trap_serror 
+    .align 7
+    b trap_sync 
+    .align 7
+    b irq_handler 
+    .align 7
+    b trap_fiq 
+    .align 7
+    b trap_serror 
 
 trap_sync:
     mov x3, #0
@@ -32,23 +49,6 @@ common_trap:
     mrs x2, far_el2
     b os_fatal_error
 
-.align 11
-vector_table:
-    b trap_sync 
-    .align 7
-    b trap_irq 
-    .align 7
-    b trap_fiq 
-    .align 7
-    b trap_serror 
-    .align 7
-    b trap_sync 
-    .align 7
-    b irq_handler 
-    .align 7
-    b trap_fiq 
-    .align 7
-    b trap_serror 
 
 irq_handler:
     sub sp, sp, #272
