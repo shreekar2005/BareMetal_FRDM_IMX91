@@ -68,6 +68,13 @@ init:
 	else \
 		echo "  ~ Skipped $(APP_DIR)/src/start.S (already exists)"; \
 	fi
+
+	@if [ ! -f $(APP_DIR)/src/vector.S ]; then \
+		cp templates/template_vector.S $(APP_DIR)/src/vector.S; \
+		echo "  + Created $(APP_DIR)/src/vector.S"; \
+	else \
+		echo "  ~ Skipped $(APP_DIR)/src/vector.S (already exists)"; \
+	fi
 	
 	@if [ ! -f $(APP_DIR)/linker.ld ]; then \
 		cp templates/template_linker.ld $(APP_DIR)/linker.ld; \

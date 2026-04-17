@@ -5,11 +5,11 @@
 #include "SYS_CTR.h"
 #include "IOMUX.h"
 #include "LPUART.h"
+#include "GIC.h"
 #include "include/timer.h"
 #include "include/multitasking.h"
 #include "include/shared_locks.h"
 #include "include/cli.h" 
-#include "GIC.h"
 #include "include/stdio.h"
 #include "include/autotasks.h"
 #include "include/esp8266.h"
@@ -38,7 +38,7 @@ void mutex_locks_init(void){
 /** @brief Initialize hardware components (keeping it universal to avoid conflicts) */
 void hardware_init(void) {
     // Hardware initialization for usb debug pin (LPUART1)
-    // lpuartINIT(LPUART1, 115200, 24000000); // U-Boot already initialized LPUART1.
+    lpuartINIT(LPUART1, 115200, 24000000); // U-Boot already initialized LPUART1, but we are doing it again.
 
     // Hardware initialization for built-in LED
     gpioPinINIT(GPIO2, 4, OUTPUT_MODE); // P11 Pin 7 (GPIO_IO04) -> builtin GREEN-LED pin
@@ -57,29 +57,24 @@ void hardware_init(void) {
     gpioWrite(GPIO2, 2, LOW);
     gpioPinINIT(GPIO2, 3, INPUT_MODE); // P11 Pin 5 (GPIO_IO03) -> echo pin for sonar
 
+    // Hardware initialization for Generic Interrupt Controller
+    gicINIT(); // Initialize the GIC Distributor and Redistributor
+    gicCPUInit((uintptr_t)&vector_table); // Giving CPU vector_table address
 }
 
 /** @brief Main function : Entry point for littleOS */
 int main() {
-    mutex_locks_init();
-    hardware_init();
+    hardware_init(); // Initialize hardware components before starting threads that depend on them.
+    mutex_locks_init(); // Initialize mutex locks before starting threads that depend on them.
 
-    print_dbg("\033[2J\033[H"); 
-    print_dbg("=================================\n");
-    print_dbg("     littleOS RTOS Core          \n");
-    print_dbg("=================================\n");
+    print_dbg("\033[2J\033[H");
+    print_dbg("WELCOME TO littleOS RTOS Core :)\n");
 
     print_dbg("[Boot] Initializing Scheduler...\n");
     os_init_scheduler(); // Note: isSchedulingEnabled is set to false here. 
 
     print_dbg("[Boot] Initializing Task Registry...\n");
-    init_all_tasks(); 
-
-    print_dbg("[Boot] Initializing GIC...\n");
-    gicINIT();
-
-    print_dbg("[Boot] Giving CPU vector_table address...\n");
-    gicCPUInit((uintptr_t)&vector_table);
+    init_all_tasks();
 
     print_dbg("[Boot] Registering ESP8266 IRQ...\n");
     esp_init();

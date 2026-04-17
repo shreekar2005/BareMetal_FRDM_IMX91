@@ -12,6 +12,20 @@ void gicINIT(void) {
     __asm__ volatile("msr S3_0_C12_C12_7, %0" : : "r" (1));
 }
 
+void gicCPUInit(uintptr_t vector_table_ptr) {
+    // Tell CPU where the Exception Vector Table is
+    __asm__ volatile("msr vbar_el2, %0" : : "r" (vector_table_ptr));
+
+    // Route physical IRQs to Exception Level 2 (Hypervisor level)
+    uint64_t hcr;
+    __asm__ volatile("mrs %0, hcr_el2" : "=r" (hcr));
+    hcr |= (1 << 4) | (1 << 3); 
+    __asm__ volatile("msr hcr_el2, %0" : : "r" (hcr));
+
+    // Unmask the CPU Master IRQ Pin (DAIF clear)
+    __asm__ volatile("msr daifclr, #2");
+}
+
 void gicEnableInterrupt(uint32_t intid) {
     if (intid < 32) { 
         volatile uint32_t* igroupr0 = (volatile uint32_t*)(GICR_SGI_BASE + 0x0080);
@@ -36,19 +50,4 @@ uint32_t gicAcknowledgeInterrupt(void) {
 
 void gicEndOfInterrupt(uint32_t iar) {
     __asm__ volatile("msr S3_0_C12_C12_1, %0" : : "r" (iar));
-}
-
-
-void gicCPUExceptionsInit(uintptr_t vector_table_ptr) {
-    // Tell CPU where the Exception Vector Table is
-    __asm__ volatile("msr vbar_el2, %0" : : "r" (vector_table_ptr));
-
-    // Route physical IRQs to Exception Level 2 (Hypervisor level)
-    uint64_t hcr;
-    __asm__ volatile("mrs %0, hcr_el2" : "=r" (hcr));
-    hcr |= (1 << 4) | (1 << 3); 
-    __asm__ volatile("msr hcr_el2, %0" : : "r" (hcr));
-
-    // Unmask the CPU Master IRQ Pin (DAIF clear)
-    __asm__ volatile("msr daifclr, #2");
 }

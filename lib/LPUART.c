@@ -42,12 +42,17 @@ void lpuartINIT(LPUART_TypeDef *lpuart, uint32_t baudrate, uint32_t src_clock_hz
     /* Calculate Baud Rate Modulo Divisor (SBR)
      * Formula: SBR = Clock_Frequency / (16 * Baud_Rate) */
     sbr = src_clock_hz / (baudrate * 16);
-    lpuart->BAUD &= ~0x1FFF; 
-    lpuart->BAUD |= (sbr & 0x1FFF);
+
+    /* Clear both SBR (bits 0-12) AND OSR (bits 24-28) */
+    lpuart->BAUD &= ~((0x1FFF) | (0x1F << 24)); 
+    
+    /* Set new SBR, and explicitly force OSR to 15 (which means 16x oversampling) */
+    lpuart->BAUD |= (sbr & 0x1FFF) | (15 << 24);
 
     /* Flush the FIFOs to clear any garbage data */
     lpuart->FIFO |= (LPUART_FIFO_TXFLUSH | LPUART_FIFO_RXFLUSH);
-    /* Enable both Transmit and Receive FIFOs, else LPUART will overrun after 1 byte data */
+    
+    /* Enable both Transmit and Receive FIFOs */
     lpuart->FIFO |= (LPUART_FIFO_TXFE | LPUART_FIFO_RXFE);
 
     /* Enable Transmitter and Receiver */

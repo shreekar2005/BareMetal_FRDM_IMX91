@@ -10,16 +10,16 @@
 #define GICR_WAKER      (*(volatile uint32_t*)(GICR_BASE + 0x0014)) // GIC Redistributor WAKER Register
 
 /**
+ * @brief initializes generic interrupt controller
+ */
+void gicINIT(void);
+
+/**
  * @brief Initializes the CPU Core Exception state.
  * Must be called to give vector table address to CPU.
  * @param vector_table_ptr the address of the exception vector table (defined in assembly in vector.S)
  */
 void gicCPUInit(uintptr_t vector_table_ptr);
-
-/**
- * @brief initializes generic interrupt controller
- */
-void gicINIT(void);
 
 /**
  * @brief enables specific interrupt id
