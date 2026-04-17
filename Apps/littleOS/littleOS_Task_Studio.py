@@ -22,7 +22,7 @@ class LittleOSTaskStudio:
         self.refresh_task_list()
 
     def setup_ui(self):
-        # --- Left Panel: Controls & Task List ---
+        # Left Panel: Controls & Task List
         left_frame = tk.Frame(self.root, width=200, bg="#2e2e2e")
         left_frame.pack(side=tk.LEFT, fill=tk.Y)
         
@@ -46,7 +46,7 @@ class LittleOSTaskStudio:
         self.context_menu.add_command(label="🗑️ Delete Task", command=self.delete_task)
         self.task_listbox.bind("<Button-3>", self.show_context_menu)
 
-        # --- Right Panel: Editor & Console ---
+        # Right Panel: Editor & Console
         right_frame = tk.Frame(self.root, bg="#1e1e1e")
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
@@ -70,7 +70,7 @@ class LittleOSTaskStudio:
         self.console_output = scrolledtext.ScrolledText(console_frame, height=8, font=("Consolas", 10), bg="black", fg="#4af626", borderwidth=0, highlightthickness=0)
         self.console_output.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # --- Global Keyboard Shortcuts ---
+        # Global Keyboard Shortcuts
         self.root.bind('<Control-s>', self.save_task_code)
 
     def setup_syntax_highlighting(self):

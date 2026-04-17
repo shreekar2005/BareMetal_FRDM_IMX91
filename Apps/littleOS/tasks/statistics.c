@@ -128,18 +128,19 @@ void statistics_thread(void* arg)
 
     if (strcmp(action, "show") == 0) {
         /* DIRECT TERMINAL PRINTING (TABLE FORMAT) */
-        print_dbg("[STATISTICS-Thread] --- UPTIME ---\n");
-        print_dbg("[STATISTICS-Thread] %d hrs : %d min : %d sec\n", hr, min, sec);
-        print_dbg("[STATISTICS-Thread] --- SCHEDULER ---\n");
-        print_dbg("[STATISTICS-Thread] Algorithm: %s\n", schedAlgo);
+        print_dbg("\n[STATISTICS-Thread] UPTIME:\n");
+        print_dbg("[STATISTICS-Thread]  %d hrs : %d min : %d sec\n", hr, min, sec);
         print_dbg("[STATISTICS-Thread]\n");
-        print_dbg("[STATISTICS-Thread] --- THREADS ---\n");
-        print_dbg("[STATISTICS-Thread] %-3s | %-16s | %-5s | %-4s | %-5s | %-5s | %-4s | %-5s | %-7s\n", 
+        print_dbg("[STATISTICS-Thread] SCHEDULER:\n");
+        print_dbg("[STATISTICS-Thread]  Algorithm: %s\n", schedAlgo);
+        print_dbg("[STATISTICS-Thread]\n");
+        print_dbg("[STATISTICS-Thread] THREADS:\n");
+        print_dbg("[STATISTICS-Thread]  %-3s | %-16s | %-5s | %-4s | %-5s | %-5s | %-4s | %-5s | %-7s\n", 
                   "ID", "Name", "State", "Pri", "Dead", "Per", "Targ", "Done", "TAT(ms)");
-        print_dbg("[STATISTICS-Thread] --------------------------------------------------------------------------------\n");
+        print_dbg("[STATISTICS-Thread]  --------------------------------------------------------------------------------\n");
         
         for (int j = 0; j < numThreads; j++) {
-            print_dbg("[STATISTICS-Thread] %-3d | %-16s | %-5s | %-4d | %-5d | %-5d | %-4d | %-5d | %-7d\n",
+            print_dbg("[STATISTICS-Thread]  %-3d | %-16s | %-5s | %-4d | %-5d | %-5d | %-4d | %-5d | %-7d\n",
                       j + 1, 
                       allThreads[j].name, 
                       allThreads[j].current_state,
@@ -152,13 +153,13 @@ void statistics_thread(void* arg)
         }
 
         print_dbg("[STATISTICS-Thread]\n");
-        print_dbg("[STATISTICS-Thread] --- ESP STATUS ---\n");
-        print_dbg("[STATISTICS-Thread] Reachable: %s\n", espInstance.reachable ? "true" : "false");
-        print_dbg("[STATISTICS-Thread] Op Mode: %d\n", espInstance.op_mode);
-        print_dbg("[STATISTICS-Thread] Router SSID: %s\n", espInstance.router_ssid[0] != '\0' ? espInstance.router_ssid : "N/A");
-        print_dbg("[STATISTICS-Thread] Router MAC: %s\n", espInstance.router_mac[0] != '\0' ? espInstance.router_mac : "N/A");
-        print_dbg("[STATISTICS-Thread] ESP IP: %s\n", espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A");
-        print_dbg("[STATISTICS-Thread] ESP MAC: %s\n", espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A");
+        print_dbg("[STATISTICS-Thread] ESP STATUS:\n");
+        print_dbg("[STATISTICS-Thread]  Reachable: %s\n", espInstance.reachable ? "true" : "false");
+        print_dbg("[STATISTICS-Thread]  Op Mode: %d\n", espInstance.op_mode);
+        print_dbg("[STATISTICS-Thread]  Router SSID: %s\n", espInstance.router_ssid[0] != '\0' ? espInstance.router_ssid : "N/A");
+        print_dbg("[STATISTICS-Thread]  Router MAC: %s\n", espInstance.router_mac[0] != '\0' ? espInstance.router_mac : "N/A");
+        print_dbg("[STATISTICS-Thread]  ESP IP: %s\n", espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A");
+        print_dbg("[STATISTICS-Thread]  ESP MAC: %s\n", espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A");
     }
     else if (strcmp(action, "sendto") == 0) {
         /* COMPACT CSV PAYLOAD FOR WEB APP */
