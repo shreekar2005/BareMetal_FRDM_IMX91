@@ -1,6 +1,6 @@
 #include <stdint.h>
+#include "GIC.h"
 #include "include/multitasking.h"
-#include "include/gic.h"
 #include "include/stdio.h"
 
 typedef CPUState* (*irq_handler_t)(CPUState*);
@@ -24,4 +24,4 @@ CPUState* irq_dispatcher(CPUState* current_state);
  * @brief Initializes the CPU Core Exception state.
  * Must be called exactly once during boot.
  */
-void cpuExceptionsInit(void);
+void gicCPUExceptionsInit(void);

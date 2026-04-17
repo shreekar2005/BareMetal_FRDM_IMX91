@@ -9,12 +9,13 @@
 #include "include/multitasking.h"
 #include "include/shared_locks.h"
 #include "include/cli.h" 
-#include "include/gic.h"
+#include "GIC.h"
 #include "include/stdio.h"
 #include "include/autotasks.h"
 #include "include/esp8266.h"
 #include "include/datetime.h"
 
+extern void* vector_table; // Defined in vector.S
 extern void __os_start_asm(void); // defined in vector.S
 
 /**
@@ -78,7 +79,7 @@ int main() {
     gicINIT();
 
     print_dbg("[Boot] Giving CPU vector_table address...\n");
-    cpuExceptionsInit();
+    gicCPUInit((uintptr_t)&vector_table);
 
     print_dbg("[Boot] Registering ESP8266 IRQ...\n");
     esp_init();

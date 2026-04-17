@@ -6,7 +6,7 @@
 #include "include/cli.h"
 #include "include/string.h"
 #include "include/multitasking.h"
-#include "include/gic.h"
+#include "GIC.h"
 #include "include/irq.h"
 #include "include/shared_locks.h"
 

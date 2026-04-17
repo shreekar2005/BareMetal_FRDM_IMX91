@@ -1,5 +1,4 @@
-#include "include/gic.h"
-#include "include/common_macros.h"
+#include "GIC.h"
 
 extern void* vector_table; // Defined in your vector.S
 
@@ -40,9 +39,9 @@ void gicEndOfInterrupt(uint32_t iar) {
 }
 
 
-void cpuExceptionsInit(void) {
+void gicCPUExceptionsInit(uintptr_t vector_table_ptr) {
     // Tell CPU where the Exception Vector Table is
-    __asm__ volatile("msr vbar_el2, %0" : : "r" (&vector_table));
+    __asm__ volatile("msr vbar_el2, %0" : : "r" (vector_table_ptr));
 
     // Route physical IRQs to Exception Level 2 (Hypervisor level)
     uint64_t hcr;

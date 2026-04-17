@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "include/multitasking.h"
-#include "include/gic.h"
+#include "GIC.h"
 #include "include/stdio.h"
 #include "include/irq.h"
 

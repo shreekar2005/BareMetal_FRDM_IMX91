@@ -11,13 +11,6 @@
 #define IMX91_LPUART4_IRQ_ID    101  // GIC IRQ ID = SPI Number + 32 and in manual SPI Number is 69
 #define ESP_RX_BUFFER_SIZE      2048 // Size of the ring buffer for incoming data from ESP8266
 
-// gic's Macros
-#define GICD_BASE       0x48000000ULL // Base address for GIC Distributor
-#define GICR_BASE       0x48040000ULL // Base address for GIC Redistributor
-#define GICR_SGI_BASE   0x48050000ULL // Base address for GIC Redistributor SGI registers
-#define GICD_CTLR       (*(volatile uint32_t*)(GICD_BASE + 0x0000)) // GIC Distributor Control Register
-#define GICR_WAKER      (*(volatile uint32_t*)(GICR_BASE + 0x0014)) // GIC Redistributor WAKER Register
-
 // irq's Macros
 
 // multitasking's Macros

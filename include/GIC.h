@@ -3,11 +3,18 @@
 
 #include <stdint.h>
 
+#define GICD_BASE       0x48000000ULL // Base address for GIC Distributor
+#define GICR_BASE       0x48040000ULL // Base address for GIC Redistributor
+#define GICR_SGI_BASE   0x48050000ULL // Base address for GIC Redistributor SGI registers
+#define GICD_CTLR       (*(volatile uint32_t*)(GICD_BASE + 0x0000)) // GIC Distributor Control Register
+#define GICR_WAKER      (*(volatile uint32_t*)(GICR_BASE + 0x0014)) // GIC Redistributor WAKER Register
+
 /**
  * @brief Initializes the CPU Core Exception state.
- * Must be called exactly once during boot.
+ * Must be called to give vector table address to CPU.
+ * @param vector_table_ptr the address of the exception vector table (defined in assembly in vector.S)
  */
-void cpuExceptionsInit(void);
+void gicCPUInit(uintptr_t vector_table_ptr);
 
 /**
  * @brief initializes generic interrupt controller

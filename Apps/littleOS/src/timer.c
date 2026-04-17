@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "SYS_CTR.h"
 #include "include/multitasking.h"
-#include "include/gic.h"
+#include "GIC.h"
 
 static int current_timer_period_ms = 1; // Default to 1ms
 
