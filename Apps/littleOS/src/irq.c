@@ -13,7 +13,7 @@ void register_irq(uint32_t intid, irq_handler_t handler) {
 }
 
 CPUState* irq_dispatcher(CPUState* current_state) {
-    uint32_t iar = gic_acknowledge_interrupt();
+    uint32_t iar = gicAcknowledgeInterrupt();
     CPUState* next_state = current_state;
 
     if (iar < 1020) { 
@@ -23,7 +23,7 @@ CPUState* irq_dispatcher(CPUState* current_state) {
             print_dbg("\n[IRQ-Driver] Warning: Unhandled IRQ fired!\n");
         }
         
-        gic_end_of_interrupt(iar);
+        gicEndOfInterrupt(iar);
     }
 
     return next_state;

@@ -75,10 +75,10 @@ int main() {
     init_all_tasks(); 
 
     print_dbg("[Boot] Initializing GIC...\n");
-    gic_init();
+    gicINIT();
 
     print_dbg("[Boot] Giving CPU vector_table address...\n");
-    cpu_exceptions_init();
+    cpuExceptionsInit();
 
     print_dbg("[Boot] Registering ESP8266 IRQ...\n");
     esp_init();
