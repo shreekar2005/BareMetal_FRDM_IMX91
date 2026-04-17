@@ -24,4 +24,4 @@ CPUState* irq_dispatcher(CPUState* current_state);
  * @brief Initializes the CPU Core Exception state.
  * Must be called exactly once during boot.
  */
-void cpu_exceptions_init(void);
+void cpuExceptionsInit(void);

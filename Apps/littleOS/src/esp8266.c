@@ -78,7 +78,7 @@ CPUState* lpuart4_rx_isr(CPUState* current_state) {
 
 void esp_init(void) {
     register_irq(IMX91_LPUART4_IRQ_ID, lpuart4_rx_isr);
-    gic_enable_interrupt(IMX91_LPUART4_IRQ_ID);
+    gicEnableInterrupt(IMX91_LPUART4_IRQ_ID);
     LPUART4->CTRL |= (1 << 21);
 }
 

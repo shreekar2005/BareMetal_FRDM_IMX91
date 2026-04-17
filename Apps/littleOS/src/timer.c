@@ -32,7 +32,7 @@ void os_timer_init(int period_ms) {
     register_irq(30, timer_handler);
     
     // Enable in the ARM GIC
-    gic_enable_interrupt(30);
+    gicEnableInterrupt(30);
 
     // Configure the specific Timer Hardware
     uint32_t freq = sysctrGetFreq();

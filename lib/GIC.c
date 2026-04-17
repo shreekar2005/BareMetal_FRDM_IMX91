@@ -3,7 +3,7 @@
 
 extern void* vector_table; // Defined in your vector.S
 
-void gic_init(void) {
+void gicINIT(void) {
     GICD_CTLR |= 2; 
     GICR_WAKER &= ~(1 << 1); 
     while(GICR_WAKER & (1 << 2)); 
@@ -13,7 +13,7 @@ void gic_init(void) {
     __asm__ volatile("msr S3_0_C12_C12_7, %0" : : "r" (1));
 }
 
-void gic_enable_interrupt(uint32_t intid) {
+void gicEnableInterrupt(uint32_t intid) {
     if (intid < 32) { 
         volatile uint32_t* igroupr0 = (volatile uint32_t*)(GICR_SGI_BASE + 0x0080);
         volatile uint32_t* isenabler0 = (volatile uint32_t*)(GICR_SGI_BASE + 0x0100);
@@ -29,18 +29,18 @@ void gic_enable_interrupt(uint32_t intid) {
     }
 }
 
-uint32_t gic_acknowledge_interrupt(void) {
+uint32_t gicAcknowledgeInterrupt(void) {
     uint32_t iar;
     __asm__ volatile("mrs %0, S3_0_C12_C12_0" : "=r" (iar));
     return iar;
 }
 
-void gic_end_of_interrupt(uint32_t iar) {
+void gicEndOfInterrupt(uint32_t iar) {
     __asm__ volatile("msr S3_0_C12_C12_1, %0" : : "r" (iar));
 }
 
 
-void cpu_exceptions_init(void) {
+void cpuExceptionsInit(void) {
     // Tell CPU where the Exception Vector Table is
     __asm__ volatile("msr vbar_el2, %0" : : "r" (&vector_table));
 
