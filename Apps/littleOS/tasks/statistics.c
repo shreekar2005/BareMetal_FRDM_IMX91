@@ -1,8 +1,8 @@
 // Task_Name : Show/Send Stats
 
 #include <stddef.h>
-#include "include/multitasking.h"
 #include "tasks_include/statistics.h"
+#include "include/multitasking.h"
 #include "include/string.h"
 #include "include/stdio.h"
 #include "include/esp8266.h"
@@ -11,34 +11,8 @@
 static char payload_buffer[2048]={0}; 
 static char raw_esp_response_buffer[512]={0}; 
 static threadStatParams allThreads[MAX_THREADS];
-
-
-static void append_int(char* buf, int val) {
-    char temp[16];
-    int i = 0;
-    if (val == 0) {
-        temp[i++] = '0';
-    } else {
-        if (val < 0) {
-            strcat(buf, "-");
-            val = -val;
-        }
-        while (val > 0) {
-            temp[i++] = (val % 10) + '0';
-            val /= 10;
-        }
-    }
-    int len = strlen(buf);
-    while (i > 0) {
-        buf[len++] = temp[--i];
-    }
-    buf[len] = '\0';
-}
-
-void getTasksInfo(threadStatParams allThreads[]);
-void getEspInfo(espStatParams* espInstance);
-bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
-void build_stats_string(char* buffer, threadStatParams allThreads[], espStatParams espInstance);
+static char* thread_get_state(enum ThreadState state);
+static void append_int(char* buf, int val);
 
 void statistics_thread(void* arg){
     char* cmd_string = (char*)arg;
@@ -192,7 +166,7 @@ void statistics_thread(void* arg){
         strcat(payload_buffer, espInstance.esp_ip[0] != '\0' ? espInstance.esp_ip : "N/A"); strcat(payload_buffer, ",");
         strcat(payload_buffer, espInstance.esp_mac[0] != '\0' ? espInstance.esp_mac : "N/A"); strcat(payload_buffer, "\n");
 
-        esp_tcp_client_send(target_ip, target_port, payload_buffer);
+        esp_sendto_tcp_clients(target_ip, target_port, payload_buffer);
     }
 }
 
@@ -200,7 +174,7 @@ void getTasksInfo(threadStatParams allThreads[])
 {
     for (int i = 0; i < numThreads; i++) {
         allThreads[i].name = threads[i].name;
-        allThreads[i].current_state = get_thread_state_name(threads[i].currentState);
+        allThreads[i].current_state = thread_get_state(threads[i].currentState);
         allThreads[i].deadline = threads[i].deadlineOffset_ms;
         allThreads[i].doneExecs = threads[i].executionsDone;
         allThreads[i].targetExecs = threads[i].executionsTarget; 
@@ -411,4 +385,39 @@ void build_stats_string(char* buffer, threadStatParams allThreads[], espStatPara
     if(espInstance.esp_mac[0] !='\0') strcat(buffer, espInstance.esp_mac);
     else strcat(buffer, "N/A");
     strcat(buffer, "\n");
+}
+
+static void append_int(char* buf, int val) {
+    char temp[16];
+    int i = 0;
+    if (val == 0) {
+        temp[i++] = '0';
+    } else {
+        if (val < 0) {
+            strcat(buf, "-");
+            val = -val;
+        }
+        while (val > 0) {
+            temp[i++] = (val % 10) + '0';
+            val /= 10;
+        }
+    }
+    int len = strlen(buf);
+    while (i > 0) {
+        buf[len++] = temp[--i];
+    }
+    buf[len] = '\0';
+}
+
+static char* thread_get_state(enum ThreadState state) {
+    switch (state) {
+        case STATE_NEW: return "NEW";
+        case STATE_READY: return "READY";
+        case STATE_RUN: return "RUN";
+        case STATE_WAIT_BLOCK: return "BLOCK";
+        case STATE_TERMINATE: return "TERM";
+        case STATE_SUSPEND_READY: return "S_READY";
+        case STATE_SUSPEND_WAIT: return "S_WAIT";
+        default: return "UNKNOWN";
+    }
 }

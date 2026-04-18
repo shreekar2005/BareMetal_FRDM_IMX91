@@ -279,7 +279,7 @@ int print_dbg(const char *format, ...) {
     
     if (is_current_thread_silent()) return 0;
 
-    os_mutex_lock(&print_dbg_mutex); // Ensure only one thread can print to debug console at a time
+    mutex_lock(&print_dbg_mutex); // Ensure only one thread can print to debug console at a time
 
     static char print_dbg_buffer[1024];
     va_list args;
@@ -296,14 +296,14 @@ int print_dbg(const char *format, ...) {
         lpuartPutChar(LPUART1, print_dbg_buffer[i]);
     }
     
-    os_mutex_unlock(&print_dbg_mutex);
+    mutex_unlock(&print_dbg_mutex);
 
     return len;
 }
 
 int send_to_esp(const char *format, ...) {
 
-    os_mutex_lock(&esp_send_mutex); // Ensure only one thread can send data to ESP8266 at a time
+    mutex_lock(&esp_send_mutex); // Ensure only one thread can send data to ESP8266 at a time
 
     static char send_to_esp_buffer[1024];
     va_list args;
@@ -316,14 +316,14 @@ int send_to_esp(const char *format, ...) {
         lpuartPutChar(LPUART4, send_to_esp_buffer[i]);
     }
 
-    os_mutex_unlock(&esp_send_mutex);
+    mutex_unlock(&esp_send_mutex);
 
     return len;
 }
 
 int print_esp(const char *format, ...) {
 
-    os_mutex_lock(&esp_print_mutex); // Ensure only one thread can print ESP responses at a time
+    mutex_lock(&esp_print_mutex); // Ensure only one thread can print ESP responses at a time
 
     static char print_esp_buffer[1024];
     va_list args;
@@ -348,7 +348,7 @@ int print_esp(const char *format, ...) {
         lpuartPutChar(LPUART4, print_esp_buffer[i]);
     }
 
-    os_mutex_unlock(&esp_print_mutex);
+    mutex_unlock(&esp_print_mutex);
 
     return len;
 }

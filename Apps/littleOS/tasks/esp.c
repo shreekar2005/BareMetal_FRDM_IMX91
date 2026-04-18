@@ -54,7 +54,7 @@ void esp_thread(void* arg) {
         if (pass_len < 8) {
             print_dbg("[ESP-Thread] Error: WPA2 passwords MUST be at least 8 characters long!\n");
         } else {
-            init_esp_as_access_point(ssid, pass);
+            esp_init_as_access_point(ssid, pass);
         }
     }
 
@@ -62,13 +62,13 @@ void esp_thread(void* arg) {
         if (arg1[0] == '\0' || arg2[0] == '\0') {
             print_dbg("[ESP-Thread] Error: 'sta-mode' requires both <ssid_name> and <ssid_password>.\n");
         } else {
-            init_esp_as_station(arg1, arg2);
+            esp_init_as_station(arg1, arg2);
         }
     } 
     else if (strcmp(cmd, "tcp-server") == 0) {
         // Use default port 8080 if arg1 is empty
         int port = (arg1[0] != '\0') ? atoi(arg1) : 8080;
-        start_esp_tcp_server(port);
+        esp_start_tcp_server(port);
     } 
     else if (strcmp(cmd, "echo") == 0) {
         // Send everything typed after "echo " over Wi-Fi
@@ -80,7 +80,7 @@ void esp_thread(void* arg) {
         }
     }
     else if (strcmp(cmd, "status") == 0) {
-        print_esp_status();     // Call hardware driver to query module
+        esp_print_status();     // Call hardware driver to query module
     }
     else if (strcmp(cmd, "reboot") == 0) {
         esp_reboot();         // Reboot the ESP8266 module

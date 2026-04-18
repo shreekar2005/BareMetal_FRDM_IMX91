@@ -1,9 +1,6 @@
-#ifndef STATUS_H
-#define STATUS_H
+#ifndef STATISTICS_H
+#define STATISTICS_H
 
-#include "include/multitasking.h"
-#include "SYS_CTR.h"
-#include "include/stdio.h"
 #include <stdbool.h>
 
 typedef struct {
@@ -21,10 +18,17 @@ typedef struct {
     char esp_mac[18];       // 17 chars + null terminator
 } espStatParams;
 
-// Task Entrypoint
-void status_thread(void* arg);
 
+/**
+ * @brief Gathers information about all threads and fills the provided array of threadStatParams
+ * @param allThreads Array of threadStatParams to fill with the gathered information (size should
+ */
 void getTasksInfo(threadStatParams allThreads[]);
+
+/**
+ * @brief Gathers information about the ESP8266 module by sending AT commands and parsing responses
+ * @param espInstance Pointer to an espStatParams struct to fill with the gathered information
+ */
 void getEspInfo(espStatParams* espInstance);
 
 /**
@@ -37,14 +41,12 @@ void getEspInfo(espStatParams* espInstance);
 bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
 
 /**
- * @brief Parses raw AT command output from the ESP8266 into a structured format
- * @param raw_buffer The full string buffer containing the ESP's response
- */
-void parse_esp_response(const char* raw_buffer);
-
-/**
  * @brief Constructs the final payload string from the gathered statistics
+ * @param buffer The array to store the final string
+ * @param allThreads Array of threadStatParams for each thread
+ * @param espInstance The espStatParams instance containing ESP info
  */
 void build_stats_string(char* buffer, threadStatParams allThreads[], espStatParams espInstance);
 
-#endif // STATUS_H
+
+#endif // STATISTICS_H

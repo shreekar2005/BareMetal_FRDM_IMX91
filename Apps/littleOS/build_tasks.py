@@ -78,7 +78,7 @@ def main():
 
         f.write("void init_all_tasks(void) {\n")
         for t in tasks:
-            f.write(f'    {t["id_var"]} = os_create_thread("{t["display"]}", {t["func"]}, NULL);\n')
+            f.write(f'    {t["id_var"]} = thread_create("{t["display"]}", {t["func"]}, NULL);\n')
         f.write("}\n")
 
 if __name__ == "__main__":

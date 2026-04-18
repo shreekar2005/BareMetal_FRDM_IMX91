@@ -11,7 +11,7 @@ static char cmd_history[CLI_HISTORY_SIZE][CMD_BUFFER_SIZE];
 static int cmd_history_head = 0;
 static int cmd_history_count = 0;
 
-void input_thread(void* arg) {
+void cli_thread(void* arg) {
     char cmd_buffer[CMD_BUFFER_SIZE];
     char temp_buffer[CMD_BUFFER_SIZE]; // Saves current typing when browsing cmd_history
     
@@ -99,7 +99,7 @@ void input_thread(void* arg) {
         
         if (c == ASCII_CTRL_C) {
             for (int i = 0; i < numAutotasks; i++) {
-                os_kill_thread(*(autotasks[i].id_ptr));
+                thread_kill(*(autotasks[i].id_ptr));
             }
             print_dbg("^C\n[CLI-Thread] All active background tasks forcefully killed.\n");
             print_dbg("\n[CLI-Thread] > ");

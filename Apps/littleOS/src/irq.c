@@ -6,7 +6,7 @@
 
 static irq_handler_t isr_table[1024] = {0};
 
-void register_irq(uint32_t intid, irq_handler_t handler) {
+void irq_register(uint32_t intid, irq_handler_t handler) {
     if (intid < 1024) {
         isr_table[intid] = handler;
     }

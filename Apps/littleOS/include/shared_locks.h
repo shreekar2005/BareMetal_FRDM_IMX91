@@ -19,11 +19,11 @@ typedef struct {
 /**
  * @brief Attempts to take the lock. If taken, yields the CPU until it becomes available.
  */
-void os_mutex_lock(os_mutex_t* mutex);
+void mutex_lock(os_mutex_t* mutex);
 
 /**
  * @brief Releases the lock (sets value back to 1)
  */
-void os_mutex_unlock(os_mutex_t* mutex);
+void mutex_unlock(os_mutex_t* mutex);
 
 #endif // SHARED_LOCKS_H

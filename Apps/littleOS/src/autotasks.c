@@ -37,13 +37,13 @@ TaskRegistry autotasks[9] = {
 const int numAutotasks = 9;
 
 void init_all_tasks(void) {
-    print100o_thread_id = os_create_thread("Print o's", print100o_thread, NULL);
-    echo_thread_id = os_create_thread("DBG ECHO", echo_thread, NULL);
-    racetest_thread_id = os_create_thread("Race Condition", racetest_thread, NULL);
-    statistics_thread_id = os_create_thread("Show/Send Stats", statistics_thread, NULL);
-    print100X_thread_id = os_create_thread("Print X's", print100X_thread, NULL);
-    esp_thread_id = os_create_thread("ESP Commands", esp_thread, NULL);
-    aprint100A_thread_id = os_create_thread("AtomicPrint A's", aprint100A_thread, NULL);
-    led_thread_id = os_create_thread("LED Control", led_thread, NULL);
-    sonar_thread_id = os_create_thread("Sonar Proximity", sonar_thread, NULL);
+    print100o_thread_id = thread_create("Print o's", print100o_thread, NULL);
+    echo_thread_id = thread_create("DBG ECHO", echo_thread, NULL);
+    racetest_thread_id = thread_create("Race Condition", racetest_thread, NULL);
+    statistics_thread_id = thread_create("Show/Send Stats", statistics_thread, NULL);
+    print100X_thread_id = thread_create("Print X's", print100X_thread, NULL);
+    esp_thread_id = thread_create("ESP Commands", esp_thread, NULL);
+    aprint100A_thread_id = thread_create("AtomicPrint A's", aprint100A_thread, NULL);
+    led_thread_id = thread_create("LED Control", led_thread, NULL);
+    sonar_thread_id = thread_create("Sonar Proximity", sonar_thread, NULL);
 }

@@ -14,67 +14,7 @@ enum SchedAlgo currentSchedAlgo = SCHED_RR;
 // Tracks how long the current thread has been running in its RR slice
 static uint64_t rr_slice_start_tick = 0;
 
-const char* get_thread_state_name(enum ThreadState state) {
-    switch (state) {
-        case STATE_NEW: return "NEW";
-        case STATE_READY: return "READY";
-        case STATE_RUN: return "RUN";
-        case STATE_WAIT_BLOCK: return "BLOCK";
-        case STATE_TERMINATE: return "TERM";
-        case STATE_SUSPEND_READY: return "S_READY";
-        case STATE_SUSPEND_WAIT: return "S_WAIT";
-        default: return "UNKNOWN";
-    }
-}
-
-void os_yield(void) {
-    if (currentThread_idx >= 0 && threads[currentThread_idx].currentState == STATE_RUN) {
-        threads[currentThread_idx].currentState = STATE_READY;
-    }
-    
-    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-    __asm__ volatile("nop");
-}
-
-void thread_sleep(uint32_t ms) {
-    if (currentThread_idx < 0) return;
-    
-    // Safety net for atomic blocks
-    if (!isSchedulingEnabled) {
-        sysctrDelay_ms(ms);
-        return;
-    }
-    
-    uint64_t current_ticks;
-    current_ticks = sysctrGetTicks();
-    uint32_t freq = sysctrGetFreq();
-    uint64_t sleep_ticks = ((uint64_t)freq * ms) / 1000ULL;
-    
-    threads[currentThread_idx].wakeupTick = current_ticks + sleep_ticks;
-    threads[currentThread_idx].currentState = STATE_WAIT_BLOCK;
-    
-    os_yield(); 
-    
-    while(threads[currentThread_idx].currentState == STATE_WAIT_BLOCK) {
-        __asm__ volatile("nop");
-    }
-}
-
-void os_thread_exit(void) {
-    uint64_t end_ticks;
-    end_ticks=sysctrGetTicks();
-    uint32_t freq = sysctrGetFreq();
-    
-    threads[currentThread_idx].lastTurnaroundTime_ms = ((end_ticks - threads[currentThread_idx].lastStartTick) * 1000ULL) / freq;
-    
-    threads[currentThread_idx].currentState = STATE_TERMINATE;
-    os_yield(); 
-    while(1) { __asm__ volatile("wfi"); }
-}
-
-void os_init_scheduler(void) {
+void scheduler_init(void) {
     quantum_ticks = ((uint64_t)sysctrGetFreq() * RR_TIME_QUANTUM_MS) / 1000ULL;
     
     numThreads = 0;
@@ -98,134 +38,13 @@ void os_init_scheduler(void) {
     }
 }
 
-void os_set_scheduling_algo(enum SchedAlgo algo) { currentSchedAlgo = algo; }
-void os_stop_scheduling(void) { isSchedulingEnabled = false; }
-void os_start_scheduling(void) { isSchedulingEnabled = true; }
+void scheduling_start(void) { isSchedulingEnabled = true; }
 
-void os_set_thread_arg(int thread_id, void* arg) {
-    if (thread_id >= 0 && thread_id < numThreads) {
-        threads[thread_id].arg = arg;
-    }
-}
+void scheduling_stop(void) { isSchedulingEnabled = false; }
 
-int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg) {
-    if (numThreads >= MAX_THREADS) return -1;
+void scheduling_set_algo(enum SchedAlgo algo) { currentSchedAlgo = algo; }
 
-    Thread* t = &threads[numThreads];
-    strcpy(t->name, name);
-    t->entrypoint = entrypoint;
-    t->arg = arg;
-    
-    // Default thread parameters
-    t->priority = 128;
-    t->deadlineOffset_ms = -1;
-    t->period_ms = 0;
-    t->executionsTarget = 0;
-    t->executionsDone = 0;
-    t->lastStartTick = 0;
-    t->lastTurnaroundTime_ms = 0;
-    t->wakeupTick = 0;
-    t->is_silent = false;
-    t->currentState = STATE_NEW; 
-
-    numThreads++;
-    return numThreads - 1; 
-}
-
-void os_suspend_thread(int thread_id) {
-    if (thread_id >= 0 && thread_id < numThreads) {
-        if (threads[thread_id].currentState == STATE_WAIT_BLOCK) {
-            threads[thread_id].currentState = STATE_SUSPEND_WAIT;
-        } else {
-            threads[thread_id].currentState = STATE_SUSPEND_READY;
-        }
-    }
-}
-
-void os_kill_thread(int thread_id) {
-    if (thread_id >= 0 && thread_id < numThreads) {
-        threads[thread_id].executionsTarget = 0;
-        threads[thread_id].executionsDone = 0;
-        threads[thread_id].currentState = STATE_TERMINATE;
-    }
-}
-
-void os_set_thread_rtos(int thread_id, int priority, int deadline_ms, uint32_t period_ms, int exec_target) {
-    if (thread_id >= 0 && thread_id < numThreads) {
-        threads[thread_id].priority = priority;
-        threads[thread_id].deadlineOffset_ms = deadline_ms;
-        threads[thread_id].period_ms = period_ms;
-        threads[thread_id].executionsTarget = exec_target;
-        threads[thread_id].executionsDone = 0; 
-    }
-}
-
-void os_thread_start(int thread_id) {
-    if (thread_id >= 0 && thread_id < numThreads) {
-        Thread* t = &threads[thread_id];
-        
-        uint64_t current_ticks;
-        current_ticks = sysctrGetTicks();
-        uint32_t freq = sysctrGetFreq();
-        
-        if (t->deadlineOffset_ms == -1) {
-            t->absoluteDeadlineTick = 0xFFFFFFFFFFFFFFFFULL;
-        } else {
-            uint64_t deadline_ticks = ((uint64_t)freq * t->deadlineOffset_ms) / 1000ULL;
-            t->absoluteDeadlineTick = current_ticks + deadline_ticks;
-        }
-
-        uint64_t period_ticks = ((uint64_t)freq * t->period_ms) / 1000ULL;
-        t->nextPeriodTick = current_ticks + period_ticks;
-
-        if (t->currentState == STATE_NEW || t->currentState == STATE_TERMINATE) {
-            t->cpustate_ptr = (CPUState*)(t->stack + sizeof(t->stack) - sizeof(CPUState));
-            
-            for (int i = 0; i < 30; i++) t->cpustate_ptr->x[i] = 0;
-            t->cpustate_ptr->x[0] = (uint64_t)t->arg;
-            t->cpustate_ptr->lr = (uint64_t)&os_thread_exit;
-            t->cpustate_ptr->pc = (uint64_t)t->entrypoint;
-            t->cpustate_ptr->cpsr = 0x009; 
-            t->cpustate_ptr->sp = (uint64_t)t->cpustate_ptr;
-            
-            // Explicitly zero out the floating point registers
-            t->cpustate_ptr->fpsr = 0;
-            t->cpustate_ptr->fpcr = 0;
-            for (int i = 0; i < 64; i++) t->cpustate_ptr->q[i] = 0;
-            
-            t->lastStartTick = current_ticks;
-            t->executionsDone++;
-        }
-        t->currentState = STATE_READY;
-    }
-}
-
-bool is_current_thread_silent(void) {
-    if (currentThread_idx >= 0 && currentThread_idx < MAX_THREADS) {
-        return threads[currentThread_idx].is_silent;
-    }
-    return false;
-}
-
-void os_set_thread_silent(int thread_id, bool silent) {
-    if (thread_id >= 0 && thread_id < MAX_THREADS) {
-        threads[thread_id].is_silent = silent;
-    }
-}
-
-void os_join_thread(int thread_id) {
-    if (thread_id < 0 || thread_id >= numThreads) return;
-    if (thread_id == currentThread_idx) return; 
-    if (!isSchedulingEnabled) {
-        print_dbg("\n[MULTASKING-Driver] os_join_thread called inside atomic block! Deadlock avoided.\n");
-        return;
-    }
-    while (threads[thread_id].currentState != STATE_TERMINATE && threads[thread_id].currentState != STATE_NEW) {
-        thread_sleep(1);
-    }
-}
-
-CPUState* os_schedule(CPUState* current_cpustate_ptr) {
+CPUState* schedule(CPUState* current_cpustate_ptr) {
     if (numThreads == 0 || !isSchedulingEnabled) return current_cpustate_ptr;
 
     // Save dying/yielding thread state without blindly demoting it
@@ -248,7 +67,7 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
         else if ((threads[i].currentState == STATE_TERMINATE || threads[i].currentState == STATE_NEW) && i != currentThread_idx) {
             if (threads[i].executionsTarget == -1 || threads[i].executionsDone < threads[i].executionsTarget) {
                 if (current_ticks >= threads[i].nextPeriodTick) {
-                    os_thread_start(i); 
+                    thread_start(i); 
                 }
             }
         }
@@ -355,4 +174,192 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
     }
 
     return current_cpustate_ptr; 
+}
+
+
+int thread_create(const char* name, void (*entrypoint)(void*), void* arg) {
+    if (numThreads >= MAX_THREADS) return -1;
+
+    Thread* t = &threads[numThreads];
+    strcpy(t->name, name);
+    t->entrypoint = entrypoint;
+    t->arg = arg;
+    
+    // Default thread parameters
+    t->priority = 128;
+    t->deadlineOffset_ms = -1;
+    t->period_ms = 0;
+    t->executionsTarget = 0;
+    t->executionsDone = 0;
+    t->lastStartTick = 0;
+    t->lastTurnaroundTime_ms = 0;
+    t->wakeupTick = 0;
+    t->is_silent = false;
+    t->currentState = STATE_NEW; 
+
+    numThreads++;
+    return numThreads - 1; 
+}
+
+void thread_set_priority(int thread_id, int priority) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].priority = priority;
+    }
+}
+
+void thread_set_deadline(int thread_id, int deadline_ms) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].deadlineOffset_ms = deadline_ms;
+    }
+}
+
+void thread_set_period(int thread_id, uint32_t period_ms) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].period_ms = period_ms;
+    }
+}
+
+void thread_set_exec_target(int thread_id, int exec_target) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].executionsTarget = exec_target;
+        // Reset the counter so the new target starts fresh
+        threads[thread_id].executionsDone = 0; 
+    }
+}
+
+void thread_set_arg(int thread_id, void* arg) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].arg = arg;
+    }
+}
+
+void thread_set_is_silent(int thread_id, bool silent) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].is_silent = silent;
+    }
+}
+
+void thread_start(int thread_id) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        Thread* t = &threads[thread_id];
+        
+        uint64_t current_ticks;
+        current_ticks = sysctrGetTicks();
+        uint32_t freq = sysctrGetFreq();
+        
+        if (t->deadlineOffset_ms == -1) {
+            t->absoluteDeadlineTick = 0xFFFFFFFFFFFFFFFFULL;
+        } else {
+            uint64_t deadline_ticks = ((uint64_t)freq * t->deadlineOffset_ms) / 1000ULL;
+            t->absoluteDeadlineTick = current_ticks + deadline_ticks;
+        }
+
+        uint64_t period_ticks = ((uint64_t)freq * t->period_ms) / 1000ULL;
+        t->nextPeriodTick = current_ticks + period_ticks;
+
+        if (t->currentState == STATE_NEW || t->currentState == STATE_TERMINATE) {
+            t->cpustate_ptr = (CPUState*)(t->stack + sizeof(t->stack) - sizeof(CPUState));
+            
+            for (int i = 0; i < 30; i++) t->cpustate_ptr->x[i] = 0;
+            t->cpustate_ptr->x[0] = (uint64_t)t->arg;
+            t->cpustate_ptr->lr = (uint64_t)&thread_exit;
+            t->cpustate_ptr->pc = (uint64_t)t->entrypoint;
+            t->cpustate_ptr->cpsr = 0x009; 
+            t->cpustate_ptr->sp = (uint64_t)t->cpustate_ptr;
+            
+            // Explicitly zero out the floating point registers
+            t->cpustate_ptr->fpsr = 0;
+            t->cpustate_ptr->fpcr = 0;
+            for (int i = 0; i < 64; i++) t->cpustate_ptr->q[i] = 0;
+            
+            t->lastStartTick = current_ticks;
+            t->executionsDone++;
+        }
+        t->currentState = STATE_READY;
+    }
+}
+
+void thread_sleep(uint32_t ms) {
+    if (currentThread_idx < 0) return;
+    
+    // Safety net for atomic blocks
+    if (!isSchedulingEnabled) {
+        sysctrDelay_ms(ms);
+        return;
+    }
+    
+    uint64_t current_ticks;
+    current_ticks = sysctrGetTicks();
+    uint32_t freq = sysctrGetFreq();
+    uint64_t sleep_ticks = ((uint64_t)freq * ms) / 1000ULL;
+    
+    threads[currentThread_idx].wakeupTick = current_ticks + sleep_ticks;
+    threads[currentThread_idx].currentState = STATE_WAIT_BLOCK;
+    
+    os_yield(); 
+    
+    while(threads[currentThread_idx].currentState == STATE_WAIT_BLOCK) {
+        __asm__ volatile("nop");
+    }
+}
+
+void os_yield(void) {
+    if (currentThread_idx >= 0 && threads[currentThread_idx].currentState == STATE_RUN) {
+        threads[currentThread_idx].currentState = STATE_READY;
+    }
+    
+    __asm__ volatile("msr cntp_tval_el0, %0" : : "r" (1));
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+    __asm__ volatile("nop");
+}
+
+void thread_join(int thread_id) {
+    if (thread_id < 0 || thread_id >= numThreads) return;
+    if (thread_id == currentThread_idx) return; 
+    if (!isSchedulingEnabled) {
+        print_dbg("\n[MULTASKING-Driver] thread_join called inside atomic block! Deadlock avoided.\n");
+        return;
+    }
+    while (threads[thread_id].currentState != STATE_TERMINATE && threads[thread_id].currentState != STATE_NEW) {
+        thread_sleep(1);
+    }
+}
+
+void thread_suspend(int thread_id) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        if (threads[thread_id].currentState == STATE_WAIT_BLOCK) {
+            threads[thread_id].currentState = STATE_SUSPEND_WAIT;
+        } else {
+            threads[thread_id].currentState = STATE_SUSPEND_READY;
+        }
+    }
+}
+
+void thread_kill(int thread_id) {
+    if (thread_id >= 0 && thread_id < numThreads) {
+        threads[thread_id].executionsTarget = 0;
+        threads[thread_id].executionsDone = 0;
+        threads[thread_id].currentState = STATE_TERMINATE;
+    }
+}
+
+void thread_exit(void) {
+    uint64_t end_ticks;
+    end_ticks=sysctrGetTicks();
+    uint32_t freq = sysctrGetFreq();
+    
+    threads[currentThread_idx].lastTurnaroundTime_ms = ((end_ticks - threads[currentThread_idx].lastStartTick) * 1000ULL) / freq;
+    
+    threads[currentThread_idx].currentState = STATE_TERMINATE;
+    os_yield(); 
+    while(1) { __asm__ volatile("wfi"); }
+}
+
+
+bool is_current_thread_silent(void) {
+    if (currentThread_idx >= 0 && currentThread_idx < MAX_THREADS) {
+        return threads[currentThread_idx].is_silent;
+    }
+    return false;
 }

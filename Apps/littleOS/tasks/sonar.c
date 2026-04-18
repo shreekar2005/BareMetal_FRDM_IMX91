@@ -54,7 +54,7 @@ void sonar_thread(void* arg) {
 
 
 static uint32_t sonar_read_mm(void) {
-    os_stop_scheduling(); // stopping scheduling for precise timing control
+    scheduling_stop(); // stopping scheduling for precise timing control
 
     // 10-microsecond HIGH pulse
     gpioWrite(GPIO2, ULTRASONIC_TRIG_PIN, HIGH);
@@ -66,7 +66,7 @@ static uint32_t sonar_read_mm(void) {
     
     while (gpioRead(GPIO2, ULTRASONIC_ECHO_PIN) == LOW) {
         if ((sysctrGetTicks() - timeout_start) > timeout_limit) {
-            os_start_scheduling(); // start scheduling before returning
+            scheduling_start(); // start scheduling before returning
             return 0xFFFFFFFF; 
         }
     }
@@ -75,14 +75,14 @@ static uint32_t sonar_read_mm(void) {
     // Wait for Echo pin to go LOW
     while (gpioRead(GPIO2, ULTRASONIC_ECHO_PIN) == HIGH) {
         if ((sysctrGetTicks() - start_time) > timeout_limit) {
-            os_start_scheduling(); // start scheduling before returning
+            scheduling_start(); // start scheduling before returning
             return 0xFFFFFFFF; 
         }
     }
 
     uint64_t end_time = sysctrGetTicks();
     
-    os_start_scheduling(); // start scheduling
+    scheduling_start(); // start scheduling
 
     uint64_t total_ticks = end_time - start_time;
     uint32_t duration_us = (total_ticks * 1000000ULL) / sysctrGetFreq();

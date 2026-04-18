@@ -1,7 +1,7 @@
 #include "include/shared_locks.h"
 #include "include/multitasking.h"
 
-void os_mutex_lock(os_mutex_t* mutex) {
+void mutex_lock(os_mutex_t* mutex) {
     int expected;
     
     while (1) {
@@ -22,7 +22,7 @@ void os_mutex_lock(os_mutex_t* mutex) {
     }
 }
 
-void os_mutex_unlock(os_mutex_t* mutex) {
+void mutex_unlock(os_mutex_t* mutex) {
     // Atomically push a 1 back into memory to free the lock.
     __atomic_store_n(&mutex->value, 1, __ATOMIC_RELEASE);
 }

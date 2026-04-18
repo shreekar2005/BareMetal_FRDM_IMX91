@@ -10,7 +10,7 @@
 #include "include/irq.h"
 #include "include/shared_locks.h"
 
-os_mutex_t esp_transaction_mutex = OS_MUTEX_INITIALIZER; // Mutex to protect ESP transactions
+os_mutex_t esp_transaction_mutex = OS_MUTEX_INITIALIZER;
 
 // ----------------------------------- RING BUFFER ARCHITECTURE and ISR START-----------------------------------
 
@@ -77,7 +77,7 @@ CPUState* lpuart4_rx_isr(CPUState* current_state) {
 // -----------------------------------RING BUFFER ARCHITECTURE and ISR END-----------------------------------
 
 void esp_init(void) {
-    register_irq(IMX91_LPUART4_IRQ_ID, lpuart4_rx_isr);
+    irq_register(IMX91_LPUART4_IRQ_ID, lpuart4_rx_isr);
     gicEnableInterrupt(IMX91_LPUART4_IRQ_ID);
     LPUART4->CTRL |= (1 << 21);
 }
@@ -158,7 +158,7 @@ static bool wait_for_esp_ok(uint32_t timeout_sec) {
 }
 
 void esp_reboot(void) {
-    os_mutex_lock(&esp_transaction_mutex); // LOCK
+    mutex_lock(&esp_transaction_mutex); // LOCK
 
     print_dbg("[ESP-Driver] Sending software reset command to ESP8266...\n");
     send_to_esp("AT+RST\r\n");
@@ -173,16 +173,16 @@ void esp_reboot(void) {
     }
     print_dbg("[ESP-Driver] ESP8266 reboot complete.\n");
 
-    os_mutex_unlock(&esp_transaction_mutex); // UNLOCK
+    mutex_unlock(&esp_transaction_mutex); // UNLOCK
 }
 
-void print_esp_status(void) {
-    os_mutex_lock(&esp_transaction_mutex); // LOCK
+void esp_print_status(void) {
+    mutex_lock(&esp_transaction_mutex); // LOCK
 
     send_to_esp("AT\r\n");
     if (wait_for_esp_ok(3) == false) {
         print_dbg("[ESP-Driver] Failed to communicate.\n");
-        os_mutex_unlock(&esp_transaction_mutex);
+        mutex_unlock(&esp_transaction_mutex);
         return;
     }
 
@@ -202,11 +202,11 @@ void print_esp_status(void) {
     send_to_esp("AT+CIFSR\r\n");
     wait_for_esp_ok(3);
 
-    os_mutex_unlock(&esp_transaction_mutex); // UNLOCK
+    mutex_unlock(&esp_transaction_mutex); // UNLOCK
 }
 
-void init_esp_as_access_point(const char* ssid, const char* password) {
-    os_mutex_lock(&esp_transaction_mutex); // LOCK
+void esp_init_as_access_point(const char* ssid, const char* password) {
+    mutex_lock(&esp_transaction_mutex); // LOCK
 
     print_dbg("[ESP-Driver] Initializing ESP8266 in Access Point Mode...\n");
     send_to_esp("AT\r\n");
@@ -219,16 +219,16 @@ void init_esp_as_access_point(const char* ssid, const char* password) {
     if (wait_for_esp_ok(10)==false) goto ap_error;
     
     print_dbg("[ESP-Driver] Access Point '%s' is now broadcasting.\n", ssid);
-    os_mutex_unlock(&esp_transaction_mutex);
+    mutex_unlock(&esp_transaction_mutex);
     return;
 
 ap_error:
     print_dbg("[ESP-Driver] Access Point configuration failed.\n");
-    os_mutex_unlock(&esp_transaction_mutex);
+    mutex_unlock(&esp_transaction_mutex);
 }
 
-void init_esp_as_station(const char* ssid, const char* password) {
-    os_mutex_lock(&esp_transaction_mutex); // LOCK
+void esp_init_as_station(const char* ssid, const char* password) {
+    mutex_lock(&esp_transaction_mutex); // LOCK
 
     print_dbg("[ESP-Driver] Initializing ESP8266 in Station Mode...\n");
     send_to_esp("AT\r\n");
@@ -242,16 +242,16 @@ void init_esp_as_station(const char* ssid, const char* password) {
     if (wait_for_esp_ok(20)==false) goto sta_error;
     
     print_dbg("[ESP-Driver] Station connection sequence complete.\n");
-    os_mutex_unlock(&esp_transaction_mutex);
+    mutex_unlock(&esp_transaction_mutex);
     return;
 
 sta_error:
     print_dbg("[ESP-Driver] Station configuration failed.\n");
-    os_mutex_unlock(&esp_transaction_mutex);
+    mutex_unlock(&esp_transaction_mutex);
 }
 
-void start_esp_tcp_server(int port) {
-    os_mutex_lock(&esp_transaction_mutex); // LOCK
+void esp_start_tcp_server(int port) {
+    mutex_lock(&esp_transaction_mutex); // LOCK
 
     print_dbg("[ESP-Driver] Starting TCP Server on port %d...\n", port);
     send_to_esp("AT+CIPMUX=1\r\n");
@@ -267,16 +267,16 @@ void start_esp_tcp_server(int port) {
     wait_for_esp_ok(5);
 
     print_dbg("[ESP-Driver] TCP Server is running and listening!\n");
-    os_mutex_unlock(&esp_transaction_mutex);
+    mutex_unlock(&esp_transaction_mutex);
     return;
 
 tcp_error:
     print_dbg("[ESP-Driver] Failed to start TCP server.\n");
-    os_mutex_unlock(&esp_transaction_mutex);
+    mutex_unlock(&esp_transaction_mutex);
 }
 
-void esp_tcp_client_send(const char* ip, int port, const char* payload) {
-    os_mutex_lock(&esp_transaction_mutex); // LOCK
+void esp_sendto_tcp_clients(const char* ip, int port, const char* payload) {
+    mutex_lock(&esp_transaction_mutex); // LOCK
 
     print_dbg("[ESP-Driver] Sending TCP data to %s:%d...\n", ip, port);
     send_to_esp("AT+CIPMUX=1\r\n");
@@ -287,7 +287,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
         print_dbg("[ESP-Driver] Failed to connect to remote server.\n");
         send_to_esp("AT+CIPCLOSE=4\r\n"); 
         wait_for_esp_ok(3);
-        os_mutex_unlock(&esp_transaction_mutex); // Safe Error Release
+        mutex_unlock(&esp_transaction_mutex); // Safe Error Release
         return;
     }
 
@@ -332,7 +332,7 @@ void esp_tcp_client_send(const char* ip, int port, const char* payload) {
     }
     
     print_dbg("[ESP-Driver] TCP data sent successfully.\n");
-    os_mutex_unlock(&esp_transaction_mutex); // UNLOCK
+    mutex_unlock(&esp_transaction_mutex); // UNLOCK
 }
 
 void espTCPServerListener_thread(void *arg) {

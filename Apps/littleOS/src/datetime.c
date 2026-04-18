@@ -116,7 +116,7 @@ void datetime_sync(const char* arg1, const char* arg2) {
     
     print_dbg("[DATETIME-Thread] Requesting time sync from %s:%d...\n", target_ip, target_port);
     
-    esp_tcp_client_send(target_ip, target_port, "GET_TIME\n");
+    esp_sendto_tcp_clients(target_ip, target_port, "GET_TIME\n");
     
     print_dbg("[DATETIME-Thread] Awaiting callback from server...\n");
 }

@@ -4,10 +4,10 @@
 #include "include/stdio.h"
 
 void aprint100A_thread(void* arg) {
-    os_stop_scheduling();
+    scheduling_stop();
     for(int i = 0; i < 100; i++) {
         print_dbg("A");
         thread_sleep(50); // Auto-downgrades to busy-wait safely!
     }
-    os_start_scheduling();
+    scheduling_start();
 }

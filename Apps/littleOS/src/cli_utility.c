@@ -30,7 +30,7 @@ void handleCommand(const char* cmd) {
         while (*arg == ' ') arg++;
         if (strcmp(arg, "all") == 0) {
             for (int i = 0; i < numAutotasks; i++) {
-                os_kill_thread(*(autotasks[i].id_ptr));
+                thread_kill(*(autotasks[i].id_ptr));
             }
             print_dbg("[CLI-Thread] All active background tasks forcefully killed.\n");
         } 
@@ -38,7 +38,7 @@ void handleCommand(const char* cmd) {
             int user_target_id = atoi(arg);
             if (user_target_id >= 1 && user_target_id <= MAX_THREADS) {
                 int internal_array_index = user_target_id - 1;
-                os_kill_thread(internal_array_index);
+                thread_kill(internal_array_index);
                 print_dbg("[CLI-Thread] Thread %d forcefully killed.\n", user_target_id);
             } else {
                 print_dbg("[CLI-Thread] Error: Thread ID must be between 1 and %d.\n", MAX_THREADS);
@@ -60,15 +60,15 @@ void handleCommand(const char* cmd) {
     }
     else if (strncmp(cmd, "sched", 5) == 0) {
         if (strcmp(cmd, "sched rr") == 0) {
-            os_set_scheduling_algo(SCHED_RR);
+            scheduling_set_algo(SCHED_RR);
             print_dbg("[CLI-Thread] Scheduler set to Round Robin.\n");
         }
         else if (strcmp(cmd, "sched pri") == 0) {
-            os_set_scheduling_algo(SCHED_PRIORITY);
+            scheduling_set_algo(SCHED_PRIORITY);
             print_dbg("[CLI-Thread] Scheduler set to Priority.\n");
         }
         else if (strcmp(cmd, "sched edf") == 0) {
-            os_set_scheduling_algo(SCHED_EDF);
+            scheduling_set_algo(SCHED_EDF);
             print_dbg("[CLI-Thread] Scheduler set to EDF.\n");
         }
         else {
@@ -97,7 +97,7 @@ void handleCommand(const char* cmd) {
         }
         
         if (targetID != -1) {
-            os_kill_thread(targetID); // Kill any existing instance of the thread before starting a new one with updated args
+            thread_kill(targetID); // Kill any existing instance of the thread before starting a new one with updated args
             int buf_idx = 0;
             while(cmd[i] == ' ') i++; 
             if (cmd[i] == '"') {
@@ -114,7 +114,7 @@ void handleCommand(const char* cmd) {
             thread_arg_buffer[targetID][buf_idx] = '\0';
             
             // Link the thread to its new dedicated argument mailbox
-            os_set_thread_arg(targetID, (void*)thread_arg_buffer[targetID]);
+            thread_set_arg(targetID, (void*)thread_arg_buffer[targetID]);
             
             // PARSE FLAGS
             int n = get_flag_int(cmd, "-n ", 1);
@@ -130,9 +130,12 @@ void handleCommand(const char* cmd) {
                 }
             }
             
-            os_set_thread_rtos(targetID, pri, d, per, n);
-            os_set_thread_silent(targetID, silent_mode);
-            os_thread_start(targetID); 
+            thread_set_priority(targetID, pri);
+            thread_set_deadline(targetID, d);
+            thread_set_period(targetID, per);
+            thread_set_exec_target(targetID, n);
+            thread_set_is_silent(targetID, silent_mode);
+            thread_start(targetID);
             
         } else {
             print_dbg("[CLI-Thread] Unknown command. Type 'help' for options.\n");

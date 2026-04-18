@@ -11,7 +11,7 @@ typedef CPUState* (*irq_handler_t)(CPUState*);
  * @param intid The interrupt ID (e.g., 30 for the timer, 101 for LPUART4 RX, etc.)
  * @param handler The function pointer to the handler that should be executed when this interrupt fires. The handler must match the signature: CPUState* handler(CPUState* current_state);
  */
-void register_irq(uint32_t intid, irq_handler_t handler);
+void irq_register(uint32_t intid, irq_handler_t handler);
 
 /**
  * @brief Centralized IRQ Dispatcher called from the assembly vector.S when any physical IRQ fires. It reads the interrupt ID from the GIC, looks up the corresponding handler in the isr_table, executes it, and then signals end of interrupt to the GIC before returning the next CPU state to execute.

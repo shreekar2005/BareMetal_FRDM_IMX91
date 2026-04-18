@@ -62,7 +62,7 @@ int main() {
     print_dbg("[littleOS] Welcome TO littleOS RTOS :)\n");
 
     print_dbg("[Boot] Initializing Scheduler...\n");
-    os_init_scheduler(); // Note: isSchedulingEnabled is set to false here. 
+    scheduler_init(); // Note: isSchedulingEnabled is set to false here. 
 
     print_dbg("[Boot] Initializing Task Registry...\n");
     init_all_tasks();
@@ -71,19 +71,28 @@ int main() {
     esp_init();
 
     print_dbg("[Boot] Creating System RTC Daemon...\n");
-    int rtc_thread_id = os_create_thread("RTC_Daemon", datetime_ticker_thread, NULL);
-    os_set_thread_rtos(rtc_thread_id, 128, -1, 0, -1);
-    os_thread_start(rtc_thread_id);
+    int rtc_thread_id = thread_create("RTC_Daemon", datetime_ticker_thread, NULL);
+    thread_set_priority(rtc_thread_id, 128);
+    thread_set_deadline(rtc_thread_id, -1);
+    thread_set_period(rtc_thread_id, 0);
+    thread_set_exec_target(rtc_thread_id, 0);
+    thread_start(rtc_thread_id);
 
     print_dbg("[Boot] Creating WiFi Listener Thread...\n");
-    int wifi_listener_thread_id = os_create_thread("ESPWiFiListener", espTCPServerListener_thread, NULL);
-    os_set_thread_rtos(wifi_listener_thread_id, 128, -1, 0, 1);
-    os_thread_start(wifi_listener_thread_id);
+    int wifi_listener_thread_id = thread_create("ESPWiFiListener", espTCPServerListener_thread, NULL);
+    thread_set_priority(wifi_listener_thread_id, 128);
+    thread_set_deadline(wifi_listener_thread_id, -1);
+    thread_set_period(wifi_listener_thread_id, 0);
+    thread_set_exec_target(wifi_listener_thread_id, 0);
+    thread_start(wifi_listener_thread_id);
 
     print_dbg("[Boot] Creating CLI Thread...\n");
-    int cli_thread_id = os_create_thread("CLI", input_thread, NULL);
-    os_set_thread_rtos(cli_thread_id, 128, -1, 0, 1);
-    os_thread_start(cli_thread_id);
+    int cli_thread_id = thread_create("CLI", cli_thread, NULL);
+    thread_set_priority(cli_thread_id, 128);
+    thread_set_deadline(cli_thread_id, -1);
+    thread_set_period(cli_thread_id, 0);
+    thread_set_exec_target(cli_thread_id, 0);
+    thread_start(cli_thread_id);
     
     print_dbg("[Boot] Setup complete! Starting Threads...\n");
     

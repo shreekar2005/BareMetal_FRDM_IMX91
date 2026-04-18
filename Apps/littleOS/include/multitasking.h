@@ -82,15 +82,33 @@ extern bool isSchedulingEnabled; // global flag to control preemptive switching
 extern enum SchedAlgo currentSchedAlgo; // current active scheduling algorithm 
 
 /**
- * @brief Initializes the hardware timer to generate periodic interrupts.
- * @param period_ms The interrupt frequency in milliseconds.
- */
-void os_timer_init(int period_ms);
-
-/**
  * @brief zeros out the thread array and resets scheduler state
  */
-void os_init_scheduler(void);
+void scheduler_init(void);
+
+/**
+ * @brief resumes normal time slicing
+ */
+void scheduling_start(void);
+
+/**
+ * @brief pauses the scheduler so current thread keeps cpu exclusively
+ */
+void scheduling_stop(void);
+
+/**
+ * @brief changes the active scheduling algorithm on the fly
+ * @param algo the algorithm to switch to (SCHED_RR, SCHED_PRIORITY, SCHED_EDF)
+ */
+void scheduling_set_algo(enum SchedAlgo algo);
+
+/**
+ * @brief called by hardware timer to swap registers based on active algorithm
+ * @param current_state registers of dying thread
+ * @return registers of new thread
+ */
+CPUState* schedule(CPUState* current_state);
+
 
 /**
  * @brief creates dormant thread with a name in memory
@@ -99,46 +117,55 @@ void os_init_scheduler(void);
  * @param arg params
  * @return assigned thread id
  */
-int os_create_thread(const char* name, void (*entrypoint)(void*), void* arg); 
+int thread_create(const char* name, void (*entrypoint)(void*), void* arg); 
 
 /**
- * @brief configures rtos scheduling parameters for a task
+ * @brief Sets the priority for a specific thread
  * @param thread_id id to modify
  * @param priority 0 is highest, lower number means higher priority
+ */
+void thread_set_priority(int thread_id, int priority);
+
+/**
+ * @brief Sets the execution deadline for a specific thread
+ * @param thread_id id to modify
  * @param deadline_ms milliseconds it has to complete once started
+ */
+void thread_set_deadline(int thread_id, int deadline_ms);
+
+/**
+ * @brief Sets the periodicity for a specific thread
+ * @param thread_id id to modify
  * @param period_ms how often it repeats (0 for one-shot)
+ */
+void thread_set_period(int thread_id, uint32_t period_ms);
+
+/**
+ * @brief Sets the execution target for a specific thread
+ * @param thread_id id to modify
  * @param exec_target number of times to run (-1 for infinite)
  */
-void os_set_thread_rtos(int thread_id, int priority, int deadline_ms, uint32_t period_ms, int exec_target);
+void thread_set_exec_target(int thread_id, int exec_target);
 
 /**
  * @brief Updates the argument pointer for a specific thread.
+ * @param thread_id id to modify
+ * @param arg new argument pointer to pass when thread starts
  */
-void os_set_thread_arg(int thread_id, void* arg);
+void thread_set_arg(int thread_id, void* arg);
+
+/**
+ * @brief sets the is_silent status for a specific thread
+ * @param thread_id id of the thread to modify
+ * @param is_silent true to mute the thread, false to unmute
+ */
+void thread_set_is_silent(int thread_id, bool is_silent);
 
 /**
  * @brief if NEW or TERMINATED, wakes up a thread, calculating its absolute deadline and resetting stack
  * @param thread_id id to wake up
  */
-void os_thread_start(int thread_id);
-
-/**
- * @brief blocks the calling thread until the target thread finishes execution
- * @param thread_id id of the thread to wait for
- */
-void os_join_thread(int thread_id);
-
-/**
- * @brief puts thread to sleep
- * @param thread_id id to pause
- */
-void os_suspend_thread(int thread_id);
-
-/**
- * @brief forcefully and immediately terminates a thread mid-execution
- * @param thread_id id of the thread to kill
- */
-void os_kill_thread(int thread_id);
+void thread_start(int thread_id);
 
 /**
  * @brief blocks the current thread for a specific time, yielding the cpu to other threads
@@ -147,56 +174,37 @@ void os_kill_thread(int thread_id);
 void thread_sleep(uint32_t ms);
 
 /**
- * @brief checks if the current thread is currently muted for print_dbg
- * @return true if thread is silent, false otherwise
- */
-bool is_current_thread_silent(void);
-
-/**
- * @brief sets the silent status for a specific thread
- * @param thread_id id of the thread to modify
- * @param silent true to mute the thread, false to unmute
- */
-void os_set_thread_silent(int thread_id, bool silent);
-
-/**
  * @brief gives up remaining time slice immediately
  */
 void os_yield(void);
 
 /**
- * @brief pauses the scheduler so current thread keeps cpu exclusively
+ * @brief blocks the calling thread until the target thread finishes execution
+ * @param thread_id id of the thread to wait for
  */
-void os_stop_scheduling(void);
+void thread_join(int thread_id);
 
 /**
- * @brief resumes normal time slicing
+ * @brief puts thread to sleep
+ * @param thread_id id to pause
  */
-void os_start_scheduling(void);
+void thread_suspend(int thread_id);
 
 /**
- * @brief changes the active scheduling algorithm on the fly
- * @param algo the algorithm to switch to (SCHED_RR, SCHED_PRIORITY, SCHED_EDF)
+ * @brief forcefully and immediately terminates a thread mid-execution
+ * @param thread_id id of the thread to kill
  */
-void os_set_scheduling_algo(enum SchedAlgo algo);
-
-/**
- * @brief called by hardware timer to swap registers based on active algorithm
- * @param current_state registers of dying thread
- * @return registers of new thread
- */
-CPUState* os_schedule(CPUState* current_state);
+void thread_kill(int thread_id);
 
 /**
  * @brief kills thread gracefully when its function returns
  */
-void os_thread_exit(void);
+void thread_exit(void);
 
 /**
- * @brief returns a string representation of the thread state
- * @param state the ThreadState enum value
- * @return human readable string of the state
+ * @brief checks if the current thread is currently muted for print_dbg
+ * @return true if thread is is_silent, false otherwise
  */
-const char* get_thread_state_name(enum ThreadState state);
+bool is_current_thread_silent(void);
 
 #endif

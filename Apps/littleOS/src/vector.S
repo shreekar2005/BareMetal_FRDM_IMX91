@@ -1,7 +1,7 @@
 // These symbols are defined in other files
 .extern irq_dispatcher
 .extern os_fatal_error
-.extern os_schedule
+.extern schedule
 
 // These functions are meant to used in other files
 .global vector_table
@@ -225,6 +225,6 @@ common_trap:
 
 __os_start_asm:
     mov x0, #0
-    bl os_schedule
+    bl schedule
     mov sp, x0 
     RESTORE_CONTEXT

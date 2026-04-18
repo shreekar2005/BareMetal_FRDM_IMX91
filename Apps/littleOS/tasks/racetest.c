@@ -16,9 +16,9 @@ void func_inc(void* arg) {
 }
 void func_inc_mutex(void* arg) {
     for(volatile int i = 0; i < 10000000; i++) {
-        os_mutex_lock(&race_mutex);
+        mutex_lock(&race_mutex);
         shared_counter++; 
-        os_mutex_unlock(&race_mutex);
+        mutex_unlock(&race_mutex);
     }
 }
 
@@ -30,29 +30,29 @@ void racetest_thread(void* arg) {
     static int t4 = -1;
 
     if (t1 == -1) {
-        t1 = os_create_thread("Race-Slave1", func_inc, NULL);
-        t2 = os_create_thread("Race-Slave2", func_inc, NULL);
-        t3 = os_create_thread("Race-Slave3", func_inc_mutex, NULL);
-        t4 = os_create_thread("Race-Slave4", func_inc_mutex, NULL);
+        t1 = thread_create("Race-Slave1", func_inc, NULL);
+        t2 = thread_create("Race-Slave2", func_inc, NULL);
+        t3 = thread_create("Race-Slave3", func_inc_mutex, NULL);
+        t4 = thread_create("Race-Slave4", func_inc_mutex, NULL);
     }
 
     print_dbg("[RACE-Thread] Starting race condition test...\n");
     print_dbg("[RACE-Thread] Expected: 20000000\n");
 
     shared_counter = 0;
-    os_thread_start(t1);
-    os_thread_start(t2);
-    os_join_thread(t1);
-    os_join_thread(t2);
+    thread_start(t1);
+    thread_start(t2);
+    thread_join(t1);
+    thread_join(t2);
     
     loss= 20000000 - shared_counter;
     print_dbg("[RACE-Thread] Outcome : %d, LOSS=%d - by two threads without mutex\n", shared_counter, loss);
 
     shared_counter = 0;
-    os_thread_start(t3);
-    os_thread_start(t4);
-    os_join_thread(t3);
-    os_join_thread(t4);
+    thread_start(t3);
+    thread_start(t4);
+    thread_join(t3);
+    thread_join(t4);
     
     loss= 20000000 - shared_counter;
     print_dbg("[RACE-Thread] Outcome : %d, LOSS=%d - by two threads with mutex\n", shared_counter, loss);
