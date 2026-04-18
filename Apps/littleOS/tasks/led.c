@@ -74,7 +74,8 @@ void led_thread(void* arg) {
             while (1) {
                 delay_ms = ledblink_delay_ms; // recalculate in case delay was changed externally
                 gpioWrite(GPIO2, BUILTIN_RED_LED, HIGH);
-                thread_sleep(delay_ms);
+                if(delay_ms<100) thread_sleep(delay_ms);
+                else thread_sleep(100);
                 gpioWrite(GPIO2, BUILTIN_RED_LED, LOW);
                 thread_sleep(delay_ms);
             }
@@ -82,7 +83,8 @@ void led_thread(void* arg) {
             while (1) {
                 delay_ms = ledblink_delay_ms; // recalculate in case delay was changed externally
                 gpioWrite(GPIO2, BUILTIN_GREEN_LED, HIGH);
-                thread_sleep(delay_ms);
+                if(delay_ms<100) thread_sleep(delay_ms);
+                else thread_sleep(100);
                 gpioWrite(GPIO2, BUILTIN_GREEN_LED, LOW);
                 thread_sleep(delay_ms);
             }
@@ -90,7 +92,8 @@ void led_thread(void* arg) {
             while (1) {
                 delay_ms = ledblink_delay_ms; // recalculate in case delay was changed externally
                 gpioWrite(GPIO2, BUILTIN_BLUE_LED, HIGH);
-                thread_sleep(delay_ms);
+                if(delay_ms<100) thread_sleep(delay_ms);
+                else thread_sleep(100);
                 gpioWrite(GPIO2, BUILTIN_BLUE_LED, LOW);
                 thread_sleep(delay_ms);
             }

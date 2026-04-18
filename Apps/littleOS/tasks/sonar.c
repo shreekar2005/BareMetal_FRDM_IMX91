@@ -49,7 +49,6 @@ void sonar_thread(void* arg) {
             }
         }
         
-        // sleep between 2 outputs
         thread_sleep(100);
     }
 }

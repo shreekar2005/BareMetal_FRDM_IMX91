@@ -97,6 +97,7 @@ void handleCommand(const char* cmd) {
         }
         
         if (targetID != -1) {
+            os_kill_thread(targetID); // Kill any existing instance of the thread before starting a new one with updated args
             int buf_idx = 0;
             while(cmd[i] == ' ') i++; 
             if (cmd[i] == '"') {
