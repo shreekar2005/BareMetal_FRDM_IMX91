@@ -122,7 +122,6 @@ CPUState* schedule(CPUState* current_cpustate_ptr) {
             
             if (threads[i].currentState == STATE_READY || threads[i].currentState == STATE_RUN) {
                 // Because we use strictly less than '<', the FIRST thread we find with the 
-                // best priority wins. Thanks to our circular scan, ties are broken in RR order.
                 if (threads[i].priority < highest_pri) {
                     highest_pri = threads[i].priority;
                     best_thread = i;
@@ -153,8 +152,7 @@ CPUState* schedule(CPUState* current_cpustate_ptr) {
             int i = (start_idx + count) % numThreads;
             
             if (threads[i].currentState == STATE_READY || threads[i].currentState == STATE_RUN) {
-                // Strict '<' ensures ties go to the first one encountered in our circular path
-                if (threads[i].absoluteDeadlineTick < earliest_deadline) {
+                if (best_thread == -1 || threads[i].absoluteDeadlineTick < earliest_deadline) {
                     earliest_deadline = threads[i].absoluteDeadlineTick;
                     best_thread = i;
                 }
