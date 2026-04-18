@@ -117,7 +117,7 @@ void os_set_thread_rtos(int thread_id, int priority, int deadline_ms, uint32_t p
 void os_set_thread_arg(int thread_id, void* arg);
 
 /**
- * @brief wakes up a thread, calculating its absolute deadline and resetting stack if dead
+ * @brief if NEW or TERMINATED, wakes up a thread, calculating its absolute deadline and resetting stack
  * @param thread_id id to wake up
  */
 void os_thread_start(int thread_id);

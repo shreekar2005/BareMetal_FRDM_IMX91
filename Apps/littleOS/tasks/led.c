@@ -5,13 +5,13 @@
 #include "include/multitasking.h"
 #include "include/stdio.h"
 
+#define GREEN_LED 4  // GPIO2_04
+#define BLUE_LED  12 // GPIO2_12
 #define RED_LED   13 // GPIO2_13 
-#define GREEN_LED 2  // GPIO2_02
-#define BLUE_LED // dont know about this... have to search
 
 int ledblink_frequency_hz = 1; // default 1 Hz
 
-void ledblink_thread(void* arg) {
+void led_thread(void* arg) {
     char* cmd_string = (char*)arg;
     if (cmd_string == NULL) return;
 
@@ -27,10 +27,6 @@ void ledblink_thread(void* arg) {
         cmd[i++] = cmd_string[ptr++];
     }
     cmd[i] = '\0';
-
-    // NOT SURE IF WE NEED THIS OR NOT
-    int remainder_ptr = ptr;
-    while (cmd_string[remainder_ptr] == ' ') remainder_ptr++; 
 
     // arg1 (color)
     i = 0;
@@ -54,7 +50,7 @@ void ledblink_thread(void* arg) {
         } else if (strcmp(arg1, "green") == 0) {
             gpioWrite(GPIO2, GREEN_LED, HIGH);
         } else if (strcmp(arg1, "blue") == 0) {
-            //gpioWrite(GPIO2, BLUE_LED, HIGH); // dont know about this... have to search
+            gpioWrite(GPIO2, BLUE_LED, HIGH);
         } else {
             print_dbg("[LED-Thread] Unknown color: %s\n", arg1);
         }
@@ -66,7 +62,7 @@ void ledblink_thread(void* arg) {
         } else if (strcmp(arg1, "green") == 0) {
             gpioWrite(GPIO2, GREEN_LED, LOW);
         } else if (strcmp(arg1, "blue") == 0) {
-            //gpioWrite(GPIO2, BLUE_LED, LOW); // dont know about this... have to search
+            gpioWrite(GPIO2, BLUE_LED, LOW);
         } else {
             print_dbg("[LED-Thread] Unknown color: %s\n", arg1);
         }
@@ -95,9 +91,9 @@ void ledblink_thread(void* arg) {
         } else if (strcmp(arg1, "blue") == 0) {
             while (1) {
                 delay_ms = 500 / ledblink_frequency_hz; // recalculate in case frequency was changed externally
-                // gpioWrite(GPIO2, BLUE_LED, HIGH); // dont know about this... have to search
+                gpioWrite(GPIO2, BLUE_LED, HIGH);
                 thread_sleep(delay_ms);
-                // gpioWrite(GPIO2, BLUE_LED, LOW); // dont know about this... have to search
+                gpioWrite(GPIO2, BLUE_LED, LOW);
                 thread_sleep(delay_ms);
             }
         } else {
@@ -113,12 +109,4 @@ void ledblink_thread(void* arg) {
         print_dbg("[LED-Thread] Colors: red, green, blue\n");
         print_dbg("[LED-Thread] Frequency is in Hz (times per second)\n");
     }
-
-    gpioWrite(GPIO2, 4, HIGH); // GPIO2->PSOR = (1 << 4); 
-    thread_sleep(300);        
-    gpioWrite(GPIO2, 4, LOW); // GPIO2->PCOR = (1 << 4);
-    thread_sleep(300);
-    gpioWrite(GPIO2, 4, HIGH); // GPIO2->PSOR = (1 << 4); 
-    thread_sleep(300);        
-    gpioWrite(GPIO2, 4, LOW); // GPIO2->PCOR = (1 << 4);
 }

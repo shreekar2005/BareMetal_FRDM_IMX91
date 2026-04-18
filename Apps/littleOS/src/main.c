@@ -40,8 +40,10 @@ void hardware_init(void) {
     // Hardware initialization for usb debug pin (LPUART1)
     lpuartINIT(LPUART1, 115200, 24000000); // U-Boot already initialized LPUART1, but we are doing it again.
 
-    // Hardware initialization for built-in LED
+    // Hardware initialization for built-in RGB LEDs
     gpioPinINIT(GPIO2, 4, OUTPUT_MODE); // P11 Pin 7 (GPIO_IO04) -> builtin GREEN-LED pin
+    gpioPinINIT(GPIO2, 12, OUTPUT_MODE); // P11 Pin 33 (GPIO_IO12) -> builtin BLUE-LED pin
+    gpioPinINIT(GPIO2, 13, OUTPUT_MODE); // P11 Pin 33 (GPIO_IO13) -> builtin RED-LED pin
 
     // Hardware initialization for ESP8266 Wi-Fi Bridge
     iomuxSetPadAltMode(MUX_REG_GPIO_IO14, ALT_MODE_LPUART4, 0); // P11 Pin 8 (GPIO_IO14) -> ESP RX : AF mode 6 (LPUART4_TX)
@@ -51,8 +53,6 @@ void hardware_init(void) {
     lpuartINIT(LPUART4, 115200, 24000000); // Initialize LPUART4 for ESP8266 Wi-Fi Bridge
 
     // Hardware initialization for Sonar Task (HC-SR04 Radar)
-    gpioPinINIT(GPIO2, 13, OUTPUT_MODE); // P11 Pin 33 (GPIO_IO13) -> builtin RED-LED pin
-    gpioWrite(GPIO2, 13, LOW);
     gpioPinINIT(GPIO2, 2, OUTPUT_MODE); // P11 Pin 3 (GPIO_IO02) -> trigger pin for sonar
     gpioWrite(GPIO2, 2, LOW);
     gpioPinINIT(GPIO2, 3, INPUT_MODE); // P11 Pin 5 (GPIO_IO03) -> echo pin for sonar

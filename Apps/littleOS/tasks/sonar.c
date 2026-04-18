@@ -5,12 +5,13 @@
 #include "../include/multitasking.h"
 #include "../include/stdio.h"
 
+extern int ledblink_frequency_hz; // defined in led.c
+
 #define TRIG_PIN  2  // GPIO2_02
 #define ECHO_PIN  3  // GPIO2_03
-#define RED_LED   13 // GPIO2_13 
 
-#define ALARM_THRESHOLD_MM 100
-#define MAX_DISTANCE_MM    4000
+#define THRESHOLD_MM        500 // 50 cm threshold for changin frequency
+#define MAX_DISTANCE_MM     4000
 
 #define NUM_READINGS    5 // number of readings to take before returning median of distances (keep odd number >=3)
 
@@ -85,34 +86,26 @@ static uint32_t sonar_read_filtered_mm(void) {
 }
 
 /**
- * @brief Main RTOS Thread Entrypoint for Sonar Task
+ * @brief Entrypoint for Sonar Task
  */
 void sonar_thread(void* arg) {
-    uint8_t led_state = 0; 
-
     while (1) {
         uint32_t distance_mm = sonar_read_filtered_mm();
 
         if (distance_mm == 0xFFFFFFFF || distance_mm > MAX_DISTANCE_MM) {
             print_dbg("[SONAR-Thread] Distance: > 400.0 cm\n");
-            gpioWrite(GPIO2, RED_LED, LOW); // led off
-            led_state = 0;
+            ledblink_frequency_hz = 1; // Reset to slow baseline
         } else {
             uint32_t cm_whole = distance_mm / 10;
             uint32_t cm_frac = distance_mm % 10;
             print_dbg("[SONAR-Thread] Distance: %d.%d cm\n", cm_whole, cm_frac);
 
-            // blink if closer than threshold
-            if (distance_mm < ALARM_THRESHOLD_MM) {
-                led_state = !led_state;
-                if (led_state) {
-                    gpioWrite(GPIO2, RED_LED, HIGH); 
-                } else {
-                    gpioWrite(GPIO2, RED_LED, LOW); 
-                }   
+            // Set frequency based on distance (linear)
+            if (distance_mm <= THRESHOLD_MM) {
+                uint32_t safe_dist = (distance_mm == 0) ? 1 : distance_mm; // Prevent division by zero
+                ledblink_frequency_hz = 100 - ((distance_mm * 99) / THRESHOLD_MM); // Max 100 Hz, Min 1 Hz
             } else {
-                gpioWrite(GPIO2, RED_LED, LOW); 
-                led_state = 0;
+                ledblink_frequency_hz = 1; // Object is outside threshold, blink slowly
             }
         }
         

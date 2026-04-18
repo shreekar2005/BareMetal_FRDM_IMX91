@@ -25,11 +25,29 @@ void handleCommand(const char* cmd) {
     if (strcmp(cmd, "help") == 0 || strcmp(cmd, "?") == 0) {
         print_help();
     }
-    else if (strcmp(cmd, "killall") == 0) {
-        for (int i = 0; i < numAutotasks; i++) {
-            os_kill_thread(*(autotasks[i].id_ptr));
+    else if (strncmp(cmd, "kill", 4) == 0) {
+        const char* arg = cmd + 4; 
+        while (*arg == ' ') arg++;
+        if (strcmp(arg, "all") == 0) {
+            for (int i = 0; i < numAutotasks; i++) {
+                os_kill_thread(*(autotasks[i].id_ptr));
+            }
+            print_dbg("[CLI-Thread] All active background tasks forcefully killed.\n");
+        } 
+        else if (*arg >= '0' && *arg <= '9') {  // first char should be digit
+            int user_target_id = atoi(arg);
+            if (user_target_id >= 1 && user_target_id <= MAX_THREADS) {
+                int internal_array_index = user_target_id - 1;
+                os_kill_thread(internal_array_index);
+                print_dbg("[CLI-Thread] Thread %d forcefully killed.\n", user_target_id);
+            } else {
+                print_dbg("[CLI-Thread] Error: Thread ID must be between 1 and %d.\n", MAX_THREADS);
+            }
+        } 
+        else {
+            print_dbg("[CLI-Thread] Invalid argument.\n");
+            print_dbg("[CLI-Thread] Usage: \"kill <thread_id>\" OR \"kill all\"\n");
         }
-        print_dbg("[CLI-Thread] All active background tasks forcefully killed.\n");
     }
     else if (strcmp(cmd, "clear") == 0) {
         clear_terminal();
@@ -151,7 +169,7 @@ void clear_terminal(void) {
 
 void print_help(void){
     print_dbg("[CLI-Thread] Available Commands:\n");
-    print_dbg("[CLI-Thread]   killall (or Ctrl+C)  - Stop all active threads immediately\n");
+    print_dbg("[CLI-Thread]   kill <thread_id|all> - Terminate a specific thread or all threads\n");
     print_dbg("[CLI-Thread]   clear                - Clear the terminal screen\n");
     print_dbg("[CLI-Thread]   reboot/restart/reset - Hardware reboot\n");
     print_dbg("[CLI-Thread]   shutdown/poweroff    - Hardware poweroff (NOT SHUTTING DOWN HARDWARE!!!)\n");
