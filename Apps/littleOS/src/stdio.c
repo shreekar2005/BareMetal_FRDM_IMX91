@@ -4,9 +4,9 @@
 #include "include/multitasking.h"
 #include "include/shared_locks.h"
 
-os_mutex_t print_dbg_mutex;
-os_mutex_t esp_send_mutex;
-os_mutex_t esp_print_mutex;
+os_mutex_t print_dbg_mutex = OS_MUTEX_INITIALIZER;
+os_mutex_t esp_send_mutex = OS_MUTEX_INITIALIZER;
+os_mutex_t esp_print_mutex = OS_MUTEX_INITIALIZER;
 
 static void reverse(char *str, int length) {
     int start = 0;

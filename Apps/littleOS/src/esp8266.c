@@ -10,7 +10,7 @@
 #include "include/irq.h"
 #include "include/shared_locks.h"
 
-os_mutex_t esp_transaction_mutex;
+os_mutex_t esp_transaction_mutex = OS_MUTEX_INITIALIZER; // Mutex to protect ESP transactions
 
 // ----------------------------------- RING BUFFER ARCHITECTURE and ISR START-----------------------------------
 

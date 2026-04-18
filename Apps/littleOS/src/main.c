@@ -27,15 +27,6 @@ void os_start(void) {
     __os_start_asm(); 
 }
 
-/** @brief Initialize mutex locks for all mutexes defined in shared_locks.h */
-void mutex_locks_init(void){
-    os_mutex_init(&print_dbg_mutex);
-    os_mutex_init(&esp_send_mutex);
-    os_mutex_init(&esp_print_mutex);
-    os_mutex_init(&race_mutex);
-    os_mutex_init(&esp_transaction_mutex);
-}
-
 /** @brief Initialize hardware components (keeping it universal to avoid conflicts) */
 void hardware_init(void) {
     // Hardware initialization for usb debug pin (LPUART1)
@@ -66,7 +57,6 @@ void hardware_init(void) {
 /** @brief Main function : Entry point for littleOS */
 int main() {
     hardware_init(); // Initialize hardware components before starting threads that depend on them.
-    mutex_locks_init(); // Initialize mutex locks before starting threads that depend on them.
 
     print_dbg("\033[2J\033[H");
     print_dbg("[littleOS] Welcome TO littleOS RTOS :)\n");

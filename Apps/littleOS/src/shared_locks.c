@@ -1,12 +1,6 @@
 #include "include/shared_locks.h"
 #include "include/multitasking.h"
 
-void os_mutex_init(os_mutex_t* mutex) {
-    // __ATOMIC_RELEASE ensures any previous memory operations are finished 
-    // before we officially mark the lock as free (1).
-    __atomic_store_n(&mutex->value, 1, __ATOMIC_RELEASE);
-}
-
 void os_mutex_lock(os_mutex_t* mutex) {
     int expected;
     

@@ -7,7 +7,7 @@
 #include "SYS_CTR.h"
 
 volatile int shared_counter = 0;
-os_mutex_t race_mutex;
+os_mutex_t race_mutex = OS_MUTEX_INITIALIZER;
 
 void func_inc(void* arg) {
     for(volatile int i = 0; i < 10000000; i++) {
