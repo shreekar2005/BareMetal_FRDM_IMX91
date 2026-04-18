@@ -24,6 +24,7 @@ void esp_thread(void* arg) {
     }
     cmd[i] = '\0';
 
+    // NOT SURE IF WE NEED THIS OR NOT
     int remainder_ptr = ptr;
     while (cmd_string[remainder_ptr] == ' ') remainder_ptr++; 
 
@@ -89,11 +90,11 @@ void esp_thread(void* arg) {
         // Print updated help menu
         print_dbg("[ESP-Thread] Invalid argument.\n");
         print_dbg("[ESP-Thread] Usage:\n");
-        print_dbg("[ESP-Thread]   sta-mode   <ssid_name> <ssid_password>  (Both required)\n");
-        print_dbg("[ESP-Thread]   ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\n");
-        print_dbg("[ESP-Thread]   tcp-server [port_number]                (Default: 8080)\n");
-        print_dbg("[ESP-Thread]   echo       <message>                    (Sends text to TCP clients)\n");
-        print_dbg("[ESP-Thread]   reboot                                  (Reboots the ESP8266 module)\n");
-        print_dbg("[ESP-Thread]   status                                  (Shows current mode, IP, MAC)\n");
+        print_dbg("[ESP-Thread]   esp sta-mode   <ssid_name> <ssid_password>  (Both required)\n");
+        print_dbg("[ESP-Thread]   esp ap-mode    [ssid_name] [ssid_password]  (Default: littleOS / littleos)\n");
+        print_dbg("[ESP-Thread]   esp tcp-server [port_number]                (Default: 8080)\n");
+        print_dbg("[ESP-Thread]   esp echo       <message>                    (Sends text to TCP clients)\n");
+        print_dbg("[ESP-Thread]   esp reboot                                  (Reboots the ESP8266 module)\n");
+        print_dbg("[ESP-Thread]   esp status                                  (Shows current mode, IP, MAC)\n");
     }
 }
