@@ -7,6 +7,7 @@
 #include "include/string.h"
 
 void esp_thread(void* arg) {
+    print_dbg("\n");
     char* cmd_string = (char*)arg;
     if (cmd_string == NULL) return;
 

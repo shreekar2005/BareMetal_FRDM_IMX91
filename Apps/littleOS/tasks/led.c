@@ -9,6 +9,7 @@
 int ledblink_frequency_hz = 1; // default 1 Hz
 
 void led_thread(void* arg) {
+    print_dbg("\n");
     char* cmd_string = (char*)arg;
     if (cmd_string == NULL) return;
 

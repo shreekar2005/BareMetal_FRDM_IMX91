@@ -26,6 +26,7 @@ static uint32_t sonar_read_filtered_mm(void);
  * @brief Entrypoint for Sonar Task
  */
 void sonar_thread(void* arg) {
+    print_dbg("\n");
     while (1) {
         uint32_t distance_mm = sonar_read_filtered_mm();
 

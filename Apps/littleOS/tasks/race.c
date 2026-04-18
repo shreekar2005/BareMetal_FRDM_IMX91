@@ -23,6 +23,7 @@ void func_inc_mutex(void* arg) {
 }
 
 void race_thread(void* arg) {
+    print_dbg("\n");
     int startTicks;
     int endTicks;
     int timeElapsed_ms;

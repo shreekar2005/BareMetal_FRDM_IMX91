@@ -40,8 +40,8 @@ void getEspInfo(espStatParams* espInstance);
 bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
 void build_stats_string(char* buffer, threadStatParams allThreads[], espStatParams espInstance);
 
-void statistics_thread(void* arg)
-{
+void statistics_thread(void* arg){
+    print_dbg("\n");
     char* cmd_string = (char*)arg;
 
     char action[16] = {0};
@@ -128,7 +128,7 @@ void statistics_thread(void* arg)
 
     if (strcmp(action, "show") == 0) {
         /* DIRECT TERMINAL PRINTING (TABLE FORMAT) */
-        print_dbg("\n[STATISTICS-Thread] UPTIME:\n");
+        print_dbg("[STATISTICS-Thread] UPTIME:\n");
         print_dbg("[STATISTICS-Thread]  %d hrs : %d min : %d sec\n", hr, min, sec);
         print_dbg("[STATISTICS-Thread]\n");
         print_dbg("[STATISTICS-Thread] SCHEDULER:\n");
