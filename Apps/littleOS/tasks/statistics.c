@@ -41,7 +41,6 @@ bool get_raw_esp_response(char* buffer, int max_len, uint32_t timeout_sec);
 void build_stats_string(char* buffer, threadStatParams allThreads[], espStatParams espInstance);
 
 void statistics_thread(void* arg){
-    print_dbg("\n");
     char* cmd_string = (char*)arg;
 
     char action[16] = {0};
@@ -135,12 +134,12 @@ void statistics_thread(void* arg){
         print_dbg("[STATISTICS-Thread]  Algorithm: %s\n", schedAlgo);
         print_dbg("[STATISTICS-Thread]\n");
         print_dbg("[STATISTICS-Thread] THREADS:\n");
-        print_dbg("[STATISTICS-Thread]  %-3s | %-16s | %-5s | %-4s | %-5s | %-5s | %-4s | %-5s | %-7s\n", 
-                  "ID", "Name", "State", "Pri", "Dead", "Per", "Targ", "Done", "TAT(ms)");
-        print_dbg("[STATISTICS-Thread]  --------------------------------------------------------------------------------\n");
+        print_dbg("[STATISTICS-Thread]  %-3s | %-16s | %-5s | %-3s | %-8s | %-7s | %-4s | %-5s | %-7s\n", 
+                  "ID", "Name", "State", "Pri", "Dead(ms)", "Per(ms)", "Targ", "Done", "TAT(ms)");
+        print_dbg("[STATISTICS-Thread]  ----------------------------------------------------------------------------------\n");
         
         for (int j = 0; j < numThreads; j++) {
-            print_dbg("[STATISTICS-Thread]  %-3d | %-16s | %-5s | %-4d | %-5d | %-5d | %-4d | %-5d | %-7d\n",
+            print_dbg("[STATISTICS-Thread]  %-3d | %-16s | %-5s | %-3d | %-8d | %-7d | %-4d | %-5d | %-7d\n",
                       j + 1, 
                       allThreads[j].name, 
                       allThreads[j].current_state,

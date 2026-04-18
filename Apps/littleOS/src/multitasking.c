@@ -295,11 +295,19 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
         int best_thread = -1;
         int highest_pri = 999999; 
         
-        // Scan both RUN and READY threads to find the absolute highest priority
-        for (int i = 0; i < numThreads; i++) {
-            if ((threads[i].currentState == STATE_READY || threads[i].currentState == STATE_RUN) && threads[i].priority < highest_pri) {
-                highest_pri = threads[i].priority;
-                best_thread = i;
+        // CIRCULAR SCAN
+        int start_idx = (currentThread_idx >= 0) ? (currentThread_idx + 1) % numThreads : 0;
+        
+        for (int count = 0; count < numThreads; count++) {
+            int i = (start_idx + count) % numThreads;
+            
+            if (threads[i].currentState == STATE_READY || threads[i].currentState == STATE_RUN) {
+                // Because we use strictly less than '<', the FIRST thread we find with the 
+                // best priority wins. Thanks to our circular scan, ties are broken in RR order.
+                if (threads[i].priority < highest_pri) {
+                    highest_pri = threads[i].priority;
+                    best_thread = i;
+                }
             }
         }
         
@@ -319,9 +327,15 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
         int best_thread = -1;
         uint64_t earliest_deadline = 0xFFFFFFFFFFFFFFFFULL;
         
-        for (int i = 0; i < numThreads; i++) {
+        // CIRCULAR SCAN
+        int start_idx = (currentThread_idx >= 0) ? (currentThread_idx + 1) % numThreads : 0;
+        
+        for (int count = 0; count < numThreads; count++) {
+            int i = (start_idx + count) % numThreads;
+            
             if (threads[i].currentState == STATE_READY || threads[i].currentState == STATE_RUN) {
-                if (best_thread == -1 || threads[i].absoluteDeadlineTick < earliest_deadline) {
+                // Strict '<' ensures ties go to the first one encountered in our circular path
+                if (threads[i].absoluteDeadlineTick < earliest_deadline) {
                     earliest_deadline = threads[i].absoluteDeadlineTick;
                     best_thread = i;
                 }
@@ -330,7 +344,6 @@ CPUState* os_schedule(CPUState* current_cpustate_ptr) {
         
         if (best_thread != -1) {
             if (best_thread != currentThread_idx) {
-                // Safely preempt the current thread if it was running
                 if (currentThread_idx >= 0 && threads[currentThread_idx].currentState == STATE_RUN) {
                     threads[currentThread_idx].currentState = STATE_READY;
                 }

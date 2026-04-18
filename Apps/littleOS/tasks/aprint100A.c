@@ -4,7 +4,6 @@
 #include "include/stdio.h"
 
 void aprint100A_thread(void* arg) {
-    print_dbg("\n");
     os_stop_scheduling();
     for(int i = 0; i < 100; i++) {
         print_dbg("A");

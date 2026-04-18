@@ -22,14 +22,9 @@ void func_inc_mutex(void* arg) {
     }
 }
 
-void race_thread(void* arg) {
-    print_dbg("\n");
-    int startTicks;
-    int endTicks;
-    int timeElapsed_ms;
+void racetest_thread(void* arg) {
     int loss;
-    
-    static int t1 = -1;
+    static int t1 = -1; // making this static so that we only create the threads once and can re-run test multiple times
     static int t2 = -1;
     static int t3 = -1;
     static int t4 = -1;
@@ -45,29 +40,20 @@ void race_thread(void* arg) {
     print_dbg("[RACE-Thread] Expected: 20000000\n");
 
     shared_counter = 0;
-    startTicks = sysctrGetTicks();
-    
     os_thread_start(t1);
     os_thread_start(t2);
     os_join_thread(t1);
     os_join_thread(t2);
     
-    endTicks = sysctrGetTicks();
-    timeElapsed_ms = ((endTicks - startTicks) * 1000) / sysctrGetFreq();
     loss= 20000000 - shared_counter;
-    print_dbg("[RACE-Thread] By 2 threads without mutex: %d, elapsed_ms=%d, LOSS=%d\n", shared_counter, timeElapsed_ms, loss);
+    print_dbg("[RACE-Thread] Outcome : %d, LOSS=%d - by two threads without mutex\n", shared_counter, loss);
 
     shared_counter = 0;
-    startTicks = sysctrGetTicks();
-    
-    // Revive the mutex threads
     os_thread_start(t3);
     os_thread_start(t4);
     os_join_thread(t3);
     os_join_thread(t4);
     
-    endTicks = sysctrGetTicks();
-    timeElapsed_ms = ((endTicks - startTicks) * 1000) / sysctrGetFreq();
     loss= 20000000 - shared_counter;
-    print_dbg("[RACE-Thread] By 2 threads with mutex: %d, elapsed_ms=%d, LOSS=%d\n", shared_counter, timeElapsed_ms, loss);
+    print_dbg("[RACE-Thread] Outcome : %d, LOSS=%d - by two threads with mutex\n", shared_counter, loss);
 }

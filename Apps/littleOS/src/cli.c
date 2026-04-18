@@ -142,8 +142,7 @@ void input_thread(void* arg) {
                 
                 handleCommand(cmd_buffer);
             }
-            
-            print_dbg("[CLI-Thread] > ");
+            else if(cmd_buffer_idx==0) print_dbg("[CLI-Thread] > ");
             
             // Reset states for the next command
             cmd_buffer_idx = 0;

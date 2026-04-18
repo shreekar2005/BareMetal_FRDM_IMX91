@@ -9,7 +9,6 @@
 int ledblink_delay_ms = 500; // default 500 ms
 
 void led_thread(void* arg) {
-    print_dbg("\n");
     char* cmd_string = (char*)arg;
     if (cmd_string == NULL) return;
 

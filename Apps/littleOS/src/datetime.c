@@ -23,7 +23,7 @@ void datetime_ticker_thread(void* arg) {
                     sys_hour = 0;
                     sys_day++;
                     
-                    // Simple month rollover (Assumes 30 days for simplicity in toy OS)
+                    // Simple month rollover (Assumes 30 days for simplicity in littleOS)
                     int days_in_month = 31;
                     if (sys_month == 2) days_in_month = 28;
                     else if (sys_month == 4 || sys_month == 6 || sys_month == 9 || sys_month == 11) days_in_month = 30;
