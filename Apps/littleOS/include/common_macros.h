@@ -1,3 +1,40 @@
+// GPIO02 Pad Macros (just to avoid collisions)
+
+#define GPIO2_00            0   // --- IGNORE ---
+#define GPIO2_01            1   // --- IGNORE ---
+#define ULTRASONIC_TRIG_PIN 2   // GPIO2_02
+#define ULTRASONIC_ECHO_PIN 3   // GPIO2_03
+#define BUILTIN_GREEN_LED   4   // GPIO2_04
+#define GPIO2_5             5   // --- IGNORE ---
+#define GPIO2_6             6   // --- IGNORE ---
+#define GPIO2_7             7   // --- IGNORE ---
+#define GPIO2_8             8   // --- IGNORE ---
+#define GPIO2_9             9   // --- IGNORE ---
+#define GPIO2_10            10  // --- IGNORE ---
+#define GPIO2_11            11  // --- IGNORE ---
+#define BUILTIN_BLUE_LED    12  // GPIO2_12
+#define BUILTIN_RED_LED     13  // GPIO2_13
+#define ESP8266_TX_PIN      14  // GPIO2_14
+#define ESP8266_RX_PIN      15  // GPIO2_15
+#define GPIO2_16            16  // --- IGNORE ---
+#define GPIO2_17            17  // --- IGNORE ---
+#define GPIO2_18            18  // --- IGNORE ---
+#define GPIO2_19            19  // --- IGNORE ---
+#define GPIO2_20            20  // --- IGNORE ---
+#define GPIO2_21            21  // --- IGNORE ---
+#define GPIO2_22            22  // --- IGNORE ---
+#define GPIO2_23            23  // --- IGNORE ---
+#define GPIO2_24            24  // --- IGNORE ---
+#define GPIO2_25            25  // --- IGNORE ---
+#define GPIO2_26            26  // --- IGNORE ---
+#define GPIO2_27            27  // --- IGNORE ---
+#define GPIO2_28            28  // --- IGNORE ---
+#define GPIO2_29            29  // --- IGNORE ---
+#define GPIO2_30            30  // --- IGNORE ---
+#define GPIO2_31            31  // --- IGNORE ---
+
+
+
 // cli's Macros
 #define CMD_BUFFER_SIZE 128 // CLI command parsing buffer size
 #define ASCII_CTRL_C        0x03 // ASCII code for Ctrl+C

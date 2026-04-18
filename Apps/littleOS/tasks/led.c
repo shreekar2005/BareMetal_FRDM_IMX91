@@ -1,13 +1,10 @@
-// Task_Name : LED Blink
+// Task_Name : LED Control
 
 #include <stddef.h>
 #include "GPIO.h"
 #include "include/multitasking.h"
 #include "include/stdio.h"
-
-#define GREEN_LED 4  // GPIO2_04
-#define BLUE_LED  12 // GPIO2_12
-#define RED_LED   13 // GPIO2_13 
+#include "include/common_macros.h"
 
 int ledblink_frequency_hz = 1; // default 1 Hz
 
@@ -46,11 +43,11 @@ void led_thread(void* arg) {
 
     if (strcmp(cmd, "on") == 0) {
         if (strcmp(arg1, "red") == 0) {
-            gpioWrite(GPIO2, RED_LED, HIGH);
+            gpioWrite(GPIO2, BUILTIN_RED_LED, HIGH);
         } else if (strcmp(arg1, "green") == 0) {
-            gpioWrite(GPIO2, GREEN_LED, HIGH);
+            gpioWrite(GPIO2, BUILTIN_GREEN_LED, HIGH);
         } else if (strcmp(arg1, "blue") == 0) {
-            gpioWrite(GPIO2, BLUE_LED, HIGH);
+            gpioWrite(GPIO2, BUILTIN_BLUE_LED, HIGH);
         } else {
             print_dbg("[LED-Thread] Unknown color: %s\n", arg1);
         }
@@ -58,11 +55,11 @@ void led_thread(void* arg) {
 
     } else if (strcmp(cmd, "off") == 0) {
         if (strcmp(arg1, "red") == 0) {
-            gpioWrite(GPIO2, RED_LED, LOW);
+            gpioWrite(GPIO2, BUILTIN_RED_LED, LOW);
         } else if (strcmp(arg1, "green") == 0) {
-            gpioWrite(GPIO2, GREEN_LED, LOW);
+            gpioWrite(GPIO2, BUILTIN_GREEN_LED, LOW);
         } else if (strcmp(arg1, "blue") == 0) {
-            gpioWrite(GPIO2, BLUE_LED, LOW);
+            gpioWrite(GPIO2, BUILTIN_BLUE_LED, LOW);
         } else {
             print_dbg("[LED-Thread] Unknown color: %s\n", arg1);
         }
@@ -75,25 +72,25 @@ void led_thread(void* arg) {
         if (strcmp(arg1, "red") == 0) {
             while (1) {
                 delay_ms = 500 / ledblink_frequency_hz; // recalculate in case frequency was changed externally
-                gpioWrite(GPIO2, RED_LED, HIGH);
+                gpioWrite(GPIO2, BUILTIN_RED_LED, HIGH);
                 thread_sleep(delay_ms);
-                gpioWrite(GPIO2, RED_LED, LOW);
+                gpioWrite(GPIO2, BUILTIN_RED_LED, LOW);
                 thread_sleep(delay_ms);
             }
         } else if (strcmp(arg1, "green") == 0) {
             while (1) {
                 delay_ms = 500 / ledblink_frequency_hz; // recalculate in case frequency was changed externally
-                gpioWrite(GPIO2, GREEN_LED, HIGH);
+                gpioWrite(GPIO2, BUILTIN_GREEN_LED, HIGH);
                 thread_sleep(delay_ms);
-                gpioWrite(GPIO2, GREEN_LED, LOW);
+                gpioWrite(GPIO2, BUILTIN_GREEN_LED, LOW);
                 thread_sleep(delay_ms);
             }
         } else if (strcmp(arg1, "blue") == 0) {
             while (1) {
                 delay_ms = 500 / ledblink_frequency_hz; // recalculate in case frequency was changed externally
-                gpioWrite(GPIO2, BLUE_LED, HIGH);
+                gpioWrite(GPIO2, BUILTIN_BLUE_LED, HIGH);
                 thread_sleep(delay_ms);
-                gpioWrite(GPIO2, BLUE_LED, LOW);
+                gpioWrite(GPIO2, BUILTIN_BLUE_LED, LOW);
                 thread_sleep(delay_ms);
             }
         } else {
