@@ -397,7 +397,7 @@ void espTCPServerListener_thread(void *arg) {
                     }
                     remote_ip[ip_ptr] = '\0';
 
-                    print_dbg("\n[ESP8266-Remote-%s] %s\n", remote_ip, buffer);
+                    print_dbg("\n[ESP8266-Remote-%s] %s", remote_ip, buffer);
                     
                     if (strncmp(buffer, "exec ", 5) == 0) {
                         handleCommand(buffer + 5); 
