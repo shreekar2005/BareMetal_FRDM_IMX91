@@ -6,7 +6,7 @@
 #include "include/stdio.h"
 #include "include/common_macros.h"
 
-int ledblink_frequency_hz = 1; // default 1 Hz
+int ledblink_delay_ms = 500; // default 500 ms
 
 void led_thread(void* arg) {
     print_dbg("\n");
@@ -15,7 +15,7 @@ void led_thread(void* arg) {
 
     char cmd[16] = {0}; // on, off, blink
     char arg1[32] = {0}; // color
-    char arg2[32] = {0}; // frequency (if blink mode)
+    char arg2[32] = {0}; // delay (if blink mode)
     int ptr = 0;
     int i = 0;
 
@@ -34,7 +34,7 @@ void led_thread(void* arg) {
     }
     arg1[i] = '\0';
 
-    // arg2 (frequency if blink mode)
+    // arg2 (delay if blink mode)
     i = 0;
     while (cmd_string[ptr] == ' ') ptr++;
     while (cmd_string[ptr] != ' ' && cmd_string[ptr] != '\0' && i < 31) {
@@ -67,12 +67,12 @@ void led_thread(void* arg) {
 
 
     } else if (strcmp(cmd, "blink") == 0) {
-        if(atoi(arg2) > 0) ledblink_frequency_hz = atoi(arg2);
-        if (ledblink_frequency_hz <= 0) ledblink_frequency_hz = 1; // default to 1 Hz
-        uint32_t delay_ms = 500 / ledblink_frequency_hz; // on for half the period
+        if(atoi(arg2) > 0) ledblink_delay_ms = atoi(arg2);
+        if (ledblink_delay_ms <= 0) ledblink_delay_ms = 500; // default to 500 ms
+        uint32_t delay_ms = ledblink_delay_ms; 
         if (strcmp(arg1, "red") == 0) {
             while (1) {
-                delay_ms = 500 / ledblink_frequency_hz; // recalculate in case frequency was changed externally
+                delay_ms = ledblink_delay_ms; // recalculate in case delay was changed externally
                 gpioWrite(GPIO2, BUILTIN_RED_LED, HIGH);
                 thread_sleep(delay_ms);
                 gpioWrite(GPIO2, BUILTIN_RED_LED, LOW);
@@ -80,7 +80,7 @@ void led_thread(void* arg) {
             }
         } else if (strcmp(arg1, "green") == 0) {
             while (1) {
-                delay_ms = 500 / ledblink_frequency_hz; // recalculate in case frequency was changed externally
+                delay_ms = ledblink_delay_ms; // recalculate in case delay was changed externally
                 gpioWrite(GPIO2, BUILTIN_GREEN_LED, HIGH);
                 thread_sleep(delay_ms);
                 gpioWrite(GPIO2, BUILTIN_GREEN_LED, LOW);
@@ -88,7 +88,7 @@ void led_thread(void* arg) {
             }
         } else if (strcmp(arg1, "blue") == 0) {
             while (1) {
-                delay_ms = 500 / ledblink_frequency_hz; // recalculate in case frequency was changed externally
+                delay_ms = ledblink_delay_ms; // recalculate in case delay was changed externally
                 gpioWrite(GPIO2, BUILTIN_BLUE_LED, HIGH);
                 thread_sleep(delay_ms);
                 gpioWrite(GPIO2, BUILTIN_BLUE_LED, LOW);
@@ -103,8 +103,8 @@ void led_thread(void* arg) {
         print_dbg("[LED-Thread] Usage:\n");
         print_dbg("[LED-Thread]   led on <color>\n");
         print_dbg("[LED-Thread]   led off <color>\n");
-        print_dbg("[LED-Thread]   led blink <color> [frequency]\n");
+        print_dbg("[LED-Thread]   led blink <color> [delay_ms]\n");
         print_dbg("[LED-Thread] Colors: red, green, blue\n");
-        print_dbg("[LED-Thread] Frequency is in Hz (times per second)\n");
+        print_dbg("[LED-Thread] Delay is in milliseconds (ms)\n");
     }
 }

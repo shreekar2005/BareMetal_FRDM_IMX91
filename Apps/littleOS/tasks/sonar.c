@@ -6,9 +6,9 @@
 #include "include/stdio.h"
 #include "include/common_macros.h"
 
-extern int ledblink_frequency_hz; // defined in led.c
+extern int ledblink_delay_ms; // defined in led.c
 
-#define THRESHOLD_MM    500 // 50 cm threshold for changin frequency
+#define THRESHOLD_MM    250 // 25 cm threshold for changing delay of led blink
 #define MAX_DISTANCE_MM 4000 // 400 cm max distance (beyond this we just say > 400 cm)
 #define NUM_READINGS    5 // number of readings to take before returning median of distances (keep odd number >=3)
 
@@ -32,20 +32,24 @@ void sonar_thread(void* arg) {
 
         if (distance_mm == 0xFFFFFFFF || distance_mm > MAX_DISTANCE_MM) {
             print_dbg("[SONAR-Thread] Distance: > 400.0 cm\n");
-            ledblink_frequency_hz = 1; // Reset to slow baseline
+            ledblink_delay_ms = 2000; // Reset to slow baseline (2 seconds)
         } else {
-            uint32_t cm_whole = distance_mm / 10;
-            uint32_t cm_frac = distance_mm % 10;
-            print_dbg("[SONAR-Thread] Distance: %d.%d cm\n", cm_whole, cm_frac);
+            print_dbg("[SONAR-Thread] Distance: %.2f cm\n", distance_mm / 10.0);
 
-            // Set frequency based on distance (linear)
+            // Set delay based on distance 
             if (distance_mm <= THRESHOLD_MM) {
-                uint32_t safe_dist = (distance_mm == 0) ? 1 : distance_mm; // Prevent division by zero
-                ledblink_frequency_hz = 100 - ((distance_mm * 99) / THRESHOLD_MM); // Max 100 Hz, Min 1 Hz
+                ledblink_delay_ms = (distance_mm * 1000) / THRESHOLD_MM;
+                
+                // Safety clamp: prevent a true 0ms sleep which could lock the LED thread
+                if (ledblink_delay_ms < 5) {
+                    ledblink_delay_ms = 5;
+                }
             } else {
-                ledblink_frequency_hz = 1; // Object is outside threshold, blink slowly
+                ledblink_delay_ms = 2000; // Object is outside threshold, blink very slowly
             }
         }
+        
+        // sleep between 2 outputs
         thread_sleep(100);
     }
 }
