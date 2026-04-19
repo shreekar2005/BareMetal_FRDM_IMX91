@@ -37,14 +37,14 @@ void sonar_thread(void* arg) {
 
             // Set delay based on distance 
             if (distance_mm <= THRESHOLD_MM) {
-                ledblink_delay_ms = (distance_mm * 1000) / THRESHOLD_MM;
+                ledblink_delay_ms = (distance_mm * 50) / THRESHOLD_MM;
                 
                 // Safety clamp: prevent a true 0ms sleep which could lock the LED thread
                 if (ledblink_delay_ms < 5) {
                     ledblink_delay_ms = 5;
                 }
             } else {
-                ledblink_delay_ms = 2000; // Object is outside threshold, blink very slowly
+                ledblink_delay_ms = 1000; // Object is outside threshold, blink very slowly
             }
         }
         

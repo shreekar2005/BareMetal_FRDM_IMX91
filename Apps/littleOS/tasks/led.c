@@ -6,7 +6,7 @@
 #include "include/stdio.h"
 #include "include/common_macros.h"
 
-int ledblink_delay_ms = 500; // default 500 ms
+int ledblink_delay_ms = 1000; // default 1000 ms
 
 void led_thread(void* arg) {
     char* cmd_string = (char*)arg;
