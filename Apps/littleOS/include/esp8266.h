@@ -1,8 +1,6 @@
 #ifndef ESP8266_H
 #define ESP8266_H
 
-#include <stdint.h>
-#include "LPUART.h"
 #include "include/common_macros.h"
 
 typedef struct {

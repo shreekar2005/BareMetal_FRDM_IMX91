@@ -1,9 +1,6 @@
 #ifndef SHARED_LOCKS_H
 #define SHARED_LOCKS_H
 
-#include <stdint.h>
-#include <stdbool.h>
-
 /**
  * @brief Mutex structure
  * value = 1 means available (unlocked)

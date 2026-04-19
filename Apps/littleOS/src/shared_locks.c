@@ -1,5 +1,6 @@
-#include "include/shared_locks.h"
+#include <stdbool.h>
 #include "include/multitasking.h"
+#include "include/shared_locks.h"
 
 void mutex_lock(os_mutex_t* mutex) {
     int expected;

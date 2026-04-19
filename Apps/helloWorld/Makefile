@@ -1,4 +1,4 @@
-APP = sonar_proximity
+APP = helloWorld
 
 all:
 	$(MAKE) -C ../.. APP=$(APP)

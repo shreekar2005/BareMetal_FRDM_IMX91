@@ -1,11 +1,10 @@
-#include <stdint.h>
 #include "LPUART.h"
+#include "include/autotasks.h"
 #include "include/cli.h"
 #include "include/cli_utility.h"
-#include "include/string.h"
-#include "include/stdio.h"
 #include "include/multitasking.h"
-#include "include/autotasks.h"
+#include "include/stdio.h"
+#include "include/string.h"
 
 static char cmd_history[CLI_HISTORY_SIZE][CMD_BUFFER_SIZE];
 static int cmd_history_head = 0;

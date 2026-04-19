@@ -1,3 +1,6 @@
+#ifndef IRQ_H
+#define IRQ_H
+
 #include <stdint.h>
 #include "GIC.h"
 #include "include/multitasking.h"
@@ -20,8 +23,4 @@ void irq_register(uint32_t intid, irq_handler_t handler);
  */
 CPUState* irq_dispatcher(CPUState* current_state);
 
-/**
- * @brief Initializes the CPU Core Exception state.
- * Must be called exactly once during boot.
- */
-void gicCPUExceptionsInit(void);
+#endif // IRQ_H

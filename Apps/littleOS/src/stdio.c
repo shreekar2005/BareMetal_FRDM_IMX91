@@ -1,8 +1,8 @@
-#include <stdbool.h>
 #include "SYS_CTR.h"
-#include "include/stdio.h"
+#include "LPUART.h"
 #include "include/multitasking.h"
 #include "include/shared_locks.h"
+#include "include/stdio.h"
 
 os_mutex_t print_dbg_mutex = OS_MUTEX_INITIALIZER;
 os_mutex_t esp_send_mutex = OS_MUTEX_INITIALIZER;

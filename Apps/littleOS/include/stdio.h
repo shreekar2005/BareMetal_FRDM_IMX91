@@ -2,8 +2,6 @@
 #define STDIO_H
 
 #include <stdarg.h>
-#include <stdint.h>
-#include "LPUART.h"
 
 /**
  * @brief Standard sprintf implementation. Formats a string into a provided buffer.

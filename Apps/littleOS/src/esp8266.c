@@ -1,14 +1,13 @@
-#include <stdbool.h>
+#include "LPUART.h"
 #include "SYS_CTR.h"
-#include "include/esp8266.h"
-#include "include/stdio.h"
 #include "include/cli_utility.h"
 #include "include/cli.h"
-#include "include/string.h"
+#include "include/esp8266.h"
 #include "include/multitasking.h"
-#include "GIC.h"
 #include "include/irq.h"
 #include "include/shared_locks.h"
+#include "include/stdio.h"
+#include "include/string.h"
 
 os_mutex_t esp_transaction_mutex = OS_MUTEX_INITIALIZER;
 
