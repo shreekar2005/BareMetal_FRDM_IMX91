@@ -15,6 +15,7 @@
 #include "include/esp8266.h"
 #include "include/datetime.h"
 #include "include/common_macros.h"
+#include "include/memory.h"
 
 extern void* vector_table; // Defined in vector.S
 extern void __os_start_asm(void); // defined in vector.S
@@ -54,12 +55,21 @@ void hardware_init(void) {
     gicCPUInit((uintptr_t)&vector_table); // Giving CPU vector_table address
 }
 
+int globalVar_uninitialized;
+int globalVar_initialized=1;
+
 /** @brief Main function : Entry point for littleOS */
 int main() {
     hardware_init(); // Initialize hardware components before starting threads that depend on them.
-
+    
     print_dbg("\033[2J\033[H");
     print_dbg("[littleOS] Welcome TO littleOS RTOS :)\n");
+    
+    int localVar;;
+    print_dbg("stack variable on                 : 0x%08X\n", &localVar);
+    print_dbg("global(uninitialized) variable on : 0x%08X\n", &globalVar_uninitialized);
+    print_dbg("global(initialized) variable on   : 0x%08X\n", &globalVar_initialized);
+    memory_print_footprint();
 
     print_dbg("[Boot] Initializing Scheduler...\n");
     scheduler_init(); // Note: isSchedulingEnabled is set to false here. 

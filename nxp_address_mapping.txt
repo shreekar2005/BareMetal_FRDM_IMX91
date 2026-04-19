@@ -1,0 +1,70 @@
+Note:
+  SRAM : on chip fast but little RAM 
+  DRAM : DDR RAM (2GB available here)
+  BOOT ROM : Reads SW1 switches then load few bytes (SPL code) from selected BOOT Media into SRAM
+  SPL (Secondary Program Loader) : Initialize DRAM, load U-Boot code in DRAM and jump to U-Boot code
+  U-Boot : Loaded in DRAM (near 0xFD00_0000). Initialize clocks and all things for OS to boot
+
+
+Exception Levels:
+   lvl    : what is accessible                               : while running what thing
+   --------------------------------------------------------------------------------------------------
+   EL0(NS): can access only NON-SECURE memory                : Standard User Apps (Web browser, etc)
+   EL0(S) : can access both SECURE and NON-SECURE memory     : Trusted Applications (Fingerprint matching, DRM)
+   EL1(NS): can access only NON-SECURE memory                : Rich OS Kernels (Linux, Windows, littleOS)
+   EL1(S) : can access both SECURE and NON-SECURE memory     : Trusted OS (OP-TEE, Trusty)
+   EL2(NS): can access only NON-SECURE memory                : Hypervisors (KVM, Xen) & U-Boot (pre-handoff)
+   EL3(S) : can access both SECURE and NON-SECURE memory     : ARM Trusted Firmware (TF-A) / Secure Monitor
+
+
+System Memory Map for the NXP i.MX91:
+  0xFFFF_FFFF +-------------------------------+
+              |                               |
+              |       EXTERNAL DRAM (DDR)     | <- 2 GB of main system memory
+              |       (Offset from 0 MB up)   | 
+              |                               |
+  0x8000_0000 +-------------------------------+
+              |           RESERVED            |
+  0x6000_0000 +-------------------------------+
+              |     PERIPHERALS (SECURE)      | <- TrustZone "Secure" World (only accessible for EL3)
+  0x5000_0000 +-------------------------------+
+              |    PERIPHERALS (NON-SECURE)   | <- TrustZone "Non-Secure" World (accessible for EL2/EL1)
+  0x4000_0000 +-------------------------------+
+              |           RESERVED            |
+  0x2052_0000 +-------------------------------+
+              |        OCRAM (384 KB)         | <- on-chip SRAM (SPL loaded here)
+  0x2048_0000 +-------------------------------+
+              |           RESERVED            |
+  0x0004_0000 +-------------------------------+
+              |      A55 BOOT ROM (256 KB)    | <- NXP's hardcoded secure boot code which loads SPL in SRAM
+  0x0000_0000 +-------------------------------+
+
+
+DRAM Memory Map:
+ 0xFFFF_FFFF +-----------------------------------+
+              |                                   |
+              |                                   |
+              |              [FREE]               | 
+              |                                   | <- 1,024 MB
+              |                                   |
+              |                                   |
+  0xC000_0000 +-----------------------------------+
+              |          [TAKEN - U-BOOT]         | 
+              |   U-Boot Executable, Stack, Heap, | <- ~49 MB (not good idea to touch this)
+              |   MMU Tables, & Device Tree (FDT) |
+  0xBCEB_8000 +-----------------------------------+
+              |                                   |
+              |                                   | 
+              |              [FREE]               | <- ~620 MB
+              |                                   |
+              |                                   |
+  0x9800_0000 +-----------------------------------+ 
+              |         [TAKEN - SECURE]          | 
+              |     ARM Trusted Firmware (EL3)    | <- 32 MB (System Will crash if touched)
+              |     & OP-TEE Secure OS (S-EL1)    |
+  0x9600_0000 +-----------------------------------+ 
+              |                                   |
+              |              [FREE]               | 
+              |                                   | <- ~352 MB
+              |                                   |
+  0x8000_0000 +-----------------------------------+ <- app.bin is loaded here (e.g. littleOS.bin)
