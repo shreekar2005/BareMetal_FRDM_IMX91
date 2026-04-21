@@ -1,5 +1,10 @@
 # Bare-Metal Framework for FRDM-i.MX91
 
+Youtube video (made by me for demo and how all will run) :
+1. how things will run your baremetal program : https://youtu.be/fBRqhNGRYaQ
+2. what littleOS does : https://youtu.be/XXXpKgIo3Ik?si=xmUUTDXzSkrE_TmZ
+
+
 This project provides a **minimal freestanding bare-metal build system** for the NXP FRDM-i.MX91 board. It is designed to be a starting point for developers who want to write performance-critical or low-level software without the overhead of a standard operating system.
 
 It allows you to:
