@@ -26,9 +26,9 @@ System Memory Map for the NXP i.MX91:
   0x8000_0000 +-------------------------------+
               |           RESERVED            |
   0x6000_0000 +-------------------------------+
-              |     PERIPHERALS (SECURE)      | <- TrustZone "Secure" World (only accessible for EL3)
+              |     PERIPHERALS (SECURE)      | <- TrustZone "Secure" World
   0x5000_0000 +-------------------------------+
-              |    PERIPHERALS (NON-SECURE)   | <- TrustZone "Non-Secure" World (accessible for EL2/EL1)
+              |    PERIPHERALS (NON-SECURE)   | <- TrustZone "Non-Secure" World
   0x4000_0000 +-------------------------------+
               |           RESERVED            |
   0x2052_0000 +-------------------------------+
